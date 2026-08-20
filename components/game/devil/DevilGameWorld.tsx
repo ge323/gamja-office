@@ -62,9 +62,6 @@ const PLAYER_SPEED =
 const ARRIVAL_DISTANCE =
   2;
 
-/*
- * 이동 경로 검사 간격
- */
 const COLLISION_STEP =
   4;
 
@@ -98,8 +95,6 @@ function isInsideRect(
 
 /* =========================================================
    Walkable
-
-   방 내부 + 복도 + 문만 이동 가능
 ========================================================= */
 
 function isWalkable(
@@ -123,11 +118,6 @@ function isWalkable(
 
 /* =========================================================
    Path Walkable
-
-   클릭 위치까지 직선으로 이동하는 동안
-   이동 불가능한 영역을 지나가는지 검사한다.
-
-   따라서 벽을 뚫고 방 안으로 바로 이동할 수 없다.
 ========================================================= */
 
 function isPathWalkable(
@@ -153,7 +143,6 @@ function isPathWalkable(
   const steps =
     Math.max(
       1,
-
       Math.ceil(
         distance /
           COLLISION_STEP
@@ -203,7 +192,6 @@ function clamp(
 ) {
   return Math.max(
     min,
-
     Math.min(
       max,
       value
@@ -249,35 +237,22 @@ export default function DevilGameWorld({
       null
     );
 
-  /*
-   * 실제 이동 애니메이션
-   */
   const animationFrameRef =
     useRef<number | null>(
       null
     );
 
-  /*
-   * 이전 프레임 시간
-   */
   const lastFrameTimeRef =
     useRef<number | null>(
       null
     );
 
-  /*
-   * React state와 별개로
-   * 현재 위치를 즉시 참조하기 위한 ref
-   */
   const positionRef =
     useRef<Position>({
       x: 1100,
       y: 700,
     });
 
-  /*
-   * 현재 이동 목표
-   */
   const targetPositionRef =
     useRef<Position | null>(
       null
@@ -355,14 +330,35 @@ export default function DevilGameWorld({
     );
 
   /* ======================================================
-     Remaining Mission Count
+     Mission Progress
   ====================================================== */
 
-  const remainingMissionCount =
+  const totalMissionCount =
+    missions.length;
+
+  const completedMissionCount =
     missions.filter(
       mission =>
-        !mission.completed
+        mission.completed
     ).length;
+
+  const remainingMissionCount =
+    Math.max(
+      0,
+      totalMissionCount -
+        completedMissionCount
+    );
+
+  const missionProgress =
+    totalMissionCount === 0
+      ? 0
+      : Math.round(
+          (
+            completedMissionCount /
+            totalMissionCount
+          ) *
+            100
+        );
 
   /* ======================================================
      Nearby Mission
@@ -397,11 +393,7 @@ export default function DevilGameWorld({
     ) ?? null;
 
   /* ======================================================
-     GameMapOverlay용 Mission 변환
-
-     GameMapOverlay는
-     name 필드를 사용하고 있기 때문에
-     title → name 으로 변환
+     Map Mission Conversion
   ====================================================== */
 
   const mapMissions:
@@ -456,10 +448,6 @@ export default function DevilGameWorld({
 
   /* ======================================================
      Movement Animation
-
-     CSS transition이 아니라
-     requestAnimationFrame으로 실제 좌표를
-     조금씩 이동시킨다.
   ====================================================== */
 
   const animateMovement = (
@@ -503,7 +491,6 @@ export default function DevilGameWorld({
     const deltaTime =
       Math.min(
         40,
-
         timestamp -
           lastFrameTimeRef.current
       ) /
@@ -513,7 +500,7 @@ export default function DevilGameWorld({
       timestamp;
 
     /* =====================================
-       목표까지 거리
+       Distance
     ===================================== */
 
     const dx =
@@ -566,7 +553,6 @@ export default function DevilGameWorld({
       Math.min(
         PLAYER_SPEED *
           deltaTime,
-
         distance
       );
 
@@ -589,7 +575,7 @@ export default function DevilGameWorld({
         moveDistance;
 
     /* =====================================
-       이동 가능 영역 체크
+       충돌
     ===================================== */
 
     if (
@@ -604,7 +590,7 @@ export default function DevilGameWorld({
     }
 
     /* =====================================
-       Position Update
+       좌표 반영
     ===================================== */
 
     const nextPosition = {
@@ -623,7 +609,7 @@ export default function DevilGameWorld({
     );
 
     /* =====================================
-       Next Frame
+       다음 프레임
     ===================================== */
 
     animationFrameRef.current =
@@ -640,19 +626,8 @@ export default function DevilGameWorld({
     targetX: number,
     targetY: number
   ) => {
-    /*
-     * 미션 중에는 이동 금지
-     */
     if (
-      activeMission
-    ) {
-      return;
-    }
-
-    /*
-     * 지도 열려 있을 때 이동 금지
-     */
-    if (
+      activeMission ||
       mapOpen
     ) {
       return;
@@ -661,9 +636,7 @@ export default function DevilGameWorld({
     const current =
       positionRef.current;
 
-    /* =====================================
-       목표점이 이동 가능한 위치인가?
-    ===================================== */
+    /* 목적지 확인 */
 
     if (
       !isWalkable(
@@ -674,9 +647,7 @@ export default function DevilGameWorld({
       return;
     }
 
-    /* =====================================
-       현재 위치 → 목표 위치 경로 체크
-    ===================================== */
+    /* 직선 경로 확인 */
 
     if (
       !isPathWalkable(
@@ -710,9 +681,7 @@ export default function DevilGameWorld({
       return;
     }
 
-    /* =====================================
-       이전 애니메이션 취소
-    ===================================== */
+    /* 이전 애니메이션 취소 */
 
     if (
       animationFrameRef.current !==
@@ -725,10 +694,6 @@ export default function DevilGameWorld({
       animationFrameRef.current =
         null;
     }
-
-    /* =====================================
-       새로운 목적지
-    ===================================== */
 
     targetPositionRef.current = {
       x:
@@ -791,10 +756,6 @@ export default function DevilGameWorld({
         return;
       }
 
-      /*
-       * 플레이어 이동 중이면
-       * 미션 시작하면서 정지
-       */
       stopMovement();
 
       setActiveMission(
@@ -804,8 +765,6 @@ export default function DevilGameWorld({
 
   /* ======================================================
      Reset Missions
-
-     개발 테스트용
   ====================================================== */
 
   const resetMissions =
@@ -826,148 +785,149 @@ export default function DevilGameWorld({
       );
     };
 
-/* ======================================================
-   Keyboard
-====================================================== */
+  /* ======================================================
+     Keyboard
+  ====================================================== */
 
-useEffect(() => {
-  const handleKeyDown = (
-    event: KeyboardEvent
-  ) => {
-    const target =
-      event.target as HTMLElement;
+  useEffect(() => {
+    const handleKeyDown = (
+      event:
+        KeyboardEvent
+    ) => {
+      const target =
+        event.target as HTMLElement;
 
-    /*
-     * input/select 사용 중에는
-     * 게임 단축키 막기
-     */
-    if (
-      target.tagName === "INPUT" ||
-      target.tagName === "TEXTAREA" ||
-      target.tagName === "SELECT"
-    ) {
-      return;
-    }
-
-    /* =====================================
-       미션 창이 열려 있을 때
-    ===================================== */
-
-    if (activeMission) {
+      /*
+       * 미션 내부 입력 필드 보호
+       */
       if (
-        event.code === "Escape"
+        target.tagName ===
+          "INPUT" ||
+        target.tagName ===
+          "TEXTAREA" ||
+        target.tagName ===
+          "SELECT"
       ) {
-        setActiveMission(
-          null
-        );
+        return;
       }
 
-      return;
-    }
-
-    /* =====================================
-       E = 미션 실행
-
-       event.key가 아니라
-       물리 키 위치인 event.code 사용
-    ===================================== */
-
-    if (
-      event.code === "KeyE"
-    ) {
-      event.preventDefault();
+      /* =====================================
+         미션 열려 있을 때
+      ===================================== */
 
       if (
-        nearbyMission
+        activeMission
       ) {
-        stopMovement();
+        if (
+          event.code ===
+          "Escape"
+        ) {
+          setActiveMission(
+            null
+          );
+        }
 
-        setActiveMission(
+        return;
+      }
+
+      /* =====================================
+         E = 업무
+      ===================================== */
+
+      if (
+        event.code ===
+        "KeyE"
+      ) {
+        event.preventDefault();
+
+        if (
           nearbyMission
-        );
+        ) {
+          startMission();
+        }
+
+        return;
       }
 
-      return;
-    }
+      /* =====================================
+         M = 지도
+      ===================================== */
 
-    /* =====================================
-       M = 지도
-    ===================================== */
+      if (
+        event.code ===
+        "KeyM"
+      ) {
+        event.preventDefault();
 
-    if (
-      event.code === "KeyM"
-    ) {
-      event.preventDefault();
+        setMapOpen(
+          previous =>
+            !previous
+        );
 
-      setMapOpen(
-        previous =>
-          !previous
-      );
+        return;
+      }
 
-      return;
-    }
+      /* =====================================
+         ESC = 지도 닫기
+      ===================================== */
 
-    /* =====================================
-       ESC
-    ===================================== */
+      if (
+        event.code ===
+        "Escape"
+      ) {
+        setMapOpen(
+          false
+        );
 
-    if (
-      event.code === "Escape"
-    ) {
-      setMapOpen(
-        false
-      );
+        return;
+      }
 
-      return;
-    }
+      /* =====================================
+         B = 정전 테스트
+      ===================================== */
 
-    /* =====================================
-       B = 정전 테스트
-    ===================================== */
+      if (
+        event.code ===
+        "KeyB"
+      ) {
+        setBlackout(
+          previous =>
+            !previous
+        );
 
-    if (
-      event.code === "KeyB"
-    ) {
-      setBlackout(
-        previous =>
-          !previous
-      );
+        return;
+      }
 
-      return;
-    }
+      /* =====================================
+         R = 미션 초기화
+      ===================================== */
 
-    /* =====================================
-       R = 미션 초기화
-    ===================================== */
+      if (
+        event.code ===
+        "KeyR"
+      ) {
+        resetMissions();
+      }
+    };
 
-    if (
-      event.code === "KeyR"
-    ) {
-      resetMissions();
-    }
-  };
-
-  window.addEventListener(
-    "keydown",
-    handleKeyDown
-  );
-
-  return () => {
-    window.removeEventListener(
+    window.addEventListener(
       "keydown",
       handleKeyDown
     );
-  };
-}, [
-  activeMission,
-  nearbyMission,
-]);
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+    };
+  }, [
+    activeMission,
+    nearbyMission,
+  ]);
 
   /* ======================================================
      Camera
-
-     맵 가장자리에서는 카메라가 멈추고
-     플레이어가 화면 가장자리 쪽으로 이동한다.
   ====================================================== */
 
   const cameraX =
@@ -975,9 +935,7 @@ useEffect(() => {
       position.x -
         VIEWPORT_WIDTH /
           2,
-
       0,
-
       DEVIL_MAP_WIDTH -
         VIEWPORT_WIDTH
     );
@@ -987,9 +945,7 @@ useEffect(() => {
       position.y -
         VIEWPORT_HEIGHT /
           2,
-
       0,
-
       DEVIL_MAP_HEIGHT -
         VIEWPORT_HEIGHT
     );
@@ -1014,19 +970,8 @@ useEffect(() => {
     event:
       React.MouseEvent<HTMLDivElement>
   ) => {
-    /*
-     * 미션 중 이동 금지
-     */
     if (
-      activeMission
-    ) {
-      return;
-    }
-
-    /*
-     * 지도 열려 있을 때 이동 금지
-     */
-    if (
+      activeMission ||
       mapOpen
     ) {
       return;
@@ -1035,10 +980,6 @@ useEffect(() => {
     const targetElement =
       event.target as HTMLElement;
 
-    /*
-     * 버튼/HUD 등을 클릭했을 때
-     * 캐릭터 이동 방지
-     */
     if (
       targetElement.closest(
         "[data-no-move]"
@@ -1057,10 +998,6 @@ useEffect(() => {
     const rect =
       viewport.getBoundingClientRect();
 
-    /* =====================================
-       화면 클릭 좌표
-    ===================================== */
-
     const clickX =
       event.clientX -
       rect.left;
@@ -1068,10 +1005,6 @@ useEffect(() => {
     const clickY =
       event.clientY -
       rect.top;
-
-    /* =====================================
-       화면 → 월드 좌표
-    ===================================== */
 
     const targetX =
       cameraX +
@@ -1177,18 +1110,13 @@ useEffect(() => {
           }}
         >
           {/* =========================================
-              Office Map
+              Office
           ========================================= */}
 
           <DevilOfficeMap />
 
           {/* =========================================
               Mission Markers
-
-              실제 게임에서는 나중에
-              복사기/서버/전력패널 등에
-              직접 빛을 표시하는 방식으로
-              변경하면 됨.
           ========================================= */}
 
           {missions.map(
@@ -1223,7 +1151,7 @@ useEffect(() => {
                       "translate(-50%, -50%)",
                   }}
                 >
-                  {/* 빛 */}
+                  {/* Marker */}
 
                   <div
                     className="
@@ -1245,7 +1173,7 @@ useEffect(() => {
                     !
                   </div>
 
-                  {/* 미션 이름 */}
+                  {/* Name */}
 
                   <div
                     className="
@@ -1349,11 +1277,11 @@ useEffect(() => {
             left-4
             top-4
             z-[8000]
-            min-w-[150px]
+            w-[190px]
             rounded-xl
             border
             border-white/10
-            bg-black/75
+            bg-black/80
             px-4
             py-3
             text-white
@@ -1385,34 +1313,143 @@ useEffect(() => {
           </div>
 
           {/* =====================================
-              Missions
+              Mission Progress
           ===================================== */}
 
           <div
             className="
-              mt-2
-              text-[9px]
-              font-semibold
-              text-amber-300
+              mt-3
             "
           >
-            남은 미션{" "}
-            {
-              remainingMissionCount
-            }
-            개
+            {/* Label */}
+
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                text-[9px]
+              "
+            >
+              <span
+                className="
+                  font-semibold
+                  text-white/55
+                "
+              >
+                업무 진행도
+              </span>
+
+              <span
+                className="
+                  font-black
+                  text-emerald-300
+                "
+              >
+                {
+                  missionProgress
+                }
+                %
+              </span>
+            </div>
+
+            {/* Progress */}
+
+            <div
+              className="
+                mt-2
+                h-[8px]
+                w-full
+                overflow-hidden
+                rounded-full
+                bg-white/10
+              "
+            >
+              <div
+                className="
+                  h-full
+                  rounded-full
+                  bg-emerald-400
+                  transition-all
+                  duration-500
+                "
+                style={{
+                  width:
+                    `${missionProgress}%`,
+                }}
+              />
+            </div>
+
+            {/* Count */}
+
+            <div
+              className="
+                mt-2
+                flex
+                items-center
+                justify-between
+                text-[9px]
+              "
+            >
+              <span
+                className="
+                  text-white/40
+                "
+              >
+                완료
+              </span>
+
+              <span
+                className="
+                  font-semibold
+                  text-amber-300
+                "
+              >
+                {
+                  completedMissionCount
+                }
+                {" / "}
+                {
+                  totalMissionCount
+                }
+              </span>
+            </div>
+
+            {/* Remaining */}
+
+            <div
+              className="
+                mt-1
+                text-[9px]
+                text-white/35
+              "
+            >
+              남은 미션{" "}
+              {
+                remainingMissionCount
+              }
+              개
+            </div>
           </div>
         </div>
 
         {/* =============================================
-            Mission Interaction 안내
+            Mission Interaction
         ============================================= */}
 
         {nearbyMission &&
           !activeMission &&
           !mapOpen && (
-            <div
+            <button
+              type="button"
               data-no-move
+              onClick={(
+                event
+              ) => {
+                event.stopPropagation();
+
+                startMission();
+              }}
               className="
                 absolute
                 bottom-5
@@ -1430,6 +1467,8 @@ useEffect(() => {
                 text-white
                 shadow-xl
                 backdrop-blur-sm
+                transition
+                hover:bg-black
               "
             >
               <span
@@ -1457,11 +1496,12 @@ useEffect(() => {
                   text-white/40
                 "
               >
-                · {
+                ·{" "}
+                {
                   nearbyMission.room
                 }
               </span>
-            </div>
+            </button>
           )}
 
         {/* =============================================
@@ -1526,7 +1566,7 @@ useEffect(() => {
         </div>
 
         {/* =============================================
-            Map Overlay
+            Map
         ============================================= */}
 
         <GameMapOverlay
@@ -1555,9 +1595,6 @@ useEffect(() => {
 
       {/* =================================================
           Mission Modal
-
-          Viewport 바깥에 두기 때문에
-          viewport overflow-hidden 영향을 받지 않음.
       ================================================= */}
 
       <MissionModal
