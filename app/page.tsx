@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -11,11 +10,15 @@ import CharacterCustomizer, {
   type CharacterStyle,
 } from "@/components/character/CharacterCustomizer";
 
-import type {
-  OnlinePlayer,
+import GameWorld, {
+  type OnlinePlayer,
 } from "@/components/game/GameWorld";
 
 import DevilGameWorld from "@/components/game/devil/DevilGameWorld";
+
+import RoleReveal, {
+  type DevilRole,
+} from "@/components/game/devil/RoleReveal";
 
 /* =========================================================
    Types
@@ -23,8 +26,15 @@ import DevilGameWorld from "@/components/game/devil/DevilGameWorld";
 
 type SavedPlayerData = {
   nickname: string;
-  characterStyle: CharacterStyle;
+
+  characterStyle:
+    CharacterStyle;
 };
+
+type AppScreen =
+  | "office"
+  | "roleReveal"
+  | "devilGame";
 
 /* =========================================================
    Storage
@@ -40,9 +50,13 @@ const STORAGE_KEY =
 const DEFAULT_CHARACTER_STYLE:
   CharacterStyle = {
   glasses: "none",
+
   hat: "none",
+
   ribbon: false,
+
   tie: false,
+
   color: "default",
 };
 
@@ -69,16 +83,7 @@ function getDisplayName(
 
 export default function Home() {
   /* ======================================================
-     Refs
-  ====================================================== */
-
-  const onlinePopoverRef =
-    useRef<HTMLDivElement | null>(
-      null
-    );
-
-  /* ======================================================
-     Load State
+     Loading
   ====================================================== */
 
   const [
@@ -88,7 +93,7 @@ export default function Home() {
     useState(false);
 
   /* ======================================================
-     Enter State
+     Office Enter
   ====================================================== */
 
   const [
@@ -96,6 +101,18 @@ export default function Home() {
     setEntered,
   ] =
     useState(false);
+
+  /* ======================================================
+     Screen
+  ====================================================== */
+
+  const [
+    screen,
+    setScreen,
+  ] =
+    useState<AppScreen>(
+      "office"
+    );
 
   /* ======================================================
      Nickname
@@ -108,7 +125,7 @@ export default function Home() {
     useState("");
 
   /* ======================================================
-     Character Style
+     Character
   ====================================================== */
 
   const [
@@ -121,10 +138,6 @@ export default function Home() {
 
   /* ======================================================
      Online Players
-
-     현재 DevilGameWorld 테스트에서는
-     실제로 사용하지 않지만,
-     기존 메인 로비 코드 복귀를 위해 유지한다.
   ====================================================== */
 
   const [
@@ -136,40 +149,28 @@ export default function Home() {
     >([]);
 
   /* ======================================================
-     Online Popover
+     Devil Role
   ====================================================== */
 
   const [
-    onlineOpen,
-    setOnlineOpen,
+    devilRole,
+    setDevilRole,
   ] =
-    useState(false);
+    useState<
+      DevilRole | null
+    >(null);
 
   /* ======================================================
-     Online Player Callback
-
-     이후 GameWorld 복구용으로 유지
+     Devil Room
   ====================================================== */
 
-  const handleOnlinePlayersChange =
-    useCallback(
-      (
-        players:
-          OnlinePlayer[]
-      ) => {
-        setOnlinePlayers(
-          players
-        );
-      },
-      []
-    );
-
-  /*
-   * 현재 DevilGameWorld 테스트에서는
-   * 사용하지 않지만,
-   * 이후 다시 메인 GameWorld를 연결할 때 사용한다.
-   */
-  void handleOnlinePlayersChange;
+  const [
+    devilRoomId,
+    setDevilRoomId,
+  ] =
+    useState<
+      string | null
+    >(null);
 
   /* ======================================================
      LocalStorage Load
@@ -193,10 +194,6 @@ export default function Home() {
           saved
         ) as SavedPlayerData;
 
-      /* =====================================
-         Nickname
-      ===================================== */
-
       if (
         typeof parsed.nickname ===
         "string"
@@ -212,15 +209,12 @@ export default function Home() {
         );
       }
 
-      /* =====================================
-         Character Style
-      ===================================== */
-
       if (
         parsed.characterStyle
       ) {
         setCharacterStyle({
           ...DEFAULT_CHARACTER_STYLE,
+
           ...parsed.characterStyle,
         });
       }
@@ -241,46 +235,7 @@ export default function Home() {
   }, []);
 
   /* ======================================================
-     Online Popover Outside Click
-  ====================================================== */
-
-  useEffect(() => {
-    const handlePointerDown = (
-      event:
-        MouseEvent
-    ) => {
-      const element =
-        onlinePopoverRef.current;
-
-      if (!element) {
-        return;
-      }
-
-      if (
-        event.target instanceof Node &&
-        !element.contains(
-          event.target
-        )
-      ) {
-        setOnlineOpen(false);
-      }
-    };
-
-    document.addEventListener(
-      "mousedown",
-      handlePointerDown
-    );
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handlePointerDown
-      );
-    };
-  }, []);
-
-  /* ======================================================
-     Save Player
+     Save
   ====================================================== */
 
   const savePlayer = (
@@ -315,7 +270,7 @@ export default function Home() {
   };
 
   /* ======================================================
-     Enter
+     Enter Office
   ====================================================== */
 
   const handleEnter =
@@ -323,10 +278,6 @@ export default function Home() {
       let trimmed =
         nickname.trim();
 
-      /*
-       * 혹시 사용자가 감자까지
-       * 직접 입력했을 경우 제거
-       */
       trimmed =
         trimmed.replace(
           /\s*감자\s*$/g,
@@ -346,10 +297,97 @@ export default function Home() {
         characterStyle
       );
 
+      setScreen(
+        "office"
+      );
+
       setEntered(
         true
       );
     };
+
+  /* ======================================================
+     Online Players
+  ====================================================== */
+
+  const handleOnlinePlayersChange =
+    useCallback(
+      (
+        players:
+          OnlinePlayer[]
+      ) => {
+        setOnlinePlayers(
+          players
+        );
+      },
+      []
+    );
+
+  /* ======================================================
+     Game Role Received
+
+     GameWorld의 기존 Socket에서
+     devilGame:role을 받으면 호출
+  ====================================================== */
+
+  const handleDevilRole =
+    useCallback(
+      (
+        role:
+          DevilRole,
+        roomId:
+          string
+      ) => {
+        setDevilRole(
+          role
+        );
+
+        setDevilRoomId(
+          roomId
+        );
+
+        setScreen(
+          "roleReveal"
+        );
+      },
+      []
+    );
+
+  /* ======================================================
+     Devil Game Start
+
+     역할 화면을 약 3초 보여준 뒤
+     실제 게임 맵으로 이동
+  ====================================================== */
+
+  useEffect(() => {
+    if (
+      screen !==
+        "roleReveal" ||
+      !devilRole
+    ) {
+      return;
+    }
+
+    const timer =
+      window.setTimeout(
+        () => {
+          setScreen(
+            "devilGame"
+          );
+        },
+        3200
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    screen,
+    devilRole,
+  ]);
 
   /* ======================================================
      Customize
@@ -357,35 +395,51 @@ export default function Home() {
 
   const handleCustomize =
     () => {
-      setOnlinePlayers(
-        []
-      );
-
-      setOnlineOpen(
-        false
-      );
-
       setEntered(
         false
+      );
+
+      setScreen(
+        "office"
+      );
+
+      setDevilRole(
+        null
+      );
+
+      setDevilRoomId(
+        null
+      );
+
+      setOnlinePlayers(
+        []
       );
     };
 
   /* ======================================================
-     Leave
+     Leave Office
   ====================================================== */
 
   const handleLeave =
     () => {
-      setOnlinePlayers(
-        []
-      );
-
-      setOnlineOpen(
-        false
-      );
-
       setEntered(
         false
+      );
+
+      setScreen(
+        "office"
+      );
+
+      setDevilRole(
+        null
+      );
+
+      setDevilRoomId(
+        null
+      );
+
+      setOnlinePlayers(
+        []
       );
     };
 
@@ -416,16 +470,24 @@ export default function Home() {
         DEFAULT_CHARACTER_STYLE
       );
 
-      setOnlinePlayers(
-        []
-      );
-
-      setOnlineOpen(
-        false
-      );
-
       setEntered(
         false
+      );
+
+      setScreen(
+        "office"
+      );
+
+      setDevilRole(
+        null
+      );
+
+      setDevilRoomId(
+        null
+      );
+
+      setOnlinePlayers(
+        []
       );
     };
 
@@ -481,10 +543,6 @@ export default function Home() {
           }
         />
 
-        {/* =====================================
-            저장 정보 초기화
-        ===================================== */}
-
         {nickname && (
           <button
             type="button"
@@ -517,25 +575,178 @@ export default function Home() {
   }
 
   /* ======================================================
-     Devil Game Test
+     Role Reveal
+  ====================================================== */
+
+  if (
+    screen ===
+      "roleReveal" &&
+    devilRole
+  ) {
+    return (
+      <RoleReveal
+        role={
+          devilRole
+        }
+      />
+    );
+  }
+
+  /* ======================================================
+     Devil Game
+  ====================================================== */
+
+  if (
+    screen ===
+    "devilGame"
+  ) {
+    return (
+      <main
+        className="
+          min-h-screen
+          bg-zinc-950
+        "
+      >
+        {/* =====================================
+            Game Header
+        ===================================== */}
+
+        <header
+          className="
+            border-b
+            border-zinc-800
+            bg-zinc-950
+            text-white
+          "
+        >
+          <div
+            className="
+              mx-auto
+              flex
+              max-w-[1130px]
+              items-center
+              justify-between
+              px-4
+              py-3
+            "
+          >
+            <div>
+              <div
+                className="
+                  text-sm
+                  font-bold
+                "
+              >
+                Gamja Office
+              </div>
+
+              <div
+                className="
+                  mt-0.5
+                  text-[9px]
+                  text-white/40
+                "
+              >
+                DEVIL GAME
+              </div>
+            </div>
+
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+              "
+            >
+              {devilRoomId && (
+                <div
+                  className="
+                    rounded-lg
+                    border
+                    border-white/10
+                    bg-white/5
+                    px-3
+                    py-2
+                    text-[9px]
+                    text-white/50
+                  "
+                >
+                  {
+                    devilRoomId
+                  }
+                </div>
+              )}
+
+              <div
+                className="
+                  text-right
+                "
+              >
+                <div
+                  className="
+                    text-[11px]
+                    font-semibold
+                  "
+                >
+                  {getDisplayName(
+                    nickname
+                  )}
+                </div>
+
+                <div
+                  className={`
+                    mt-0.5
+                    text-[9px]
+
+                    ${
+                      devilRole ===
+                      "devil"
+                        ? "text-red-400"
+                        : "text-emerald-400"
+                    }
+                  `}
+                >
+                  {devilRole ===
+                  "devil"
+                    ? "😈 악마 감자"
+                    : "🥔 생존 감자"}
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* =====================================
+            Devil Game Map
+        ===================================== */}
+
+        <DevilGameWorld />
+      </main>
+    );
+  }
+
+  /* ======================================================
+     MAIN OFFICE
+     
+     기본 화면은 무조건 여기가 된다.
   ====================================================== */
 
   return (
     <main
       className="
         min-h-screen
-        bg-zinc-950
+        bg-[#ece7dd]
         text-zinc-900
       "
     >
       {/* =========================================
-          테스트용 Header
+          Header
       ========================================= */}
 
       <header
         className="
           relative
-          z-[20000]
+          z-[10000]
           border-b
           border-zinc-300
           bg-[#f7f4ee]
@@ -578,18 +789,19 @@ export default function Home() {
                 text-zinc-400
               "
             >
-              Devil Game Map Test
+              Potato Workspace
             </div>
           </div>
 
           {/* =====================================
-              가운데 테스트 표시
+              Online
           ===================================== */}
 
           <div
             className="
               hidden
               items-center
+              justify-center
               gap-2
               rounded-xl
               border
@@ -598,18 +810,25 @@ export default function Home() {
               px-4
               py-2
               text-[10px]
-              font-medium
               text-zinc-600
               shadow-sm
               md:flex
             "
           >
-            <span>
-              🧪
-            </span>
+            <span
+              className="
+                h-2
+                w-2
+                rounded-full
+                bg-emerald-500
+              "
+            />
 
             <span>
-              악마 감자 맵 테스트
+              {
+                onlinePlayers.length
+              }
+              명 접속
             </span>
           </div>
 
@@ -645,17 +864,26 @@ export default function Home() {
               <div
                 className="
                   mt-0.5
+                  flex
+                  items-center
+                  justify-end
+                  gap-1.5
                   text-[9px]
                   text-zinc-400
                 "
               >
-                TEST MODE
+                <span
+                  className="
+                    h-1.5
+                    w-1.5
+                    rounded-full
+                    bg-emerald-500
+                  "
+                />
+
+                online
               </div>
             </div>
-
-            {/* =================================
-                꾸미기
-            ================================= */}
 
             <button
               type="button"
@@ -679,10 +907,6 @@ export default function Home() {
               꾸미기
             </button>
 
-            {/* =================================
-                나가기
-            ================================= */}
-
             <button
               type="button"
               onClick={
@@ -699,9 +923,7 @@ export default function Home() {
                 font-medium
                 text-red-400
                 transition
-                hover:border-red-300
                 hover:bg-red-50
-                hover:text-red-500
               "
             >
               나가기
@@ -711,45 +933,31 @@ export default function Home() {
       </header>
 
       {/* =========================================
-          테스트 설명
+          Main Office GameWorld
       ========================================= */}
 
-      <div
-        className="
-          bg-zinc-900
-          px-4
-          py-2
-          text-center
-          text-[10px]
-          text-white/60
-        "
-      >
-        빈 공간 클릭 = 이동
-        <span
-          className="
-            mx-3
-            text-white/20
-          "
-        >
-          |
-        </span>
-        M = 전체 지도
-        <span
-          className="
-            mx-3
-            text-white/20
-          "
-        >
-          |
-        </span>
-        ESC = 지도 닫기
-      </div>
+      <GameWorld
+        nickname={
+          nickname
+        }
+        characterStyle={
+          characterStyle
+        }
+        onOnlinePlayersChange={
+          handleOnlinePlayersChange
+        }
 
-      {/* =========================================
-          Devil GameWorld Test
-      ========================================= */}
-
-      <DevilGameWorld />
+        /*
+         * 아래 두 props는
+         * 이번에 GameWorld에 추가할 것.
+         *
+         * 같은 Socket.IO 연결을 사용해서
+         * 게임방과 역할 이벤트를 처리한다.
+         */
+        onDevilRole={
+          handleDevilRole
+        }
+      />
     </main>
   );
 }

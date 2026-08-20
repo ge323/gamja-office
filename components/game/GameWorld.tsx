@@ -28,6 +28,14 @@ import ChatPanel, {
   type ChatMessage,
 } from "@/components/game/ChatPanel";
 
+import DevilLobby, {
+  type DevilLobbyRoom,
+} from "@/components/game/devil/DevilLobby";
+
+import type {
+  DevilRole,
+} from "@/components/game/devil/RoleReveal";
+
 /* =========================================================
    Types
 ========================================================= */
@@ -38,7 +46,7 @@ type Position = {
 };
 
 /*
- * page.tsx에서도 사용할 수 있도록 export
+ * page.tsx에서도 사용
  */
 export type OnlinePlayer = {
   id: string;
@@ -52,11 +60,19 @@ type GameWorldProps = {
     CharacterStyle;
 
   /*
-   * 현재 접속자 목록을
-   * page.tsx로 전달
+   * 현재 접속자 목록
    */
   onOnlinePlayersChange?: (
     players: OnlinePlayer[]
+  ) => void;
+
+  /*
+   * 악마 게임 역할을 받으면
+   * page.tsx에 전달
+   */
+  onDevilRole?: (
+    role: DevilRole,
+    roomId: string
   ) => void;
 };
 
@@ -66,7 +82,6 @@ type RemotePlayer = {
   nickname: string;
 
   x: number;
-
   y: number;
 
   characterStyle:
@@ -194,6 +209,7 @@ export default function GameWorld({
   nickname,
   characterStyle,
   onOnlinePlayersChange,
+  onDevilRole,
 }: GameWorldProps) {
   /* ======================================================
      Refs
@@ -334,7 +350,60 @@ export default function GameWorld({
     >({});
 
   /* ======================================================
-     접속자 목록을 부모로 전달
+     Devil Game
+  ====================================================== */
+
+  /*
+   * 오른쪽 게임 메뉴
+   */
+  const [
+    gameMenuOpen,
+    setGameMenuOpen,
+  ] =
+    useState(false);
+
+  /*
+   * 서버에 존재하는 게임방
+   */
+  const [
+    devilRooms,
+    setDevilRooms,
+  ] =
+    useState<
+      DevilLobbyRoom[]
+    >([]);
+
+  /*
+   * 내가 현재 참가한 방
+   */
+  const [
+    currentDevilRoom,
+    setCurrentDevilRoom,
+  ] =
+    useState<
+      DevilLobbyRoom | null
+    >(null);
+
+  /*
+   * 게임방 에러
+   */
+  const [
+    gameError,
+    setGameError,
+  ] =
+    useState("");
+
+  /*
+   * 중복 방 생성 방지
+   */
+  const [
+    creatingRoom,
+    setCreatingRoom,
+  ] =
+    useState(false);
+
+  /* ======================================================
+     접속자 목록 부모 전달
   ====================================================== */
 
   useEffect(() => {
@@ -469,6 +538,13 @@ export default function GameWorld({
             characterStyle,
           }
         );
+
+        /*
+         * 서버에 있는 게임방 목록 요청
+         */
+        socket.emit(
+          "devilRooms:list"
+        );
       }
     );
 
@@ -512,7 +588,7 @@ export default function GameWorld({
     );
 
     /* =====================================
-       Player moved
+       Player Moved
     ===================================== */
 
     socket.on(
@@ -555,7 +631,7 @@ export default function GameWorld({
                 previous.map(
                   player =>
                     player.id ===
-                      data.id
+                    data.id
                       ? {
                           ...player,
 
@@ -608,7 +684,7 @@ export default function GameWorld({
 
         /*
          * 시스템 메시지는
-         * 캐릭터 머리 위에 표시하지 않음
+         * 캐릭터 머리 위 표시 X
          */
         if (
           message.type !==
@@ -621,6 +697,136 @@ export default function GameWorld({
         showChatBubble(
           message.playerId,
           message.message
+        );
+      }
+    );
+
+    /* =====================================
+       Devil Game
+       전체 방 목록
+    ===================================== */
+
+    socket.on(
+      "devilRooms:update",
+      (
+        rooms:
+          DevilLobbyRoom[]
+      ) => {
+        setDevilRooms(
+          rooms
+        );
+
+        /*
+         * 현재 참가한 방의 정보도
+         * 새로운 방 목록 내용으로 갱신
+         */
+        setCurrentDevilRoom(
+          previous => {
+            if (!previous) {
+              return null;
+            }
+
+            const updated =
+              rooms.find(
+                room =>
+                  room.id ===
+                  previous.id
+              );
+
+            /*
+             * 전체 방 목록 broadcast 과정에서
+             * 잠깐 없어지는 경우를 고려하여
+             * 기존 값 유지
+             */
+            return (
+              updated ??
+              previous
+            );
+          }
+        );
+      }
+    );
+
+    /* =====================================
+       Devil Game
+       내가 참가한 방 실시간 갱신
+    ===================================== */
+
+    socket.on(
+      "devilRoom:update",
+      (
+        room:
+          DevilLobbyRoom
+      ) => {
+        setCurrentDevilRoom(
+          room
+        );
+
+        setDevilRooms(
+          previous => {
+            const exists =
+              previous.some(
+                item =>
+                  item.id ===
+                  room.id
+              );
+
+            if (!exists) {
+              return [
+                ...previous,
+                room,
+              ];
+            }
+
+            return previous.map(
+              item =>
+                item.id ===
+                room.id
+                  ? room
+                  : item
+            );
+          }
+        );
+      }
+    );
+
+    /* =====================================
+       Devil Game
+       개인 역할 수신
+
+       서버가 나에게만
+       내 역할을 보내준다.
+    ===================================== */
+
+    socket.on(
+      "devilGame:role",
+      (data: {
+        roomId: string;
+
+        role:
+          DevilRole;
+      }) => {
+        console.log(
+          "🎭 내 역할:",
+          data.role
+        );
+
+        /*
+         * 게임 메뉴 닫기
+         */
+        setGameMenuOpen(
+          false
+        );
+
+        /*
+         * page.tsx로 전달
+         *
+         * page.tsx에서
+         * RoleReveal → DevilGameWorld로 전환
+         */
+        onDevilRole?.(
+          data.role,
+          data.roomId
         );
       }
     );
@@ -1074,6 +1280,214 @@ export default function GameWorld({
   };
 
   /* ======================================================
+     Devil Game
+     Create Room
+  ====================================================== */
+
+  const handleCreateDevilRoom =
+    () => {
+      const socket =
+        socketRef.current;
+
+      if (
+        !socket ||
+        !socket.connected ||
+        creatingRoom
+      ) {
+        return;
+      }
+
+      setCreatingRoom(
+        true
+      );
+
+      setGameError(
+        ""
+      );
+
+      socket.emit(
+        "devilRoom:create",
+
+        {
+          maxPlayers: 6,
+        },
+
+        (response: {
+          ok: boolean;
+
+          room?:
+            DevilLobbyRoom;
+
+          message?:
+            string;
+        }) => {
+          setCreatingRoom(
+            false
+          );
+
+          if (
+            !response.ok ||
+            !response.room
+          ) {
+            setGameError(
+              response.message ??
+                "게임방을 만들지 못했습니다."
+            );
+
+            return;
+          }
+
+          setCurrentDevilRoom(
+            response.room
+          );
+
+          setGameMenuOpen(
+            false
+          );
+        }
+      );
+    };
+
+  /* ======================================================
+     Devil Game
+     Join Room
+  ====================================================== */
+
+  const handleJoinDevilRoom =
+    (
+      roomId: string
+    ) => {
+      const socket =
+        socketRef.current;
+
+      if (
+        !socket ||
+        !socket.connected
+      ) {
+        return;
+      }
+
+      setGameError(
+        ""
+      );
+
+      socket.emit(
+        "devilRoom:join",
+
+        roomId,
+
+        (response: {
+          ok: boolean;
+
+          room?:
+            DevilLobbyRoom;
+
+          message?:
+            string;
+        }) => {
+          if (
+            !response.ok ||
+            !response.room
+          ) {
+            setGameError(
+              response.message ??
+                "게임방에 참가하지 못했습니다."
+            );
+
+            return;
+          }
+
+          setCurrentDevilRoom(
+            response.room
+          );
+
+          setGameMenuOpen(
+            false
+          );
+        }
+      );
+    };
+
+  /* ======================================================
+     Devil Game
+     Leave Room
+  ====================================================== */
+
+  const handleLeaveDevilRoom =
+    () => {
+      const socket =
+        socketRef.current;
+
+      if (!socket) {
+        return;
+      }
+
+      socket.emit(
+        "devilRoom:leave",
+
+        (response: {
+          ok: boolean;
+        }) => {
+          if (
+            !response.ok
+          ) {
+            return;
+          }
+
+          setCurrentDevilRoom(
+            null
+          );
+
+          setGameError(
+            ""
+          );
+        }
+      );
+    };
+
+  /* ======================================================
+     Devil Game
+     Start
+  ====================================================== */
+
+  const handleStartDevilGame =
+    () => {
+      const socket =
+        socketRef.current;
+
+      if (
+        !socket ||
+        !currentDevilRoom
+      ) {
+        return;
+      }
+
+      setGameError(
+        ""
+      );
+
+      socket.emit(
+        "devilRoom:start",
+
+        currentDevilRoom.id,
+
+        (response: {
+          ok: boolean;
+          message?: string;
+        }) => {
+          if (
+            !response.ok
+          ) {
+            setGameError(
+              response.message ??
+                "게임을 시작하지 못했습니다."
+            );
+          }
+        }
+      );
+    };
+
+  /* ======================================================
      Cleanup
   ====================================================== */
 
@@ -1108,7 +1522,7 @@ export default function GameWorld({
   }, []);
 
   /* ======================================================
-     다른 플레이어
+     Other Players
   ====================================================== */
 
   const otherPlayers =
@@ -1116,6 +1530,17 @@ export default function GameWorld({
       player =>
         player.id !==
         mySocketId
+    );
+
+  /* ======================================================
+     Waiting Rooms
+  ====================================================== */
+
+  const waitingDevilRooms =
+    devilRooms.filter(
+      room =>
+        room.status ===
+        "waiting"
     );
 
   /* ======================================================
@@ -1128,6 +1553,7 @@ export default function GameWorld({
         containerRef
       }
       className="
+        relative
         flex
         w-full
         justify-center
@@ -1137,6 +1563,488 @@ export default function GameWorld({
         py-4
       "
     >
+      {/* =================================================
+          GAME BUTTON
+      ================================================= */}
+
+      {!currentDevilRoom && (
+        <div
+          data-no-move
+          className="
+            absolute
+            right-6
+            top-6
+            z-[12000]
+          "
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setGameMenuOpen(
+                previous =>
+                  !previous
+              );
+
+              setGameError(
+                ""
+              );
+
+              socketRef.current?.emit(
+                "devilRooms:list"
+              );
+            }}
+            className="
+              rounded-xl
+              border
+              border-zinc-200
+              bg-white
+              px-4
+              py-2.5
+              text-[11px]
+              font-bold
+              text-zinc-700
+              shadow-md
+              transition
+              hover:-translate-y-0.5
+              hover:shadow-lg
+            "
+          >
+            🎮 게임
+          </button>
+        </div>
+      )}
+
+      {/* =================================================
+          GAME MENU
+      ================================================= */}
+
+      {gameMenuOpen &&
+        !currentDevilRoom && (
+          <div
+            data-no-move
+            className="
+              absolute
+              right-6
+              top-[70px]
+              z-[13000]
+              w-[330px]
+              overflow-hidden
+              rounded-2xl
+              border
+              border-zinc-200
+              bg-[#f8f5ef]
+              shadow-2xl
+            "
+          >
+            {/* Header */}
+
+            <div
+              className="
+                border-b
+                border-zinc-200
+                px-5
+                py-4
+              "
+            >
+              <div
+                className="
+                  flex
+                  items-start
+                  justify-between
+                  gap-4
+                "
+              >
+                <div>
+                  <div
+                    className="
+                      text-[9px]
+                      font-bold
+                      tracking-[0.16em]
+                      text-zinc-400
+                    "
+                  >
+                    OFFICE GAME
+                  </div>
+
+                  <div
+                    className="
+                      mt-1
+                      text-sm
+                      font-black
+                      text-zinc-800
+                    "
+                  >
+                    😈 악마 감자
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGameMenuOpen(
+                      false
+                    );
+
+                    setGameError(
+                      ""
+                    );
+                  }}
+                  className="
+                    flex
+                    h-7
+                    w-7
+                    items-center
+                    justify-center
+                    rounded-full
+                    text-xs
+                    text-zinc-400
+                    transition
+                    hover:bg-zinc-100
+                    hover:text-zinc-700
+                  "
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p
+                className="
+                  mt-2
+                  text-[10px]
+                  leading-5
+                  text-zinc-400
+                "
+              >
+                업무를 완료하거나
+                숨어있는 악마 감자를
+                찾아내세요.
+              </p>
+            </div>
+
+            {/* =====================================
+                Create Room
+            ===================================== */}
+
+            <div
+              className="
+                border-b
+                border-zinc-200
+                p-4
+              "
+            >
+              <button
+                type="button"
+                disabled={
+                  creatingRoom
+                }
+                onClick={
+                  handleCreateDevilRoom
+                }
+                className="
+                  w-full
+                  rounded-xl
+                  bg-zinc-900
+                  px-4
+                  py-3
+                  text-[11px]
+                  font-bold
+                  text-white
+                  transition
+                  enabled:hover:bg-zinc-700
+                  disabled:cursor-not-allowed
+                  disabled:bg-zinc-400
+                "
+              >
+                {creatingRoom
+                  ? "방 만드는 중..."
+                  : "＋ 게임 방 만들기"}
+              </button>
+
+              <div
+                className="
+                  mt-2
+                  text-center
+                  text-[9px]
+                  text-zinc-400
+                "
+              >
+                최대 6명 · 최소 4명부터 시작
+              </div>
+            </div>
+
+            {/* =====================================
+                Room List
+            ===================================== */}
+
+            <div
+              className="
+                max-h-[300px]
+                overflow-y-auto
+                p-4
+              "
+            >
+              <div
+                className="
+                  mb-3
+                  flex
+                  items-center
+                  justify-between
+                "
+              >
+                <span
+                  className="
+                    text-[10px]
+                    font-bold
+                    text-zinc-600
+                  "
+                >
+                  모집 중인 방
+                </span>
+
+                <span
+                  className="
+                    text-[9px]
+                    text-zinc-400
+                  "
+                >
+                  {
+                    waitingDevilRooms.length
+                  }
+                  개
+                </span>
+              </div>
+
+              {waitingDevilRooms.length ===
+              0 ? (
+                <div
+                  className="
+                    rounded-xl
+                    border
+                    border-dashed
+                    border-zinc-200
+                    px-4
+                    py-8
+                    text-center
+                  "
+                >
+                  <div
+                    className="
+                      text-2xl
+                    "
+                  >
+                    🥔
+                  </div>
+
+                  <div
+                    className="
+                      mt-2
+                      text-[10px]
+                      text-zinc-400
+                    "
+                  >
+                    아직 모집 중인
+                    게임이 없어요.
+                  </div>
+
+                  <div
+                    className="
+                      mt-1
+                      text-[9px]
+                      text-zinc-300
+                    "
+                  >
+                    직접 방을 만들어보세요.
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="
+                    space-y-2
+                  "
+                >
+                  {waitingDevilRooms.map(
+                    room => {
+                      const host =
+                        room.players.find(
+                          player =>
+                            player.id ===
+                            room.hostId
+                        );
+
+                      const full =
+                        room.players
+                          .length >=
+                        room.maxPlayers;
+
+                      return (
+                        <div
+                          key={
+                            room.id
+                          }
+                          className="
+                            rounded-xl
+                            border
+                            border-zinc-200
+                            bg-white
+                            p-3
+                            shadow-sm
+                          "
+                        >
+                          <div
+                            className="
+                              flex
+                              items-center
+                              justify-between
+                              gap-3
+                            "
+                          >
+                            <div
+                              className="
+                                min-w-0
+                                flex-1
+                              "
+                            >
+                              <div
+                                className="
+                                  truncate
+                                  text-[10px]
+                                  font-bold
+                                  text-zinc-700
+                                "
+                              >
+                                😈{" "}
+                                {host
+                                  ? `${host.nickname} 감자의 방`
+                                  : "악마 감자 방"}
+                              </div>
+
+                              <div
+                                className="
+                                  mt-1
+                                  font-mono
+                                  text-[8px]
+                                  tracking-wider
+                                  text-zinc-400
+                                "
+                              >
+                                {
+                                  room.id
+                                }
+                              </div>
+                            </div>
+
+                            <div
+                              className="
+                                shrink-0
+                                text-right
+                              "
+                            >
+                              <div
+                                className="
+                                  mb-1
+                                  text-[9px]
+                                  text-zinc-400
+                                "
+                              >
+                                {
+                                  room.players
+                                    .length
+                                }
+                                {" / "}
+                                {
+                                  room.maxPlayers
+                                }
+                              </div>
+
+                              <button
+                                type="button"
+                                disabled={
+                                  full
+                                }
+                                onClick={() => {
+                                  handleJoinDevilRoom(
+                                    room.id
+                                  );
+                                }}
+                                className="
+                                  rounded-lg
+                                  bg-zinc-900
+                                  px-3
+                                  py-1.5
+                                  text-[9px]
+                                  font-bold
+                                  text-white
+                                  transition
+                                  enabled:hover:bg-zinc-700
+                                  disabled:cursor-not-allowed
+                                  disabled:bg-zinc-300
+                                "
+                              >
+                                {full
+                                  ? "가득 참"
+                                  : "참가하기"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              )}
+
+              {/* Error */}
+
+              {gameError && (
+                <div
+                  className="
+                    mt-3
+                    rounded-lg
+                    border
+                    border-red-100
+                    bg-red-50
+                    px-3
+                    py-2
+                    text-[9px]
+                    leading-4
+                    text-red-500
+                  "
+                >
+                  ⚠️ {gameError}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+      {/* =================================================
+          DEVIL LOBBY
+
+          방에 참가하면
+          기존 사무실 화면 위에 표시
+      ================================================= */}
+
+      {currentDevilRoom && (
+        <DevilLobby
+          room={
+            currentDevilRoom
+          }
+          mySocketId={
+            mySocketId
+          }
+          onLeave={
+            handleLeaveDevilRoom
+          }
+          onStart={
+            handleStartDevilGame
+          }
+        />
+      )}
+
+      {/* =================================================
+          ORIGINAL OFFICE WORLD
+      ================================================= */}
+
       <div
         style={{
           width:
@@ -1321,7 +2229,7 @@ export default function GameWorld({
             }}
           >
             {/* =====================================
-                채팅을 치면 채팅 말풍선 우선
+                채팅 말풍선 우선
             ===================================== */}
 
             {mySocketId &&
@@ -1384,7 +2292,7 @@ export default function GameWorld({
             }
             onSend={
               handleSendChat
-            }
+            } 
           />
         </div>
       </div>
