@@ -8,6 +8,10 @@ import {
 
 import Potato from "@/components/character/Potato";
 
+import type {
+  CharacterStyle,
+} from "@/components/character/CharacterCustomizer";
+
 import OfficeMap, {
   type OfficeInteraction,
   type OfficeInteractionType,
@@ -15,28 +19,53 @@ import OfficeMap, {
 
 import InteractionBubble from "@/components/game/InteractionBubble";
 
+/* =========================================================
+   Types
+========================================================= */
+
 type Position = {
   x: number;
   y: number;
+};
+
+type GameWorldProps = {
+  nickname: string;
+
+  characterStyle:
+    CharacterStyle;
 };
 
 /* =========================================================
    World
 ========================================================= */
 
-const WORLD_WIDTH = 1100;
-const WORLD_HEIGHT = 650;
+const WORLD_WIDTH =
+  1100;
+
+const WORLD_HEIGHT =
+  650;
 
 /* =========================================================
    Player
 ========================================================= */
 
-const PLAYER_SPEED = 260;
+const PLAYER_SPEED =
+  260;
 
-const MIN_MOVE_TIME = 180;
-const MAX_MOVE_TIME = 1800;
+const MIN_MOVE_TIME =
+  180;
 
-export default function GameWorld() {
+const MAX_MOVE_TIME =
+  1800;
+
+/* =========================================================
+   GameWorld
+========================================================= */
+
+export default function GameWorld({
+  nickname,
+  characterStyle,
+}: GameWorldProps) {
   /* ======================================================
      Refs
   ====================================================== */
@@ -61,10 +90,6 @@ export default function GameWorld() {
       null
     );
 
-  /*
-   * 현재 이동이 끝났을 때
-   * 실행해야 할 상호작용
-   */
   const pendingInteractionRef =
     useRef<OfficeInteractionType | null>(
       null
@@ -106,7 +131,7 @@ export default function GameWorld() {
     useState(600);
 
   /* ======================================================
-     Interaction
+     Interaction State
   ====================================================== */
 
   const [
@@ -190,7 +215,7 @@ export default function GameWorld() {
   };
 
   /* ======================================================
-     실제 상호작용 실행
+     Interaction Execute
   ====================================================== */
 
   const executeInteraction = (
@@ -230,10 +255,10 @@ export default function GameWorld() {
   };
 
   /* ======================================================
-     공통 이동 함수
+     Move To
 
-     일반 바닥 이동과
-     오브젝트 이동 모두 여기 사용
+     일반 이동과 오브젝트 이동에서
+     공통으로 사용하는 함수
   ====================================================== */
 
   const moveTo = (
@@ -257,9 +282,10 @@ export default function GameWorld() {
           dy * dy
       );
 
-    /*
-     * 거의 같은 위치
-     */
+    /* ================================================
+       이미 근처에 있음
+    ================================================ */
+
     if (
       distance < 8
     ) {
@@ -278,9 +304,9 @@ export default function GameWorld() {
       return;
     }
 
-    /* ====================================================
+    /* ================================================
        이동시간 계산
-    ==================================================== */
+    ================================================ */
 
     const calculatedDuration =
       (
@@ -298,9 +324,10 @@ export default function GameWorld() {
         )
       );
 
-    /*
-     * 기존 이동 종료 타이머 삭제
-     */
+    /* ================================================
+       기존 이동 취소
+    ================================================ */
+
     if (
       moveTimerRef.current
     ) {
@@ -309,9 +336,10 @@ export default function GameWorld() {
       );
     }
 
-    /*
-     * 이동 전에 기존 말풍선 제거
-     */
+    /* ================================================
+       이동 준비
+    ================================================ */
+
     setInteractionMessage(
       ""
     );
@@ -327,6 +355,10 @@ export default function GameWorld() {
       true
     );
 
+    /* ================================================
+       이동
+    ================================================ */
+
     setPosition({
       x:
         targetX,
@@ -335,9 +367,9 @@ export default function GameWorld() {
         targetY,
     });
 
-    /* ====================================================
+    /* ================================================
        도착
-    ==================================================== */
+    ================================================ */
 
     moveTimerRef.current =
       window.setTimeout(
@@ -352,10 +384,6 @@ export default function GameWorld() {
           pendingInteractionRef.current =
             null;
 
-          /*
-           * 오브젝트까지 이동한 경우
-           * 도착 후 상호작용 실행
-           */
           if (
             pending
           ) {
@@ -369,18 +397,13 @@ export default function GameWorld() {
   };
 
   /* ======================================================
-     오브젝트 클릭
+     Object Interaction
   ====================================================== */
 
   const handleInteract = (
     interaction:
       OfficeInteraction
   ) => {
-    /*
-     * 해당 오브젝트 앞으로 이동
-     *
-     * 도착했을 때 interaction.type 실행
-     */
     moveTo(
       interaction.targetX,
       interaction.targetY,
@@ -389,7 +412,7 @@ export default function GameWorld() {
   };
 
   /* ======================================================
-     일반 바닥 클릭
+     World Click
   ====================================================== */
 
   const handleWorldClick = (
@@ -407,8 +430,8 @@ export default function GameWorld() {
       event.target as HTMLElement;
 
     /*
-     * 가구를 직접 누른 경우
-     * 일반 이동 처리하지 않음.
+     * 오브젝트를 직접 클릭했다면
+     * OfficeMap에서 따로 처리
      */
     if (
       clickedElement.closest(
@@ -421,10 +444,12 @@ export default function GameWorld() {
     const rect =
       world.getBoundingClientRect();
 
-    /*
-     * 화면은 scale 되어 있으므로
-     * 클릭 위치를 1100 × 650 원본 좌표로 변환
-     */
+    /* ================================================
+       Scale된 화면 좌표
+       →
+       실제 1100 x 650 좌표
+    ================================================ */
+
     let targetX =
       (
         event.clientX -
@@ -439,9 +464,9 @@ export default function GameWorld() {
       ) /
       scale;
 
-    /* ====================================================
-       경계 제한
-    ==================================================== */
+    /* ================================================
+       World Boundary
+    ================================================ */
 
     targetX =
       Math.max(
@@ -463,10 +488,11 @@ export default function GameWorld() {
         )
       );
 
-    /*
-     * 일반 이동이므로
-     * pending interaction 제거
-     */
+    /* ================================================
+       일반 이동이면
+       예약 상호작용 취소
+    ================================================ */
+
     pendingInteractionRef.current =
       null;
 
@@ -521,7 +547,7 @@ export default function GameWorld() {
       "
     >
       {/* =============================================
-          scaled wrapper
+          Scale Wrapper
       ============================================= */}
 
       <div
@@ -538,7 +564,8 @@ export default function GameWorld() {
         {/* ===========================================
             World
 
-            내부 좌표는 항상 1100 × 650
+            실제 내부 좌표는 항상
+            1100 × 650
         =========================================== */}
 
         <div
@@ -612,15 +639,36 @@ export default function GameWorld() {
                 100,
             }}
           >
+            {/* =====================================
+                Interaction Bubble
+            ===================================== */}
+
             <InteractionBubble
               text={
                 interactionMessage
               }
             />
 
+            {/* =====================================
+                Character
+            ===================================== */}
+
             <Potato
-              name="감자"
-              glasses="sunglasses"
+              name={
+                nickname
+              }
+              glasses={
+                characterStyle.glasses
+              }
+              hat={
+                characterStyle.hat
+              }
+              ribbon={
+                characterStyle.ribbon
+              }
+              tie={
+                characterStyle.tie
+              }
               moving={
                 moving
               }
@@ -628,7 +676,7 @@ export default function GameWorld() {
           </div>
 
           {/* =========================================
-              안내
+              Help
           ========================================= */}
 
           <div
