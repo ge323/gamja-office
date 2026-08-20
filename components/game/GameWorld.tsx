@@ -654,25 +654,14 @@ export default function GameWorld({
             ===================================== */}
 
             <Potato
-              name={
-                nickname
-              }
-              glasses={
-                characterStyle.glasses
-              }
-              hat={
-                characterStyle.hat
-              }
-              ribbon={
-                characterStyle.ribbon
-              }
-              tie={
-                characterStyle.tie
-              }
-              moving={
-                moving
-              }
-            />
+  name={nickname}
+  glasses={characterStyle.glasses}
+  hat={characterStyle.hat}
+  ribbon={characterStyle.ribbon}
+  tie={characterStyle.tie}
+  color={characterStyle.color}
+  moving={moving}
+/>
           </div>
 
           {/* =========================================

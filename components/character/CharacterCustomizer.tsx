@@ -1,6 +1,8 @@
 "use client";
 
-import Potato from "@/components/character/Potato";
+import Potato, {
+  type PotatoColor,
+} from "@/components/character/Potato";
 
 import type {
   GlassesType,
@@ -8,26 +10,40 @@ import type {
 } from "@/components/character/Accessories";
 
 export type CharacterStyle = {
-  glasses: GlassesType;
-  hat: HatType;
-  ribbon: boolean;
-  tie: boolean;
+  glasses:
+    GlassesType;
+
+  hat:
+    HatType;
+
+  ribbon:
+    boolean;
+
+  tie:
+    boolean;
+
+  color:
+    PotatoColor;
 };
 
 type CharacterCustomizerProps = {
-  nickname: string;
+  nickname:
+    string;
 
   setNickname: (
     nickname: string
   ) => void;
 
-  style: CharacterStyle;
+  style:
+    CharacterStyle;
 
   setStyle: (
-    style: CharacterStyle
+    style:
+      CharacterStyle
   ) => void;
 
-  onEnter: () => void;
+  onEnter:
+    () => void;
 };
 
 export default function CharacterCustomizer({
@@ -38,7 +54,8 @@ export default function CharacterCustomizer({
   onEnter,
 }: CharacterCustomizerProps) {
   const updateStyle = (
-    partial: Partial<CharacterStyle>
+    partial:
+      Partial<CharacterStyle>
   ) => {
     setStyle({
       ...style,
@@ -47,7 +64,8 @@ export default function CharacterCustomizer({
   };
 
   const canEnter =
-    nickname.trim().length > 0;
+    nickname.trim().length >
+    0;
 
   return (
     <main
@@ -76,14 +94,14 @@ export default function CharacterCustomizer({
           md:grid-cols-[0.9fr_1.1fr]
         "
       >
-        {/* =========================================
-            캐릭터 미리보기
-        ========================================= */}
+        {/* ===============================
+            Preview
+        =============================== */}
 
         <section
           className="
             flex
-            min-h-[470px]
+            min-h-[500px]
             flex-col
             items-center
             justify-center
@@ -117,6 +135,9 @@ export default function CharacterCustomizer({
               tie={
                 style.tie
               }
+              color={
+                style.color
+              }
             />
           </div>
 
@@ -137,51 +158,55 @@ export default function CharacterCustomizer({
           >
             오늘 출근할 감자를
             <br />
-            원하는 모습으로 꾸며보세요.
+            원하는 모습으로
+            꾸며보세요.
           </div>
         </section>
 
-        {/* =========================================
-            설정
-        ========================================= */}
+        {/* ===============================
+            Settings
+        =============================== */}
 
         <section className="p-7 sm:p-9">
-          <div>
-            <div className="text-[10px] font-bold tracking-[0.18em] text-zinc-400">
-              GAMJA OFFICE
-            </div>
-
-            <h1 className="mt-2 text-2xl font-bold tracking-tight">
-              출근 준비
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              닉네임과 캐릭터를 설정하고
-              사무실에 입장하세요.
-            </p>
+          <div className="text-[10px] font-bold tracking-[0.18em] text-zinc-400">
+            GAMJA OFFICE
           </div>
 
-          {/* =====================================
-              닉네임
-          ===================================== */}
+          <h1 className="mt-2 text-2xl font-bold">
+            출근 준비
+          </h1>
+
+          <p className="mt-2 text-sm text-zinc-500">
+            닉네임과 캐릭터를
+            설정하고 입장하세요.
+          </p>
+
+          {/* 닉네임 */}
 
           <div className="mt-7">
             <label
               htmlFor="nickname"
-              className="text-xs font-semibold text-zinc-700"
+              className="text-xs font-semibold"
             >
               닉네임
             </label>
 
             <input
               id="nickname"
-              value={nickname}
-              onChange={(event) => {
+              value={
+                nickname
+              }
+              onChange={(
+                event
+              ) =>
                 setNickname(
-                  event.target.value
-                );
-              }}
-              onKeyDown={(event) => {
+                  event.target
+                    .value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
                 if (
                   event.key ===
                     "Enter" &&
@@ -190,7 +215,9 @@ export default function CharacterCustomizer({
                   onEnter();
                 }
               }}
-              maxLength={12}
+              maxLength={
+                12
+              }
               placeholder="닉네임을 입력하세요"
               className="
                 mt-2
@@ -198,12 +225,10 @@ export default function CharacterCustomizer({
                 rounded-xl
                 border
                 border-zinc-300
-                bg-white
                 px-4
                 py-3
                 text-sm
                 outline-none
-                transition
                 focus:border-zinc-500
                 focus:ring-4
                 focus:ring-zinc-100
@@ -211,13 +236,94 @@ export default function CharacterCustomizer({
             />
 
             <div className="mt-1 text-right text-[10px] text-zinc-400">
-              {nickname.length}/12
+              {
+                nickname.length
+              }
+              /12
             </div>
           </div>
 
-          {/* =====================================
-              안경
-          ===================================== */}
+          {/* ===============================
+              감자 색
+          =============================== */}
+<OptionSection title="감자 색">
+  <ColorButton
+    label="기본"
+    color="#d9a15f"
+    active={
+      style.color ===
+      "default"
+    }
+    onClick={() =>
+      updateStyle({
+        color:
+          "default",
+      })
+    }
+  />
+
+  <ColorButton
+    label="황금"
+    color="#e5bb55"
+    active={
+      style.color ===
+      "gold"
+    }
+    onClick={() =>
+      updateStyle({
+        color:
+          "gold",
+      })
+    }
+  />
+
+  <ColorButton
+    label="고구마"
+    color="#c98266"
+    active={
+      style.color ===
+      "sweet"
+    }
+    onClick={() =>
+      updateStyle({
+        color:
+          "sweet",
+      })
+    }
+  />
+
+  <ColorButton
+    label="자색"
+    color="#9a769c"
+    active={
+      style.color ===
+      "purple"
+    }
+    onClick={() =>
+      updateStyle({
+        color:
+          "purple",
+      })
+    }
+  />
+
+  <ColorButton
+    label="탄감자"
+    color="#5c4033"
+    active={
+      style.color ===
+      "burnt"
+    }
+    onClick={() =>
+      updateStyle({
+        color:
+          "burnt",
+      })
+    }
+  />
+</OptionSection>
+
+          {/* 안경 */}
 
           <OptionSection title="안경">
             <OptionButton
@@ -266,9 +372,7 @@ export default function CharacterCustomizer({
             </OptionButton>
           </OptionSection>
 
-          {/* =====================================
-              모자
-          ===================================== */}
+          {/* 모자 */}
 
           <OptionSection title="모자">
             <OptionButton
@@ -278,7 +382,8 @@ export default function CharacterCustomizer({
               }
               onClick={() =>
                 updateStyle({
-                  hat: "none",
+                  hat:
+                    "none",
                 })
               }
             >
@@ -292,7 +397,8 @@ export default function CharacterCustomizer({
               }
               onClick={() =>
                 updateStyle({
-                  hat: "cap",
+                  hat:
+                    "cap",
                 })
               }
             >
@@ -306,7 +412,8 @@ export default function CharacterCustomizer({
               }
               onClick={() =>
                 updateStyle({
-                  hat: "party",
+                  hat:
+                    "party",
                 })
               }
             >
@@ -314,9 +421,7 @@ export default function CharacterCustomizer({
             </OptionButton>
           </OptionSection>
 
-          {/* =====================================
-              장식
-          ===================================== */}
+          {/* 장식 */}
 
           <OptionSection title="장식">
             <OptionButton
@@ -348,13 +453,9 @@ export default function CharacterCustomizer({
             </OptionButton>
           </OptionSection>
 
-          {/* =====================================
-              초기화
-          ===================================== */}
-
           <button
             type="button"
-            onClick={() => {
+            onClick={() =>
               setStyle({
                 glasses:
                   "none",
@@ -364,28 +465,20 @@ export default function CharacterCustomizer({
                   false,
                 tie:
                   false,
-              });
-            }}
-            className="
-              mt-6
-              text-[11px]
-              text-zinc-400
-              underline
-              underline-offset-4
-              transition
-              hover:text-zinc-700
-            "
+                color:
+                  "default",
+              })
+            }
+            className="mt-6 text-[11px] text-zinc-400 underline"
           >
             꾸미기 초기화
           </button>
 
-          {/* =====================================
-              입장
-          ===================================== */}
-
           <button
             type="button"
-            disabled={!canEnter}
+            disabled={
+              !canEnter
+            }
             onClick={
               onEnter
             }
@@ -399,9 +492,7 @@ export default function CharacterCustomizer({
               text-sm
               font-semibold
               text-white
-              transition
               hover:bg-zinc-800
-              disabled:cursor-not-allowed
               disabled:bg-zinc-300
             "
           >
@@ -413,20 +504,17 @@ export default function CharacterCustomizer({
   );
 }
 
-/* =========================================
-   Option Section
-========================================= */
-
 function OptionSection({
   title,
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <div className="mt-5">
-      <div className="mb-2 text-xs font-semibold text-zinc-700">
+      <div className="mb-2 text-xs font-semibold">
         {title}
       </div>
 
@@ -437,10 +525,6 @@ function OptionSection({
   );
 }
 
-/* =========================================
-   Option Button
-========================================= */
-
 function OptionButton({
   active,
   onClick,
@@ -448,7 +532,8 @@ function OptionButton({
 }: {
   active: boolean;
   onClick: () => void;
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }) {
   return (
     <button
@@ -460,27 +545,66 @@ function OptionButton({
         px-3
         py-2
         text-xs
-        font-medium
-        transition
 
         ${
           active
-            ? `
-              border-zinc-900
-              bg-zinc-900
-              text-white
-            `
-            : `
-              border-zinc-200
-              bg-white
-              text-zinc-600
-              hover:border-zinc-300
-              hover:bg-zinc-50
-            `
+            ? "border-zinc-900 bg-zinc-900 text-white"
+            : "border-zinc-200 bg-white text-zinc-600"
         }
       `}
     >
       {children}
+    </button>
+  );
+}
+
+function ColorButton({
+  label,
+  color,
+  active,
+  onClick,
+}: {
+  label: string;
+  color: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`
+        flex
+        items-center
+        gap-2
+        rounded-lg
+        border
+        px-3
+        py-2
+        text-xs
+
+        ${
+          active
+            ? "border-zinc-900 bg-zinc-100 text-zinc-900"
+            : "border-zinc-200 bg-white text-zinc-600"
+        }
+      `}
+    >
+      <span
+        className="
+          h-4
+          w-4
+          rounded-full
+          border
+          border-black/10
+        "
+        style={{
+          backgroundColor:
+            color,
+        }}
+      />
+
+      {label}
     </button>
   );
 }

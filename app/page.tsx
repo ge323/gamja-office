@@ -33,16 +33,13 @@ const STORAGE_KEY =
    기본 캐릭터 설정
 ========================================================= */
 
-const DEFAULT_CHARACTER_STYLE: CharacterStyle =
-  {
-    glasses: "none",
-
-    hat: "none",
-
-    ribbon: false,
-
-    tie: false,
-  };
+const DEFAULT_CHARACTER_STYLE: CharacterStyle = {
+  glasses: "none",
+  hat: "none",
+  ribbon: false,
+  tie: false,
+  color: "default",
+};
 
 /* =========================================================
    Home
