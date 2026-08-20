@@ -11,12 +11,14 @@ import CharacterCustomizer, {
   type CharacterStyle,
 } from "@/components/character/CharacterCustomizer";
 
-import GameWorld, {
-  type OnlinePlayer,
+import type {
+  OnlinePlayer,
 } from "@/components/game/GameWorld";
 
+import DevilGameWorld from "@/components/game/devil/DevilGameWorld";
+
 /* =========================================================
-   Saved Player
+   Types
 ========================================================= */
 
 type SavedPlayerData = {
@@ -76,7 +78,7 @@ export default function Home() {
     );
 
   /* ======================================================
-     Load
+     Load State
   ====================================================== */
 
   const [
@@ -86,7 +88,7 @@ export default function Home() {
     useState(false);
 
   /* ======================================================
-     Game Enter
+     Enter State
   ====================================================== */
 
   const [
@@ -106,7 +108,7 @@ export default function Home() {
     useState("");
 
   /* ======================================================
-     Character
+     Character Style
   ====================================================== */
 
   const [
@@ -119,6 +121,10 @@ export default function Home() {
 
   /* ======================================================
      Online Players
+
+     현재 DevilGameWorld 테스트에서는
+     실제로 사용하지 않지만,
+     기존 메인 로비 코드 복귀를 위해 유지한다.
   ====================================================== */
 
   const [
@@ -140,7 +146,9 @@ export default function Home() {
     useState(false);
 
   /* ======================================================
-     GameWorld → Online Players
+     Online Player Callback
+
+     이후 GameWorld 복구용으로 유지
   ====================================================== */
 
   const handleOnlinePlayersChange =
@@ -155,6 +163,13 @@ export default function Home() {
       },
       []
     );
+
+  /*
+   * 현재 DevilGameWorld 테스트에서는
+   * 사용하지 않지만,
+   * 이후 다시 메인 GameWorld를 연결할 때 사용한다.
+   */
+  void handleOnlinePlayersChange;
 
   /* ======================================================
      LocalStorage Load
@@ -198,7 +213,7 @@ export default function Home() {
       }
 
       /* =====================================
-         Character
+         Character Style
       ===================================== */
 
       if (
@@ -226,12 +241,13 @@ export default function Home() {
   }, []);
 
   /* ======================================================
-     Popover Outside Click
+     Online Popover Outside Click
   ====================================================== */
 
   useEffect(() => {
     const handlePointerDown = (
-      event: MouseEvent
+      event:
+        MouseEvent
     ) => {
       const element =
         onlinePopoverRef.current;
@@ -241,15 +257,12 @@ export default function Home() {
       }
 
       if (
-        event.target instanceof
-          Node &&
+        event.target instanceof Node &&
         !element.contains(
           event.target
         )
       ) {
-        setOnlineOpen(
-          false
-        );
+        setOnlineOpen(false);
       }
     };
 
@@ -310,6 +323,10 @@ export default function Home() {
       let trimmed =
         nickname.trim();
 
+      /*
+       * 혹시 사용자가 감자까지
+       * 직접 입력했을 경우 제거
+       */
       trimmed =
         trimmed.replace(
           /\s*감자\s*$/g,
@@ -335,20 +352,11 @@ export default function Home() {
     };
 
   /* ======================================================
-     꾸미기
+     Customize
   ====================================================== */
 
   const handleCustomize =
     () => {
-      /*
-       * 현재 구조에서는
-       * GameWorld가 사라지므로
-       * Socket도 disconnect 된다.
-       *
-       * 추후 꾸미기를 모달로 바꾸면
-       * 연결을 유지할 수 있다.
-       */
-
       setOnlinePlayers(
         []
       );
@@ -363,32 +371,11 @@ export default function Home() {
     };
 
   /* ======================================================
-     나가기
+     Leave
   ====================================================== */
 
   const handleLeave =
     () => {
-      /*
-       * entered=false
-       *
-       * ↓
-       *
-       * GameWorld 언마운트
-       *
-       * ↓
-       *
-       * socket.disconnect()
-       *
-       * ↓
-       *
-       * 서버 disconnect 이벤트
-       *
-       * ↓
-       *
-       * 다른 사용자 화면에서
-       * 내 감자 제거
-       */
-
       setOnlinePlayers(
         []
       );
@@ -494,6 +481,10 @@ export default function Home() {
           }
         />
 
+        {/* =====================================
+            저장 정보 초기화
+        ===================================== */}
+
         {nickname && (
           <button
             type="button"
@@ -504,6 +495,7 @@ export default function Home() {
               fixed
               bottom-5
               right-5
+              z-[10000]
               rounded-lg
               border
               border-zinc-200
@@ -525,25 +517,25 @@ export default function Home() {
   }
 
   /* ======================================================
-     Game
+     Devil Game Test
   ====================================================== */
 
   return (
     <main
       className="
         min-h-screen
-        bg-[#ece7dd]
+        bg-zinc-950
         text-zinc-900
       "
     >
       {/* =========================================
-          Header
+          테스트용 Header
       ========================================= */}
 
       <header
         className="
           relative
-          z-[10000]
+          z-[20000]
           border-b
           border-zinc-300
           bg-[#f7f4ee]
@@ -565,7 +557,11 @@ export default function Home() {
               Logo
           ===================================== */}
 
-          <div className="justify-self-start">
+          <div
+            className="
+              justify-self-start
+            "
+          >
             <div
               className="
                 text-sm
@@ -582,249 +578,43 @@ export default function Home() {
                 text-zinc-400
               "
             >
-              Potato Workspace
+              Devil Game Map Test
             </div>
           </div>
 
           {/* =====================================
-              Online Players
+              가운데 테스트 표시
           ===================================== */}
 
           <div
-            ref={
-              onlinePopoverRef
-            }
             className="
-              relative
               hidden
-              justify-self-center
-              md:block
+              items-center
+              gap-2
+              rounded-xl
+              border
+              border-zinc-200
+              bg-white
+              px-4
+              py-2
+              text-[10px]
+              font-medium
+              text-zinc-600
+              shadow-sm
+              md:flex
             "
           >
-            {/* =================================
-                Online Button
-            ================================= */}
+            <span>
+              🧪
+            </span>
 
-            <button
-              type="button"
-              onClick={() => {
-                setOnlineOpen(
-                  previous =>
-                    !previous
-                );
-              }}
-              className="
-                flex
-                min-w-[110px]
-                items-center
-                justify-center
-                gap-2
-                rounded-xl
-                border
-                border-zinc-200
-                bg-white
-                px-4
-                py-2
-                text-[10px]
-                font-medium
-                text-zinc-600
-                shadow-sm
-                transition
-                hover:bg-zinc-50
-              "
-            >
-              <span
-                className="
-                  h-2
-                  w-2
-                  rounded-full
-                  bg-emerald-500
-                "
-              />
-
-              <span>
-                {
-                  onlinePlayers.length
-                }
-                명 접속
-              </span>
-
-              <span
-                className={`
-                  text-[9px]
-                  text-zinc-400
-                  transition-transform
-
-                  ${
-                    onlineOpen
-                      ? "rotate-180"
-                      : ""
-                  }
-                `}
-              >
-                ▾
-              </span>
-            </button>
-
-            {/* =================================
-                Online Popover
-            ================================= */}
-
-            {onlineOpen && (
-              <div
-                className="
-                  absolute
-                  left-1/2
-                  top-[calc(100%+8px)]
-                  w-[210px]
-                  -translate-x-1/2
-                  overflow-hidden
-                  rounded-xl
-                  border
-                  border-zinc-200
-                  bg-white
-                  shadow-xl
-                "
-              >
-                {/* Header */}
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    justify-between
-                    border-b
-                    border-zinc-100
-                    px-3
-                    py-2.5
-                  "
-                >
-                  <span
-                    className="
-                      text-[10px]
-                      font-semibold
-                      text-zinc-700
-                    "
-                  >
-                    접속 중인 감자
-                  </span>
-
-                  <span
-                    className="
-                      text-[9px]
-                      text-zinc-400
-                    "
-                  >
-                    {
-                      onlinePlayers.length
-                    }
-                    명
-                  </span>
-                </div>
-
-                {/* Player List */}
-
-                <div
-                  className="
-                    max-h-[230px]
-                    overflow-y-auto
-                    py-1
-
-                    [scrollbar-width:none]
-                    [-ms-overflow-style:none]
-                    [&::-webkit-scrollbar]:hidden
-                  "
-                >
-                  {onlinePlayers.length ===
-                  0 ? (
-                    <div
-                      className="
-                        px-3
-                        py-5
-                        text-center
-                        text-[10px]
-                        text-zinc-400
-                      "
-                    >
-                      접속자를 불러오는 중...
-                    </div>
-                  ) : (
-                    onlinePlayers.map(
-                      player => {
-                        const isMe =
-                          player.nickname ===
-                          nickname;
-
-                        return (
-                          <div
-                            key={
-                              player.id
-                            }
-                            className="
-                              flex
-                              items-center
-                              gap-2.5
-                              px-3
-                              py-2
-                            "
-                          >
-                            {/* Online Dot */}
-
-                            <span
-                              className="
-                                h-2
-                                w-2
-                                shrink-0
-                                rounded-full
-                                bg-emerald-500
-                              "
-                            />
-
-                            {/* Name */}
-
-                            <span
-                              className="
-                                min-w-0
-                                flex-1
-                                truncate
-                                text-[10px]
-                                font-medium
-                                text-zinc-700
-                              "
-                            >
-                              {getDisplayName(
-                                player.nickname
-                              )}
-                            </span>
-
-                            {/* Me */}
-
-                            {isMe && (
-                              <span
-                                className="
-                                  rounded-full
-                                  bg-zinc-100
-                                  px-2
-                                  py-0.5
-                                  text-[8px]
-                                  text-zinc-400
-                                "
-                              >
-                                나
-                              </span>
-                            )}
-                          </div>
-                        );
-                      }
-                    )
-                  )}
-                </div>
-              </div>
-            )}
+            <span>
+              악마 감자 맵 테스트
+            </span>
           </div>
 
           {/* =====================================
-              My Account
+              User
           ===================================== */}
 
           <div
@@ -835,9 +625,11 @@ export default function Home() {
               gap-3
             "
           >
-            {/* 사용자 */}
-
-            <div className="text-right">
+            <div
+              className="
+                text-right
+              "
+            >
               <div
                 className="
                   text-xs
@@ -853,24 +645,11 @@ export default function Home() {
               <div
                 className="
                   mt-0.5
-                  flex
-                  items-center
-                  justify-end
-                  gap-1.5
-                  text-[10px]
+                  text-[9px]
                   text-zinc-400
                 "
               >
-                <span
-                  className="
-                    h-1.5
-                    w-1.5
-                    rounded-full
-                    bg-emerald-500
-                  "
-                />
-
-                online
+                TEST MODE
               </div>
             </div>
 
@@ -929,62 +708,48 @@ export default function Home() {
             </button>
           </div>
         </div>
-
-        {/* =========================================
-            Mobile Online
-        ========================================= */}
-
-        <div
-          className="
-            border-t
-            border-zinc-200
-            px-4
-            py-2
-            md:hidden
-          "
-        >
-          <div
-            className="
-              flex
-              items-center
-              justify-center
-              gap-1.5
-              text-[10px]
-              text-zinc-500
-            "
-          >
-            <span
-              className="
-                h-1.5
-                w-1.5
-                rounded-full
-                bg-emerald-500
-              "
-            />
-
-            {
-              onlinePlayers.length
-            }
-            명 접속
-          </div>
-        </div>
       </header>
 
       {/* =========================================
-          Game
+          테스트 설명
       ========================================= */}
 
-      <GameWorld
-        nickname={
-          nickname
-        }
-        characterStyle={
-          characterStyle
-        }
-        onOnlinePlayersChange={
-          handleOnlinePlayersChange
-        }
-      />
+      <div
+        className="
+          bg-zinc-900
+          px-4
+          py-2
+          text-center
+          text-[10px]
+          text-white/60
+        "
+      >
+        빈 공간 클릭 = 이동
+        <span
+          className="
+            mx-3
+            text-white/20
+          "
+        >
+          |
+        </span>
+        M = 전체 지도
+        <span
+          className="
+            mx-3
+            text-white/20
+          "
+        >
+          |
+        </span>
+        ESC = 지도 닫기
+      </div>
+
+      {/* =========================================
+          Devil GameWorld Test
+      ========================================= */}
+
+      <DevilGameWorld />
     </main>
   );
 }
