@@ -24,6 +24,10 @@ import OfficeMap, {
 
 import InteractionBubble from "@/components/game/InteractionBubble";
 
+import ChatPanel, {
+  type ChatMessage,
+} from "@/components/game/ChatPanel";
+
 /* =========================================================
    Types
 ========================================================= */
@@ -33,11 +37,27 @@ type Position = {
   y: number;
 };
 
+/*
+ * page.tsx에서도 사용할 수 있도록 export
+ */
+export type OnlinePlayer = {
+  id: string;
+  nickname: string;
+};
+
 type GameWorldProps = {
   nickname: string;
 
   characterStyle:
     CharacterStyle;
+
+  /*
+   * 현재 접속자 목록을
+   * page.tsx로 전달
+   */
+  onOnlinePlayersChange?: (
+    players: OnlinePlayer[]
+  ) => void;
 };
 
 type RemotePlayer = {
@@ -53,6 +73,8 @@ type RemotePlayer = {
     CharacterStyle;
 
   moveDuration?: number;
+
+  moving?: boolean;
 };
 
 /* =========================================================
@@ -79,14 +101,14 @@ const MAX_MOVE_TIME =
   1800;
 
 /* =========================================================
-   Socket Server
+   Socket
 ========================================================= */
 
 const SOCKET_URL =
   "http://localhost:4000";
 
 /* =========================================================
-   이름
+   Name
 ========================================================= */
 
 function getDisplayName(
@@ -101,12 +123,77 @@ function getDisplayName(
 }
 
 /* =========================================================
+   Chat Bubble
+========================================================= */
+
+function PlayerChatBubble({
+  text,
+}: {
+  text: string;
+}) {
+  if (!text) {
+    return null;
+  }
+
+  return (
+    <div
+      className="
+        pointer-events-none
+        absolute
+        bottom-[106px]
+        left-1/2
+        z-[9000]
+        -translate-x-1/2
+        whitespace-nowrap
+      "
+    >
+      <div
+        className="
+          relative
+          max-w-[210px]
+          rounded-xl
+          border
+          border-zinc-200
+          bg-white
+          px-3
+          py-2
+          text-[11px]
+          font-medium
+          text-zinc-700
+          shadow-md
+        "
+      >
+        {text}
+
+        <div
+          className="
+            absolute
+            left-1/2
+            top-full
+            h-[8px]
+            w-[8px]
+            -translate-x-1/2
+            -translate-y-1/2
+            rotate-45
+            border-b
+            border-r
+            border-zinc-200
+            bg-white
+          "
+        />
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
    GameWorld
 ========================================================= */
 
 export default function GameWorld({
   nickname,
   characterStyle,
+  onOnlinePlayersChange,
 }: GameWorldProps) {
   /* ======================================================
      Refs
@@ -142,6 +229,17 @@ export default function GameWorld({
       null
     );
 
+  /*
+   * 플레이어별 채팅 말풍선 타이머
+   */
+  const chatBubbleTimersRef =
+    useRef<
+      Record<
+        string,
+        number
+      >
+    >({});
+
   /* ======================================================
      Scale
   ====================================================== */
@@ -153,7 +251,7 @@ export default function GameWorld({
     useState(1);
 
   /* ======================================================
-     내 Socket ID
+     Socket ID
   ====================================================== */
 
   const [
@@ -163,7 +261,7 @@ export default function GameWorld({
     useState("");
 
   /* ======================================================
-     다른 플레이어
+     Players
   ====================================================== */
 
   const [
@@ -175,7 +273,7 @@ export default function GameWorld({
     >([]);
 
   /* ======================================================
-     내 위치
+     Position
   ====================================================== */
 
   const [
@@ -200,7 +298,7 @@ export default function GameWorld({
     useState(600);
 
   /* ======================================================
-     상호작용 말풍선
+     Interaction
   ====================================================== */
 
   const [
@@ -210,7 +308,123 @@ export default function GameWorld({
     useState("");
 
   /* ======================================================
-     Socket 연결
+     Chat
+  ====================================================== */
+
+  const [
+    chatMessages,
+    setChatMessages,
+  ] =
+    useState<
+      ChatMessage[]
+    >([]);
+
+  /*
+   * playerId → 머리 위 채팅
+   */
+  const [
+    chatBubbles,
+    setChatBubbles,
+  ] =
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
+
+  /* ======================================================
+     접속자 목록을 부모로 전달
+  ====================================================== */
+
+  useEffect(() => {
+    if (
+      !onOnlinePlayersChange
+    ) {
+      return;
+    }
+
+    const players:
+      OnlinePlayer[] =
+      remotePlayers.map(
+        player => ({
+          id:
+            player.id,
+
+          nickname:
+            player.nickname,
+        })
+      );
+
+    onOnlinePlayersChange(
+      players
+    );
+  }, [
+    remotePlayers,
+    onOnlinePlayersChange,
+  ]);
+
+  /* ======================================================
+     Chat Bubble
+  ====================================================== */
+
+  const showChatBubble = (
+    playerId: string,
+    text: string
+  ) => {
+    setChatBubbles(
+      previous => ({
+        ...previous,
+
+        [playerId]:
+          text,
+      })
+    );
+
+    const previousTimer =
+      chatBubbleTimersRef
+        .current[
+        playerId
+      ];
+
+    if (
+      previousTimer
+    ) {
+      window.clearTimeout(
+        previousTimer
+      );
+    }
+
+    chatBubbleTimersRef.current[
+      playerId
+    ] =
+      window.setTimeout(
+        () => {
+          setChatBubbles(
+            previous => {
+              const next = {
+                ...previous,
+              };
+
+              delete next[
+                playerId
+              ];
+
+              return next;
+            }
+          );
+
+          delete chatBubbleTimersRef
+            .current[
+            playerId
+          ];
+        },
+        4000
+      );
+  };
+
+  /* ======================================================
+     Socket
   ====================================================== */
 
   useEffect(() => {
@@ -228,24 +442,18 @@ export default function GameWorld({
       socket;
 
     /* =====================================
-       연결 성공
+       Connect
     ===================================== */
 
     socket.on(
       "connect",
       () => {
-        console.log(
-          "🥔 서버 연결:",
-          socket.id
-        );
+        const socketId =
+          socket.id ?? "";
 
         setMySocketId(
-          socket.id ?? ""
+          socketId
         );
-
-        /* ===============================
-           입장 정보 전송
-        =============================== */
 
         socket.emit(
           "player:join",
@@ -265,7 +473,7 @@ export default function GameWorld({
     );
 
     /* =====================================
-       전체 플레이어 목록
+       Players
     ===================================== */
 
     socket.on(
@@ -275,13 +483,36 @@ export default function GameWorld({
           RemotePlayer[]
       ) => {
         setRemotePlayers(
-          players
+          previous => {
+            return players.map(
+              player => {
+                const old =
+                  previous.find(
+                    item =>
+                      item.id ===
+                      player.id
+                  );
+
+                return {
+                  ...player,
+
+                  moveDuration:
+                    old?.moveDuration ??
+                    300,
+
+                  moving:
+                    old?.moving ??
+                    false,
+                };
+              }
+            );
+          }
         );
       }
     );
 
     /* =====================================
-       다른 플레이어 이동
+       Player moved
     ===================================== */
 
     socket.on(
@@ -309,22 +540,87 @@ export default function GameWorld({
 
                       moveDuration:
                         data.duration,
+
+                      moving:
+                        true,
                     }
                   : player
             )
+        );
+
+        window.setTimeout(
+          () => {
+            setRemotePlayers(
+              previous =>
+                previous.map(
+                  player =>
+                    player.id ===
+                      data.id
+                      ? {
+                          ...player,
+
+                          moving:
+                            false,
+                        }
+                      : player
+                )
+            );
+          },
+          data.duration
         );
       }
     );
 
     /* =====================================
-       연결 종료
+       Chat History
     ===================================== */
 
     socket.on(
-      "disconnect",
-      () => {
-        console.log(
-          "서버 연결 종료"
+      "chat:history",
+      (
+        messages:
+          ChatMessage[]
+      ) => {
+        setChatMessages(
+          messages
+        );
+      }
+    );
+
+    /* =====================================
+       Chat Message
+    ===================================== */
+
+    socket.on(
+      "chat:message",
+      (
+        message:
+          ChatMessage
+      ) => {
+        setChatMessages(
+          previous => [
+            ...previous,
+            message,
+          ].slice(
+            -50
+          )
+        );
+
+        /*
+         * 시스템 메시지는
+         * 캐릭터 머리 위에 표시하지 않음
+         */
+        if (
+          message.type !==
+            "chat" ||
+          !message.playerId
+        ) {
+          return;
+        }
+
+        showChatBubble(
+          message.playerId,
+          message.message
         );
       }
     );
@@ -340,14 +636,11 @@ export default function GameWorld({
         null;
     };
 
-    /*
-     * 게임 입장할 때 한 번만 연결
-     */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ======================================================
-     꾸미기 정보 서버 동기화
+     Character Style Sync
   ====================================================== */
 
   useEffect(() => {
@@ -370,7 +663,7 @@ export default function GameWorld({
   ]);
 
   /* ======================================================
-     반응형 Scale
+     Scale
   ====================================================== */
 
   useEffect(() => {
@@ -383,19 +676,13 @@ export default function GameWorld({
           return;
         }
 
-        const availableWidth =
-          container.clientWidth;
-
-        const nextScale =
+        setScale(
           Math.min(
             1,
 
-            availableWidth /
+            container.clientWidth /
               WORLD_WIDTH
-          );
-
-        setScale(
-          nextScale
+          )
         );
       };
 
@@ -415,7 +702,7 @@ export default function GameWorld({
   }, []);
 
   /* ======================================================
-     말풍선
+     Interaction Bubble
   ====================================================== */
 
   const showInteraction = (
@@ -445,25 +732,22 @@ export default function GameWorld({
   };
 
   /* ======================================================
-     랜덤 메시지
+     Random Message
   ====================================================== */
 
   const getRandomMessage = (
     messages: string[]
   ) => {
-    const index =
+    return messages[
       Math.floor(
         Math.random() *
           messages.length
-      );
-
-    return messages[
-      index
+      )
     ];
   };
 
   /* ======================================================
-     오브젝트 상호작용
+     Object Interaction
   ====================================================== */
 
   const executeInteraction = (
@@ -471,92 +755,70 @@ export default function GameWorld({
       OfficeInteractionType
   ) => {
     /* =====================================
-       커피
+       Coffee
     ===================================== */
 
     if (
       type ===
       "coffee"
     ) {
-      const messages = [
-        "☕ 커피 충전 완료!",
-        "☕ 역시 회사는 커피지.",
-        "☕ 따뜻하다...",
-        "☕ 한 잔만 더 마실까?",
-        "⚡ 카페인이 온몸에 퍼진다!",
-        "☕ 나는 이제 감자가 아니라 커피콩이다...",
-        "😌 커피 한 모금의 여유.",
-        "☕ 오늘 몇 잔째더라...?",
-      ];
-
       showInteraction(
-        getRandomMessage(
-          messages
-        )
+        getRandomMessage([
+          "☕ 커피 충전 완료!",
+          "☕ 역시 회사는 커피지.",
+          "☕ 따뜻하다...",
+          "☕ 한 잔만 더 마실까?",
+          "😌 커피 한 모금의 여유.",
+        ])
       );
 
       return;
     }
 
     /* =====================================
-       업무
+       Chair
     ===================================== */
 
     if (
       type ===
       "chair"
     ) {
-      const messages = [
-        "💻 열심히 일하는 중!",
-        "💭 일하는 척하는 중...",
-        "👀 팀장님 지나가신다. 집중!",
-        "⌨️ 타닥타닥...",
-        "🥱 퇴근하고 싶다...",
-        "💼 오늘도 월급값 하는 감자.",
-        "📊 이 자료는 언제 끝나지...",
-        "🫠 집에 가고 싶다.",
-        "🧠 갑자기 집중력이 생겼다!",
-        "💭 점심 뭐 먹지?",
-      ];
-
       showInteraction(
-        getRandomMessage(
-          messages
-        )
+        getRandomMessage([
+          "💻 열심히 일하는 중!",
+          "💭 일하는 척하는 중...",
+          "👀 팀장님 지나가신다. 집중!",
+          "⌨️ 타닥타닥...",
+          "🥱 퇴근하고 싶다...",
+          "💭 점심 뭐 먹지?",
+        ])
       );
 
       return;
     }
 
     /* =====================================
-       복사기
+       Copier
     ===================================== */
 
     if (
       type ===
       "copier"
     ) {
-      const messages = [
-        "📄 복사 완료!",
-        "🖨️ 위이잉... 출력 완료.",
-        "😵 용지가 걸렸습니다...",
-        "🖨️ 왜 하필 지금 고장이지?",
-        "📄 종이가 어디로 사라진 거지?",
-        "🖨️ 복사기가 나를 싫어한다.",
-        "📑 서류가 한 장 늘어났다.",
-        "🖨️ 오늘은 말을 잘 듣네.",
-      ];
-
       showInteraction(
-        getRandomMessage(
-          messages
-        )
+        getRandomMessage([
+          "📄 복사 완료!",
+          "🖨️ 위이잉... 출력 완료.",
+          "😵 용지가 걸렸습니다...",
+          "🖨️ 왜 하필 지금 고장이지?",
+          "🖨️ 복사기가 나를 싫어한다.",
+        ])
       );
     }
   };
 
   /* ======================================================
-     공통 이동
+     Move
   ====================================================== */
 
   const moveTo = (
@@ -582,16 +844,12 @@ export default function GameWorld({
       );
 
     /* =====================================
-       이미 근처
+       이미 목적지 근처
     ===================================== */
 
     if (
       distance < 8
     ) {
-      setMoving(
-        false
-      );
-
       if (
         interaction
       ) {
@@ -607,25 +865,23 @@ export default function GameWorld({
        이동시간
     ===================================== */
 
-    const calculatedDuration =
-      (
-        distance /
-        PLAYER_SPEED
-      ) *
-      1000;
-
     const duration =
       Math.max(
         MIN_MOVE_TIME,
 
         Math.min(
           MAX_MOVE_TIME,
-          calculatedDuration
+
+          (
+            distance /
+            PLAYER_SPEED
+          ) *
+            1000
         )
       );
 
     /* =====================================
-       기존 이동 취소
+       이전 이동 취소
     ===================================== */
 
     if (
@@ -652,7 +908,7 @@ export default function GameWorld({
     );
 
     /* =====================================
-       내 위치 변경
+       내 위치
     ===================================== */
 
     setPosition({
@@ -664,7 +920,7 @@ export default function GameWorld({
     });
 
     /* =====================================
-       ★ 다른 사람에게 이동 전달
+       서버 전송
     ===================================== */
 
     socketRef.current?.emit(
@@ -710,7 +966,7 @@ export default function GameWorld({
   };
 
   /* ======================================================
-     오브젝트 클릭
+     Object Click
   ====================================================== */
 
   const handleInteract = (
@@ -725,7 +981,7 @@ export default function GameWorld({
   };
 
   /* ======================================================
-     바닥 클릭
+     World Click
   ====================================================== */
 
   const handleWorldClick = (
@@ -739,11 +995,11 @@ export default function GameWorld({
       return;
     }
 
-    const clickedElement =
+    const target =
       event.target as HTMLElement;
 
     if (
-      clickedElement.closest(
+      target.closest(
         "[data-no-move]"
       )
     ) {
@@ -768,7 +1024,7 @@ export default function GameWorld({
       scale;
 
     /* =====================================
-       경계
+       World Boundary
     ===================================== */
 
     targetX =
@@ -800,8 +1056,20 @@ export default function GameWorld({
 
     moveTo(
       targetX,
-      targetY,
-      null
+      targetY
+    );
+  };
+
+  /* ======================================================
+     Chat Send
+  ====================================================== */
+
+  const handleSendChat = (
+    message: string
+  ) => {
+    socketRef.current?.emit(
+      "chat:send",
+      message
     );
   };
 
@@ -826,11 +1094,21 @@ export default function GameWorld({
           interactionTimerRef.current
         );
       }
+
+      Object.values(
+        chatBubbleTimersRef.current
+      ).forEach(
+        timer => {
+          window.clearTimeout(
+            timer
+          );
+        }
+      );
     };
   }, []);
 
   /* ======================================================
-     다른 사용자만 추출
+     다른 플레이어
   ====================================================== */
 
   const otherPlayers =
@@ -910,7 +1188,7 @@ export default function GameWorld({
           />
 
           {/* =========================================
-              다른 플레이어
+              다른 감자
           ========================================= */}
 
           {otherPlayers.map(
@@ -952,6 +1230,19 @@ export default function GameWorld({
                     100,
                 }}
               >
+                {/* 채팅 말풍선 */}
+
+                <PlayerChatBubble
+                  text={
+                    chatBubbles[
+                      player.id
+                    ] ??
+                    ""
+                  }
+                />
+
+                {/* 감자 */}
+
                 <Potato
                   name={
                     getDisplayName(
@@ -989,6 +1280,7 @@ export default function GameWorld({
                     "default"
                   }
                   moving={
+                    player.moving ??
                     false
                   }
                 />
@@ -997,7 +1289,7 @@ export default function GameWorld({
           )}
 
           {/* =========================================
-              내 플레이어
+              내 감자
           ========================================= */}
 
           <div
@@ -1028,11 +1320,32 @@ export default function GameWorld({
                 100,
             }}
           >
-            <InteractionBubble
-              text={
-                interactionMessage
-              }
-            />
+            {/* =====================================
+                채팅을 치면 채팅 말풍선 우선
+            ===================================== */}
+
+            {mySocketId &&
+            chatBubbles[
+              mySocketId
+            ] ? (
+              <PlayerChatBubble
+                text={
+                  chatBubbles[
+                    mySocketId
+                  ]
+                }
+              />
+            ) : (
+              <InteractionBubble
+                text={
+                  interactionMessage
+                }
+              />
+            )}
+
+            {/* =====================================
+                Character
+            ===================================== */}
 
             <Potato
               name={
@@ -1062,59 +1375,17 @@ export default function GameWorld({
           </div>
 
           {/* =========================================
-              접속 인원
+              Chat
           ========================================= */}
 
-          <div
-            data-no-move
-            className="
-              absolute
-              right-[16px]
-              bottom-[16px]
-              z-[4000]
-              rounded-lg
-              border
-              border-zinc-200
-              bg-white/90
-              px-3
-              py-2
-              text-[10px]
-              text-zinc-500
-              shadow-sm
-            "
-          >
-            🟢{" "}
-            {
-              remotePlayers.length
+          <ChatPanel
+            messages={
+              chatMessages
             }
-            명 접속
-          </div>
-
-          {/* =========================================
-              안내
-          ========================================= */}
-
-          <div
-            data-no-move
-            className="
-              absolute
-              bottom-[35px]
-              left-1/2
-              z-[3000]
-              -translate-x-1/2
-              rounded-lg
-              border
-              border-zinc-200
-              bg-white/90
-              px-3
-              py-2
-              text-[10px]
-              text-zinc-500
-              shadow-sm
-            "
-          >
-            바닥을 클릭해 이동하거나 사무실 물건을 눌러보세요.
-          </div>
+            onSend={
+              handleSendChat
+            }
+          />
         </div>
       </div>
     </div>
