@@ -22,20 +22,14 @@ export type WalkableRect = {
 };
 
 /* =========================================================
-   이동 가능한 공간
+   Hall Areas
 
-   핵심:
-   - 방 내부
-   - 복도
-   - 문
-   만 이동 가능
+   화면에 보이는 복도와
+   실제 이동 가능한 복도의 좌표를 동일하게 관리한다.
 ========================================================= */
 
-export const WALKABLE_AREAS:
-  WalkableRect[] = [
-  /* =====================================================
-     중앙 복도
-  ===================================================== */
+const HALL_AREAS: WalkableRect[] = [
+  /* 중앙 가로 복도 */
 
   {
     id: "hall-horizontal",
@@ -45,6 +39,8 @@ export const WALKABLE_AREAS:
     height: 180,
   },
 
+  /* 중앙 세로 복도 */
+
   {
     id: "hall-vertical",
     x: 1010,
@@ -53,131 +49,155 @@ export const WALKABLE_AREAS:
     height: 800,
   },
 
-  /* =====================================================
-     전력실
-  ===================================================== */
+  /* 복사실 방향 가로 복도 */
 
   {
-    id: "room-power",
-    x: 100,
-    y: 100,
-    width: 460,
-    height: 280,
+    id: "hall-copy-horizontal",
+    x: 260,
+    y: 700,
+    width: 260,
+    height: 90,
   },
 
-  /* =====================================================
-     휴게실
-  ===================================================== */
+  /* 복사실 방향 세로 복도 */
 
   {
-    id: "room-lounge",
-    x: 780,
-    y: 80,
-    width: 640,
-    height: 300,
+    id: "hall-copy-vertical",
+    x: 260,
+    y: 700,
+    width: 140,
+    height: 260,
   },
 
-  /* =====================================================
-     CCTV
-  ===================================================== */
+  /* 서버실 방향 가로 복도 */
 
   {
-    id: "room-cctv",
-    x: 1660,
-    y: 100,
-    width: 440,
-    height: 280,
+    id: "hall-server-horizontal",
+    x: 1680,
+    y: 700,
+    width: 260,
+    height: 90,
   },
 
-  /* =====================================================
-     자료실
-  ===================================================== */
+  /* 서버실 방향 세로 복도 */
 
   {
-    id: "room-archive",
-    x: 100,
-    y: 520,
-    width: 480,
-    height: 320,
-  },
-
-  /* =====================================================
-     중앙 사무실
-  ===================================================== */
-
-  {
-    id: "room-main",
-    x: 720,
-    y: 480,
-    width: 760,
-    height: 390,
-  },
-
-  /* =====================================================
-     탕비실
-  ===================================================== */
-
-  {
-    id: "room-pantry",
-    x: 1620,
-    y: 520,
-    width: 480,
-    height: 320,
-  },
-
-  /* =====================================================
-     복사실
-  ===================================================== */
-
-  {
-    id: "room-copy",
-    x: 100,
-    y: 980,
-    width: 480,
-    height: 290,
-  },
-
-  /* =====================================================
-     회의실
-  ===================================================== */
-
-  {
-    id: "room-meeting",
-    x: 780,
-    y: 1020,
-    width: 640,
-    height: 290,
-  },
-
-  /* =====================================================
-     서버실
-  ===================================================== */
-
-  {
-    id: "room-server",
-    x: 1620,
-    y: 980,
-    width: 480,
-    height: 290,
+    id: "hall-server-vertical",
+    x: 1800,
+    y: 700,
+    width: 140,
+    height: 260,
   },
 ];
 
 /* =========================================================
-   문 영역
-
-   방과 복도를 연결하는 좁은 통로
+   Room Areas
 ========================================================= */
 
-export const DOOR_AREAS:
-  WalkableRect[] = [
+const ROOM_AREAS: WalkableRect[] = [
+  {
+    id: "room-power",
+    x: 98,
+    y: 98,
+    width: 464,
+    height: 284,
+  },
+
+  {
+    id: "room-lounge",
+    x: 778,
+    y: 78,
+    width: 644,
+    height: 304,
+  },
+
+  {
+    id: "room-cctv",
+    x: 1658,
+    y: 98,
+    width: 444,
+    height: 284,
+  },
+
+  {
+    id: "room-archive",
+    x: 98,
+    y: 518,
+    width: 484,
+    height: 324,
+  },
+
+  {
+    id: "room-main",
+    x: 718,
+    y: 478,
+    width: 764,
+    height: 394,
+  },
+
+  {
+    id: "room-pantry",
+    x: 1618,
+    y: 518,
+    width: 484,
+    height: 324,
+  },
+
+  {
+    id: "room-copy",
+    x: 98,
+    y: 978,
+    width: 484,
+    height: 294,
+  },
+
+  {
+    id: "room-meeting",
+    x: 778,
+    y: 1018,
+    width: 644,
+    height: 294,
+  },
+
+  {
+    id: "room-server",
+    x: 1618,
+    y: 978,
+    width: 484,
+    height: 294,
+  },
+];
+
+/* =========================================================
+   Walkable Areas
+
+   DevilGameWorld에서 사용하는 이동 가능 영역.
+========================================================= */
+
+export const WALKABLE_AREAS: WalkableRect[] = [
+  ...HALL_AREAS,
+  ...ROOM_AREAS,
+];
+
+/* =========================================================
+   Door Areas
+
+   방과 복도를 실제로 연결하는 영역.
+
+   중요:
+   화면에 그리는 문과 이동 판정 좌표를
+   반드시 동일하게 유지한다.
+========================================================= */
+
+export const DOOR_AREAS: WalkableRect[] = [
   /* 전력실 */
 
   {
     id: "door-power",
     x: 280,
-    y: 370,
+    y: 365,
     width: 100,
-    height: 170,
+    height: 175,
   },
 
   /* 휴게실 */
@@ -187,7 +207,7 @@ export const DOOR_AREAS:
     x: 1040,
     y: 360,
     width: 120,
-    height: 140,
+    height: 130,
   },
 
   /* CCTV */
@@ -195,9 +215,9 @@ export const DOOR_AREAS:
   {
     id: "door-cctv",
     x: 1820,
-    y: 370,
+    y: 365,
     width: 100,
-    height: 170,
+    height: 175,
   },
 
   /* 자료실 */
@@ -205,8 +225,8 @@ export const DOOR_AREAS:
   {
     id: "door-archive",
     x: 560,
-    y: 630,
-    width: 120,
+    y: 640,
+    width: 130,
     height: 100,
   },
 
@@ -214,9 +234,9 @@ export const DOOR_AREAS:
 
   {
     id: "door-main-left",
-    x: 660,
+    x: 665,
     y: 640,
-    width: 100,
+    width: 95,
     height: 100,
   },
 
@@ -245,29 +265,39 @@ export const DOOR_AREAS:
   {
     id: "door-main-bottom",
     x: 1040,
-    y: 830,
+    y: 850,
     width: 120,
-    height: 150,
+    height: 140,
   },
 
   /* 탕비실 */
 
   {
     id: "door-pantry",
-    x: 1520,
-    y: 630,
-    width: 120,
+    x: 1510,
+    y: 640,
+    width: 130,
     height: 100,
   },
 
-  /* 복사실 */
+  /* =====================================================
+     복사실
+
+     세로 복도:
+     y = 700 ~ 960
+
+     복사실:
+     y = 960 ~
+
+     문 영역이 둘 사이를 겹쳐 연결한다.
+  ===================================================== */
 
   {
     id: "door-copy",
     x: 280,
-    y: 900,
-    width: 100,
-    height: 100,
+    y: 930,
+    width: 120,
+    height: 80,
   },
 
   /* 회의실 */
@@ -280,19 +310,23 @@ export const DOOR_AREAS:
     height: 100,
   },
 
-  /* 서버실 */
+  /* =====================================================
+     서버실
+
+     복사실과 동일하게 y = 930으로 통일.
+  ===================================================== */
 
   {
     id: "door-server",
-    x: 1820,
-    y: 900,
-    width: 100,
-    height: 100,
+    x: 1810,
+    y: 930,
+    width: 120,
+    height: 80,
   },
 ];
 
 /* =========================================================
-   Map
+   DevilOfficeMap
 ========================================================= */
 
 export default function DevilOfficeMap() {
@@ -306,16 +340,13 @@ export default function DevilOfficeMap() {
         bg-[#383532]
       "
       style={{
-        width:
-          DEVIL_MAP_WIDTH,
-
-        height:
-          DEVIL_MAP_HEIGHT,
+        width: DEVIL_MAP_WIDTH,
+        height: DEVIL_MAP_HEIGHT,
       }}
     >
-      {/* =========================================
-          이동 불가능 영역 배경
-      ========================================= */}
+      {/* =================================================
+          Background
+      ================================================= */}
 
       <div
         className="
@@ -325,29 +356,44 @@ export default function DevilOfficeMap() {
         "
       />
 
-      {/* =========================================
-          복도
-      ========================================= */}
+      {/* =================================================
+          Halls
 
-      <Floor
-        x={500}
-        y={610}
-        width={1200}
-        height={180}
-        color="#bdb2a0"
-      />
+          HALL_AREAS 좌표를 그대로 사용해서
+          화면과 이동 판정이 어긋나지 않게 한다.
+      ================================================= */}
 
-      <Floor
-        x={1010}
-        y={300}
-        width={180}
-        height={800}
-        color="#bdb2a0"
-      />
+      {HALL_AREAS.map((hall) => (
+        <Floor
+          key={hall.id}
+          x={hall.x}
+          y={hall.y}
+          width={hall.width}
+          height={hall.height}
+          color="#c5baa7"
+        />
+      ))}
 
-      {/* =========================================
-          방
-      ========================================= */}
+      {/* =================================================
+          Door Floors
+
+          복도/방 사이의 연결 부분.
+      ================================================= */}
+
+      {DOOR_AREAS.map((door) => (
+        <Floor
+          key={`floor-${door.id}`}
+          x={door.x}
+          y={door.y}
+          width={door.width}
+          height={door.height}
+          color="#c5baa7"
+        />
+      ))}
+
+      {/* =================================================
+          Rooms
+      ================================================= */}
 
       <Room
         name="전력실"
@@ -356,7 +402,9 @@ export default function DevilOfficeMap() {
         width={500}
         height={320}
         color="#9f9375"
-        door="bottom"
+        doors={[
+          "bottom",
+        ]}
       />
 
       <Room
@@ -366,17 +414,21 @@ export default function DevilOfficeMap() {
         width={680}
         height={340}
         color="#91a587"
-        door="bottom"
+        doors={[
+          "bottom",
+        ]}
       />
 
       <Room
-        name="CCTV실"
+        name="CCTV"
         x={1640}
         y={80}
         width={480}
         height={320}
         color="#77868d"
-        door="bottom"
+        doors={[
+          "bottom",
+        ]}
       />
 
       <Room
@@ -386,7 +438,9 @@ export default function DevilOfficeMap() {
         width={520}
         height={360}
         color="#b29a7d"
-        door="right"
+        doors={[
+          "right",
+        ]}
       />
 
       <Room
@@ -396,7 +450,12 @@ export default function DevilOfficeMap() {
         width={800}
         height={430}
         color="#e1cba7"
-        door="multi"
+        doors={[
+          "top",
+          "bottom",
+          "left",
+          "right",
+        ]}
       />
 
       <Room
@@ -406,8 +465,16 @@ export default function DevilOfficeMap() {
         width={520}
         height={360}
         color="#afd3dc"
-        door="left"
+        doors={[
+          "left",
+        ]}
       />
+
+      {/* =================================================
+          복사실
+
+          위쪽 중앙에 문이 있다.
+      ================================================= */}
 
       <Room
         name="복사실"
@@ -416,7 +483,9 @@ export default function DevilOfficeMap() {
         width={520}
         height={330}
         color="#c8c8c4"
-        door="top"
+        doors={[
+          "top",
+        ]}
       />
 
       <Room
@@ -426,7 +495,9 @@ export default function DevilOfficeMap() {
         width={680}
         height={330}
         color="#8c9aa8"
-        door="top"
+        doors={[
+          "top",
+        ]}
       />
 
       <Room
@@ -436,44 +507,14 @@ export default function DevilOfficeMap() {
         width={520}
         height={330}
         color="#718392"
-        door="top"
+        doors={[
+          "top",
+        ]}
       />
 
-      {/* =========================================
-          문 연결 통로
-      ========================================= */}
-
-      {DOOR_AREAS.map(
-        door => (
-          <div
-            key={
-              door.id
-            }
-            className="
-              absolute
-              z-[8]
-              bg-[#bdb2a0]
-            "
-            style={{
-              left:
-                door.x,
-
-              top:
-                door.y,
-
-              width:
-                door.width,
-
-              height:
-                door.height,
-            }}
-          />
-        )
-      )}
-
-      {/* =========================================
-          중앙 사무실
-      ========================================= */}
+      {/* =================================================
+          Central Office Desks
+      ================================================= */}
 
       <Desk
         x={820}
@@ -495,9 +536,9 @@ export default function DevilOfficeMap() {
         y={730}
       />
 
-      {/* =========================================
-          탕비실
-      ========================================= */}
+      {/* =================================================
+          Pantry
+      ================================================= */}
 
       <ObjectBox
         label="냉장고"
@@ -526,9 +567,9 @@ export default function DevilOfficeMap() {
         color="#9dbbc0"
       />
 
-      {/* =========================================
-          자료실
-      ========================================= */}
+      {/* =================================================
+          Archive
+      ================================================= */}
 
       <Shelf
         x={150}
@@ -545,22 +586,25 @@ export default function DevilOfficeMap() {
         y={570}
       />
 
-      {/* =========================================
-          복사실
-      ========================================= */}
+      {/* =================================================
+          Copy Room
+
+          입구 바로 앞은 비워두고
+          복사기는 방 안쪽에 둔다.
+      ================================================= */}
 
       <ObjectBox
-        label="복사기"
-        x={240}
-        y={1050}
+        label="🖨 복사기"
+        x={250}
+        y={1080}
         width={160}
-        height={140}
+        height={120}
         color="#d1d3d6"
       />
 
-      {/* =========================================
-          회의실
-      ========================================= */}
+      {/* =================================================
+          Meeting Room
+      ================================================= */}
 
       <ObjectBox
         label="회의 테이블"
@@ -571,9 +615,9 @@ export default function DevilOfficeMap() {
         color="#9a663d"
       />
 
-      {/* =========================================
-          서버실
-      ========================================= */}
+      {/* =================================================
+          Server Room
+      ================================================= */}
 
       <ServerRack
         x={1660}
@@ -595,9 +639,9 @@ export default function DevilOfficeMap() {
         y={1040}
       />
 
-      {/* =========================================
+      {/* =================================================
           CCTV
-      ========================================= */}
+      ================================================= */}
 
       <ObjectBox
         label="MONITOR"
@@ -608,9 +652,9 @@ export default function DevilOfficeMap() {
         color="#313b41"
       />
 
-      {/* =========================================
-          전력실
-      ========================================= */}
+      {/* =================================================
+          Power Room
+      ================================================= */}
 
       <ObjectBox
         label="⚡ PANEL"
@@ -628,6 +672,12 @@ export default function DevilOfficeMap() {
    Room
 ========================================================= */
 
+type DoorDirection =
+  | "top"
+  | "bottom"
+  | "left"
+  | "right";
+
 function Room({
   name,
   x,
@@ -635,7 +685,7 @@ function Room({
   width,
   height,
   color,
-  door,
+  doors,
 }: {
   name: string;
 
@@ -647,18 +697,11 @@ function Room({
 
   color: string;
 
-  door:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "multi";
+  doors: DoorDirection[];
 }) {
   return (
     <>
-      {/* =====================================
-          방 바닥
-      ===================================== */}
+      {/* Room Floor */}
 
       <div
         className="
@@ -666,11 +709,8 @@ function Room({
           z-[5]
         "
         style={{
-          left:
-            x,
-
-          top:
-            y,
+          left: x,
+          top: y,
 
           width,
           height,
@@ -686,7 +726,7 @@ function Room({
             top-5
             z-[20]
             rounded-md
-            bg-white/80
+            bg-white/85
             px-3
             py-2
             text-[12px]
@@ -698,16 +738,14 @@ function Room({
         </div>
       </div>
 
-      {/* =====================================
-          벽
-      ===================================== */}
+      {/* Walls */}
 
       <RoomWalls
         x={x}
         y={y}
         width={width}
         height={height}
-        door={door}
+        doors={doors}
       />
     </>
   );
@@ -722,24 +760,35 @@ function RoomWalls({
   y,
   width,
   height,
-  door,
+  doors,
 }: {
   x: number;
   y: number;
+
   width: number;
   height: number;
 
-  door:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "multi";
+  doors: DoorDirection[];
 }) {
   const wall = 18;
 
-  const doorWidth =
+  const horizontalDoorWidth =
     120;
+
+  const verticalDoorHeight =
+    100;
+
+  const hasTopDoor =
+    doors.includes("top");
+
+  const hasBottomDoor =
+    doors.includes("bottom");
+
+  const hasLeftDoor =
+    doors.includes("left");
+
+  const hasRightDoor =
+    doors.includes("right");
 
   const centerX =
     x +
@@ -749,21 +798,27 @@ function RoomWalls({
     y +
     height / 2;
 
+  const horizontalSegment =
+    width / 2 -
+    horizontalDoorWidth / 2;
+
+  const verticalSegment =
+    height / 2 -
+    verticalDoorHeight / 2;
+
   return (
     <>
-      {/* =====================================
-          TOP
-      ===================================== */}
+      {/* =================================================
+          Top
+      ================================================= */}
 
-      {door === "top" ||
-      door === "multi" ? (
+      {hasTopDoor ? (
         <>
           <Wall
             x={x}
             y={y}
             width={
-              width / 2 -
-              doorWidth / 2
+              horizontalSegment
             }
             height={wall}
           />
@@ -771,14 +826,25 @@ function RoomWalls({
           <Wall
             x={
               centerX +
-              doorWidth / 2
+              horizontalDoorWidth / 2
             }
             y={y}
             width={
-              width / 2 -
-              doorWidth / 2
+              horizontalSegment
             }
             height={wall}
+          />
+
+          <DoorThreshold
+            x={
+              centerX -
+              horizontalDoorWidth / 2
+            }
+            y={y - 3}
+            width={
+              horizontalDoorWidth
+            }
+            height={7}
           />
         </>
       ) : (
@@ -790,12 +856,11 @@ function RoomWalls({
         />
       )}
 
-      {/* =====================================
-          BOTTOM
-      ===================================== */}
+      {/* =================================================
+          Bottom
+      ================================================= */}
 
-      {door === "bottom" ||
-      door === "multi" ? (
+      {hasBottomDoor ? (
         <>
           <Wall
             x={x}
@@ -805,8 +870,7 @@ function RoomWalls({
               wall
             }
             width={
-              width / 2 -
-              doorWidth / 2
+              horizontalSegment
             }
             height={wall}
           />
@@ -814,7 +878,7 @@ function RoomWalls({
           <Wall
             x={
               centerX +
-              doorWidth / 2
+              horizontalDoorWidth / 2
             }
             y={
               y +
@@ -822,10 +886,25 @@ function RoomWalls({
               wall
             }
             width={
-              width / 2 -
-              doorWidth / 2
+              horizontalSegment
             }
             height={wall}
+          />
+
+          <DoorThreshold
+            x={
+              centerX -
+              horizontalDoorWidth / 2
+            }
+            y={
+              y +
+              height -
+              4
+            }
+            width={
+              horizontalDoorWidth
+            }
+            height={7}
           />
         </>
       ) : (
@@ -841,20 +920,18 @@ function RoomWalls({
         />
       )}
 
-      {/* =====================================
-          LEFT
-      ===================================== */}
+      {/* =================================================
+          Left
+      ================================================= */}
 
-      {door === "left" ||
-      door === "multi" ? (
+      {hasLeftDoor ? (
         <>
           <Wall
             x={x}
             y={y}
             width={wall}
             height={
-              height / 2 -
-              doorWidth / 2
+              verticalSegment
             }
           />
 
@@ -862,12 +939,23 @@ function RoomWalls({
             x={x}
             y={
               centerY +
-              doorWidth / 2
+              verticalDoorHeight / 2
             }
             width={wall}
             height={
-              height / 2 -
-              doorWidth / 2
+              verticalSegment
+            }
+          />
+
+          <DoorThreshold
+            x={x - 3}
+            y={
+              centerY -
+              verticalDoorHeight / 2
+            }
+            width={7}
+            height={
+              verticalDoorHeight
             }
           />
         </>
@@ -880,12 +968,11 @@ function RoomWalls({
         />
       )}
 
-      {/* =====================================
-          RIGHT
-      ===================================== */}
+      {/* =================================================
+          Right
+      ================================================= */}
 
-      {door === "right" ||
-      door === "multi" ? (
+      {hasRightDoor ? (
         <>
           <Wall
             x={
@@ -896,8 +983,7 @@ function RoomWalls({
             y={y}
             width={wall}
             height={
-              height / 2 -
-              doorWidth / 2
+              verticalSegment
             }
           />
 
@@ -909,12 +995,27 @@ function RoomWalls({
             }
             y={
               centerY +
-              doorWidth / 2
+              verticalDoorHeight / 2
             }
             width={wall}
             height={
-              height / 2 -
-              doorWidth / 2
+              verticalSegment
+            }
+          />
+
+          <DoorThreshold
+            x={
+              x +
+              width -
+              4
+            }
+            y={
+              centerY -
+              verticalDoorHeight / 2
+            }
+            width={7}
+            height={
+              verticalDoorHeight
             }
           />
         </>
@@ -946,22 +1047,57 @@ function Wall({
 }: {
   x: number;
   y: number;
+
   width: number;
   height: number;
 }) {
   return (
     <div
       className="
+        pointer-events-none
         absolute
         z-[30]
         bg-zinc-800
+        shadow-[0_3px_0_rgba(0,0,0,0.2)]
       "
       style={{
-        left:
-          x,
+        left: x,
+        top: y,
 
-        top:
-          y,
+        width,
+        height,
+      }}
+    />
+  );
+}
+
+/* =========================================================
+   Door Threshold
+========================================================= */
+
+function DoorThreshold({
+  x,
+  y,
+  width,
+  height,
+}: {
+  x: number;
+  y: number;
+
+  width: number;
+  height: number;
+}) {
+  return (
+    <div
+      className="
+        pointer-events-none
+        absolute
+        z-[31]
+        bg-emerald-200/45
+      "
+      style={{
+        left: x,
+        top: y,
 
         width,
         height,
@@ -983,22 +1119,22 @@ function Floor({
 }: {
   x: number;
   y: number;
+
   width: number;
   height: number;
+
   color: string;
 }) {
   return (
     <div
       className="
+        pointer-events-none
         absolute
         z-[4]
       "
       style={{
-        left:
-          x,
-
-        top:
-          y,
+        left: x,
+        top: y,
 
         width,
         height,
@@ -1024,6 +1160,7 @@ function Desk({
   return (
     <div
       className="
+        pointer-events-none
         absolute
         z-[20]
         border-[5px]
@@ -1031,17 +1168,11 @@ function Desk({
         bg-[#b98755]
       "
       style={{
-        left:
-          x,
+        left: x,
+        top: y,
 
-        top:
-          y,
-
-        width:
-          210,
-
-        height:
-          85,
+        width: 210,
+        height: 85,
       }}
     />
   );
@@ -1061,6 +1192,7 @@ function Shelf({
   return (
     <div
       className="
+        pointer-events-none
         absolute
         z-[20]
         border-[5px]
@@ -1068,17 +1200,11 @@ function Shelf({
         bg-[#7f654f]
       "
       style={{
-        left:
-          x,
+        left: x,
+        top: y,
 
-        top:
-          y,
-
-        width:
-          80,
-
-        height:
-          190,
+        width: 80,
+        height: 190,
       }}
     />
   );
@@ -1109,6 +1235,7 @@ function ObjectBox({
   return (
     <div
       className="
+        pointer-events-none
         absolute
         z-[20]
         flex
@@ -1121,11 +1248,8 @@ function ObjectBox({
         text-zinc-700
       "
       style={{
-        left:
-          x,
-
-        top:
-          y,
+        left: x,
+        top: y,
 
         width,
         height,
@@ -1153,6 +1277,7 @@ function ServerRack({
   return (
     <div
       className="
+        pointer-events-none
         absolute
         z-[20]
         border-[5px]
@@ -1160,24 +1285,42 @@ function ServerRack({
         bg-zinc-700
       "
       style={{
-        left:
-          x,
+        left: x,
+        top: y,
 
-        top:
-          y,
-
-        width:
-          80,
-
-        height:
-          170,
+        width: 80,
+        height: 170,
       }}
     >
-      <div className="mx-auto mt-5 h-[5px] w-[38px] bg-emerald-400" />
+      <div
+        className="
+          mx-auto
+          mt-5
+          h-[5px]
+          w-[38px]
+          bg-emerald-400
+        "
+      />
 
-      <div className="mx-auto mt-4 h-[5px] w-[38px] bg-amber-300" />
+      <div
+        className="
+          mx-auto
+          mt-4
+          h-[5px]
+          w-[38px]
+          bg-amber-300
+        "
+      />
 
-      <div className="mx-auto mt-4 h-[5px] w-[38px] bg-red-400" />
+      <div
+        className="
+          mx-auto
+          mt-4
+          h-[5px]
+          w-[38px]
+          bg-red-400
+        "
+      />
     </div>
   );
 }
