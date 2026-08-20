@@ -76,7 +76,7 @@ export default function Home() {
     );
 
   /* ======================================================
-     Loaded
+     Load
   ====================================================== */
 
   const [
@@ -86,7 +86,7 @@ export default function Home() {
     useState(false);
 
   /* ======================================================
-     Entered
+     Game Enter
   ====================================================== */
 
   const [
@@ -140,7 +140,7 @@ export default function Home() {
     useState(false);
 
   /* ======================================================
-     GameWorld → 접속자 전달
+     GameWorld → Online Players
   ====================================================== */
 
   const handleOnlinePlayersChange =
@@ -168,9 +168,7 @@ export default function Home() {
         );
 
       if (!saved) {
-        setLoaded(
-          true
-        );
+        setLoaded(true);
 
         return;
       }
@@ -208,7 +206,6 @@ export default function Home() {
       ) {
         setCharacterStyle({
           ...DEFAULT_CHARACTER_STYLE,
-
           ...parsed.characterStyle,
         });
       }
@@ -225,19 +222,16 @@ export default function Home() {
       );
     }
 
-    setLoaded(
-      true
-    );
+    setLoaded(true);
   }, []);
 
   /* ======================================================
-     Popover 바깥 클릭 시 닫기
+     Popover Outside Click
   ====================================================== */
 
   useEffect(() => {
     const handlePointerDown = (
-      event:
-        MouseEvent
+      event: MouseEvent
     ) => {
       const element =
         onlinePopoverRef.current;
@@ -273,7 +267,7 @@ export default function Home() {
   }, []);
 
   /* ======================================================
-     Save
+     Save Player
   ====================================================== */
 
   const savePlayer = (
@@ -293,7 +287,6 @@ export default function Home() {
     try {
       window.localStorage.setItem(
         STORAGE_KEY,
-
         JSON.stringify(
           data
         )
@@ -338,6 +331,74 @@ export default function Home() {
 
       setEntered(
         true
+      );
+    };
+
+  /* ======================================================
+     꾸미기
+  ====================================================== */
+
+  const handleCustomize =
+    () => {
+      /*
+       * 현재 구조에서는
+       * GameWorld가 사라지므로
+       * Socket도 disconnect 된다.
+       *
+       * 추후 꾸미기를 모달로 바꾸면
+       * 연결을 유지할 수 있다.
+       */
+
+      setOnlinePlayers(
+        []
+      );
+
+      setOnlineOpen(
+        false
+      );
+
+      setEntered(
+        false
+      );
+    };
+
+  /* ======================================================
+     나가기
+  ====================================================== */
+
+  const handleLeave =
+    () => {
+      /*
+       * entered=false
+       *
+       * ↓
+       *
+       * GameWorld 언마운트
+       *
+       * ↓
+       *
+       * socket.disconnect()
+       *
+       * ↓
+       *
+       * 서버 disconnect 이벤트
+       *
+       * ↓
+       *
+       * 다른 사용자 화면에서
+       * 내 감자 제거
+       */
+
+      setOnlinePlayers(
+        []
+      );
+
+      setOnlineOpen(
+        false
+      );
+
+      setEntered(
+        false
       );
     };
 
@@ -504,11 +565,7 @@ export default function Home() {
               Logo
           ===================================== */}
 
-          <div
-            className="
-              justify-self-start
-            "
-          >
+          <div className="justify-self-start">
             <div
               className="
                 text-sm
@@ -530,7 +587,7 @@ export default function Home() {
           </div>
 
           {/* =====================================
-              접속자
+              Online Players
           ===================================== */}
 
           <div
@@ -545,7 +602,7 @@ export default function Home() {
             "
           >
             {/* =================================
-                접속자 버튼
+                Online Button
             ================================= */}
 
             <button
@@ -558,7 +615,7 @@ export default function Home() {
               }}
               className="
                 flex
-                min-w-[105px]
+                min-w-[110px]
                 items-center
                 justify-center
                 gap-2
@@ -610,7 +667,7 @@ export default function Home() {
             </button>
 
             {/* =================================
-                접속자 팝오버
+                Online Popover
             ================================= */}
 
             {onlineOpen && (
@@ -642,7 +699,7 @@ export default function Home() {
                     py-2.5
                   "
                 >
-                  <div
+                  <span
                     className="
                       text-[10px]
                       font-semibold
@@ -650,9 +707,9 @@ export default function Home() {
                     "
                   >
                     접속 중인 감자
-                  </div>
+                  </span>
 
-                  <div
+                  <span
                     className="
                       text-[9px]
                       text-zinc-400
@@ -662,7 +719,7 @@ export default function Home() {
                       onlinePlayers.length
                     }
                     명
-                  </div>
+                  </span>
                 </div>
 
                 {/* Player List */}
@@ -695,12 +752,8 @@ export default function Home() {
                     onlinePlayers.map(
                       player => {
                         const isMe =
-                          getDisplayName(
-                            player.nickname
-                          ) ===
-                          getDisplayName(
-                            nickname
-                          );
+                          player.nickname ===
+                          nickname;
 
                         return (
                           <div
@@ -715,7 +768,7 @@ export default function Home() {
                               py-2
                             "
                           >
-                            {/* Online */}
+                            {/* Online Dot */}
 
                             <span
                               className="
@@ -726,6 +779,8 @@ export default function Home() {
                                 bg-emerald-500
                               "
                             />
+
+                            {/* Name */}
 
                             <span
                               className="
@@ -741,6 +796,8 @@ export default function Home() {
                                 player.nickname
                               )}
                             </span>
+
+                            {/* Me */}
 
                             {isMe && (
                               <span
@@ -767,7 +824,7 @@ export default function Home() {
           </div>
 
           {/* =====================================
-              내 정보
+              My Account
           ===================================== */}
 
           <div
@@ -775,14 +832,12 @@ export default function Home() {
               flex
               items-center
               justify-self-end
-              gap-4
+              gap-3
             "
           >
-            <div
-              className="
-                text-right
-              "
-            >
+            {/* 사용자 */}
+
+            <div className="text-right">
               <div
                 className="
                   text-xs
@@ -819,21 +874,15 @@ export default function Home() {
               </div>
             </div>
 
+            {/* =================================
+                꾸미기
+            ================================= */}
+
             <button
               type="button"
-              onClick={() => {
-                setOnlinePlayers(
-                  []
-                );
-
-                setOnlineOpen(
-                  false
-                );
-
-                setEntered(
-                  false
-                );
-              }}
+              onClick={
+                handleCustomize
+              }
               className="
                 rounded-lg
                 border
@@ -850,11 +899,39 @@ export default function Home() {
             >
               꾸미기
             </button>
+
+            {/* =================================
+                나가기
+            ================================= */}
+
+            <button
+              type="button"
+              onClick={
+                handleLeave
+              }
+              className="
+                rounded-lg
+                border
+                border-red-200
+                bg-white
+                px-3
+                py-1.5
+                text-[11px]
+                font-medium
+                text-red-400
+                transition
+                hover:border-red-300
+                hover:bg-red-50
+                hover:text-red-500
+              "
+            >
+              나가기
+            </button>
           </div>
         </div>
 
         {/* =========================================
-            모바일 접속자
+            Mobile Online
         ========================================= */}
 
         <div
