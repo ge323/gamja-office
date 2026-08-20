@@ -31,10 +31,14 @@ type Position = {
 
 type MissionSpawn = {
   id: string;
-
   name: string;
-
   positions: Position[];
+};
+
+type DevilGameWorldProps = {
+  role:
+    | "devil"
+    | "survivor";
 };
 
 /* =========================================================
@@ -48,24 +52,15 @@ const VIEWPORT_HEIGHT =
   650;
 
 /* =========================================================
-   Player Movement
-
-   px / second
+   Player
 ========================================================= */
 
 const PLAYER_SPEED =
   260;
 
-/*
- * 목표 지점과 이 거리 이하가 되면
- * 이동 완료로 처리
- */
 const ARRIVAL_DISTANCE =
   2;
 
-/*
- * 이동 중 충돌을 검사하는 최소 단위
- */
 const COLLISION_STEP =
   4;
 
@@ -77,7 +72,6 @@ const MISSION_SPAWNS:
   MissionSpawn[] = [
   {
     id: "power",
-
     name: "전력 점검",
 
     positions: [
@@ -95,7 +89,6 @@ const MISSION_SPAWNS:
 
   {
     id: "archive",
-
     name: "문서 찾기",
 
     positions: [
@@ -113,7 +106,6 @@ const MISSION_SPAWNS:
 
   {
     id: "coffee",
-
     name: "커피 제조",
 
     positions: [
@@ -131,7 +123,6 @@ const MISSION_SPAWNS:
 
   {
     id: "copy",
-
     name: "서류 복사",
 
     positions: [
@@ -149,7 +140,6 @@ const MISSION_SPAWNS:
 
   {
     id: "server",
-
     name: "서버 점검",
 
     positions: [
@@ -252,12 +242,6 @@ function isWalkable(
 
 /* =========================================================
    Path Check
-
-   현재 위치에서 클릭 위치까지
-   직선으로 이동 가능한지 검사.
-
-   벽을 가로질러 방 안을 클릭하면
-   이동하지 않는다.
 ========================================================= */
 
 function isPathWalkable(
@@ -345,19 +329,17 @@ function clamp(
    DevilGameWorld
 ========================================================= */
 
-export default function DevilGameWorld() {
+export default function DevilGameWorld({
+  role,
+}: DevilGameWorldProps) {
   /* ======================================================
-     DOM Ref
+     Refs
   ====================================================== */
 
   const viewportRef =
     useRef<HTMLDivElement | null>(
       null
     );
-
-  /* ======================================================
-     Animation Refs
-  ====================================================== */
 
   const animationFrameRef =
     useRef<number | null>(
@@ -369,23 +351,12 @@ export default function DevilGameWorld() {
       null
     );
 
-  /*
-   * React state와 별개로
-   * 현재 실제 위치를 즉시 참조하기 위해 사용.
-   *
-   * 이동 도중 다시 클릭했을 때
-   * 이전 목적지가 아니라 현재 좌표에서
-   * 새 목적지로 이동하게 해준다.
-   */
   const positionRef =
     useRef<Position>({
       x: 1100,
       y: 700,
     });
 
-  /*
-   * 현재 목표 지점
-   */
   const targetPositionRef =
     useRef<Position | null>(
       null
@@ -480,10 +451,6 @@ export default function DevilGameWorld() {
 
   /* ======================================================
      Movement Animation
-
-     CSS transition 대신
-     requestAnimationFrame으로 좌표를
-     매 프레임 직접 업데이트한다.
   ====================================================== */
 
   const animateMovement = (
@@ -501,10 +468,6 @@ export default function DevilGameWorld() {
     const current =
       positionRef.current;
 
-    /* =====================================
-       첫 프레임
-    ===================================== */
-
     if (
       lastFrameTimeRef.current ===
       null
@@ -520,10 +483,6 @@ export default function DevilGameWorld() {
       return;
     }
 
-    /* =====================================
-       프레임 시간
-    ===================================== */
-
     const deltaTime =
       Math.min(
         40,
@@ -535,10 +494,6 @@ export default function DevilGameWorld() {
 
     lastFrameTimeRef.current =
       timestamp;
-
-    /* =====================================
-       목표까지 거리
-    ===================================== */
 
     const dx =
       target.x -
@@ -553,10 +508,6 @@ export default function DevilGameWorld() {
         dx * dx +
           dy * dy
       );
-
-    /* =====================================
-       도착
-    ===================================== */
 
     if (
       distance <=
@@ -581,10 +532,6 @@ export default function DevilGameWorld() {
 
       return;
     }
-
-    /* =====================================
-       이번 프레임 이동 거리
-    ===================================== */
 
     const moveDistance =
       Math.min(
@@ -612,10 +559,6 @@ export default function DevilGameWorld() {
       directionY *
         moveDistance;
 
-    /* =====================================
-       혹시 이동 중 충돌 발생 시 정지
-    ===================================== */
-
     if (
       !isWalkable(
         nextX,
@@ -626,10 +569,6 @@ export default function DevilGameWorld() {
 
       return;
     }
-
-    /* =====================================
-       실제 좌표 갱신
-    ===================================== */
 
     const nextPosition = {
       x:
@@ -645,10 +584,6 @@ export default function DevilGameWorld() {
     setPosition(
       nextPosition
     );
-
-    /* =====================================
-       다음 프레임
-    ===================================== */
 
     animationFrameRef.current =
       requestAnimationFrame(
@@ -667,10 +602,6 @@ export default function DevilGameWorld() {
     const current =
       positionRef.current;
 
-    /* =====================================
-       목적지 이동 가능 여부
-    ===================================== */
-
     if (
       !isWalkable(
         targetX,
@@ -679,10 +610,6 @@ export default function DevilGameWorld() {
     ) {
       return;
     }
-
-    /* =====================================
-       직선 경로 검사
-    ===================================== */
 
     if (
       !isPathWalkable(
@@ -716,11 +643,6 @@ export default function DevilGameWorld() {
       return;
     }
 
-    /*
-     * 이동 중 다시 클릭하면
-     * 기존 애니메이션을 취소하고
-     * 현재 좌표에서 새 방향으로 이동.
-     */
     if (
       animationFrameRef.current !==
       null
@@ -775,9 +697,7 @@ export default function DevilGameWorld() {
         return;
       }
 
-      /* =====================================
-         M = 지도
-      ===================================== */
+      /* M = 지도 */
 
       if (
         event.key.toLowerCase() ===
@@ -789,9 +709,7 @@ export default function DevilGameWorld() {
         );
       }
 
-      /* =====================================
-         ESC
-      ===================================== */
+      /* ESC */
 
       if (
         event.key ===
@@ -802,9 +720,7 @@ export default function DevilGameWorld() {
         );
       }
 
-      /* =====================================
-         B = 정전 테스트
-      ===================================== */
+      /* B = 정전 테스트 */
 
       if (
         event.key.toLowerCase() ===
@@ -816,9 +732,7 @@ export default function DevilGameWorld() {
         );
       }
 
-      /* =====================================
-         R = 미션 위치 테스트
-      ===================================== */
+      /* R = 미션 재배치 */
 
       if (
         event.key.toLowerCase() ===
@@ -845,9 +759,6 @@ export default function DevilGameWorld() {
 
   /* ======================================================
      Camera
-
-     position이 매 프레임 바뀌므로
-     카메라도 플레이어를 부드럽게 따라온다.
   ====================================================== */
 
   const cameraX =
@@ -914,18 +825,12 @@ export default function DevilGameWorld() {
     const viewport =
       viewportRef.current;
 
-    if (
-      !viewport
-    ) {
+    if (!viewport) {
       return;
     }
 
     const rect =
       viewport.getBoundingClientRect();
-
-    /* =====================================
-       화면 클릭 좌표
-    ===================================== */
 
     const clickX =
       event.clientX -
@@ -934,10 +839,6 @@ export default function DevilGameWorld() {
     const clickY =
       event.clientY -
       rect.top;
-
-    /* =====================================
-       실제 월드 좌표
-    ===================================== */
 
     const targetX =
       cameraX +
@@ -995,10 +896,6 @@ export default function DevilGameWorld() {
         p-4
       "
     >
-      {/* =========================================
-          Viewport
-      ========================================= */}
-
       <div
         ref={
           viewportRef
@@ -1026,10 +923,6 @@ export default function DevilGameWorld() {
       >
         {/* =====================================
             World
-
-            transition 없음.
-            실제 위치가 매 프레임 변경되므로
-            자연스럽게 이동한다.
         ===================================== */}
 
         <div
@@ -1061,9 +954,6 @@ export default function DevilGameWorld() {
 
         {/* =====================================
             Player
-
-            캐릭터도 transition 사용하지 않음.
-            position 자체가 매 프레임 갱신된다.
         ===================================== */}
 
         <div
@@ -1131,7 +1021,7 @@ export default function DevilGameWorld() {
         )}
 
         {/* =====================================
-            HUD
+            Game Status
         ===================================== */}
 
         <div
@@ -1141,31 +1031,79 @@ export default function DevilGameWorld() {
             left-4
             top-4
             z-[8000]
+            min-w-[165px]
             rounded-xl
-            bg-black/70
+            border
+            border-white/10
+            bg-black/75
             px-4
             py-3
             text-white
+            shadow-lg
+            backdrop-blur-sm
           "
         >
-          <div
-            className="
-              text-[12px]
-              font-bold
-            "
-          >
-            😈 악마 감자
-          </div>
+          {/* Game Name */}
 
-          <div
-            className="
-              mt-1
-              text-[9px]
-              text-white/60
-            "
-          >
-            부드러운 이동 테스트
-          </div>
+          {/* =====================================
+    Game Status
+===================================== */}
+
+<div
+  data-no-move
+  className="
+    absolute
+    left-4
+    top-4
+    z-[8000]
+    min-w-[145px]
+    rounded-xl
+    border
+    border-white/10
+    bg-black/75
+    px-4
+    py-3
+    text-white
+    shadow-lg
+    backdrop-blur-sm
+  "
+>
+  {/* 역할 */}
+
+  <div
+    className={`
+      text-[12px]
+      font-black
+
+      ${
+        role === "devil"
+          ? "text-red-400"
+          : "text-emerald-400"
+      }
+    `}
+  >
+    {role === "devil"
+      ? "😈 악마 감자"
+      : "🥔 생존 감자"}
+  </div>
+
+  {/* 미션 */}
+
+  <div
+    className="
+      mt-2
+      text-[9px]
+      font-semibold
+      text-amber-300
+    "
+  >
+    남은 미션{" "}
+    {remainingMissionCount}
+    개
+  </div>
+</div>
+
+          {/* Mission */}
 
           <div
             className="
@@ -1174,11 +1112,11 @@ export default function DevilGameWorld() {
               text-amber-300
             "
           >
-            미션{" "}
+            남은 미션{" "}
             {
               remainingMissionCount
             }
-            개 남음
+            개
           </div>
         </div>
 
@@ -1196,12 +1134,15 @@ export default function DevilGameWorld() {
               z-[9000]
               -translate-x-1/2
               rounded-full
+              border
+              border-red-400/20
               bg-red-950/90
               px-5
               py-2
               text-[11px]
               font-bold
               text-red-200
+              shadow-lg
             "
           >
             ⚡ 정전 발생
@@ -1228,11 +1169,11 @@ export default function DevilGameWorld() {
           </Control>
 
           <Control>
-            B : 정전
+            B : 정전 테스트
           </Control>
 
           <Control>
-            R : 미션 재배치
+            R : 미션 테스트
           </Control>
         </div>
 
@@ -1281,7 +1222,9 @@ function Control({
     <div
       className="
         rounded-lg
-        bg-black/70
+        border
+        border-white/5
+        bg-black/75
         px-3
         py-2
         text-[10px]

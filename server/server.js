@@ -87,15 +87,14 @@ const devilRooms = {};
 /* =========================================================
    Devil Game Constants
 ========================================================= */
-
 const DEVIL_GAME_MIN_PLAYERS =
-  4;
+  2;
 
 const DEVIL_GAME_DEFAULT_MAX_PLAYERS =
-  6;
+  5;
 
 const DEVIL_GAME_MAX_PLAYERS =
-  8;
+  5;
 
 /* =========================================================
    Room Code
@@ -1268,7 +1267,7 @@ io.on(
           Date.now();
 
         console.log(
-          "😈 악마 감자 게임 시작:",
+          "감자 전쟁 게임 시작:",
           room.id
         );
 

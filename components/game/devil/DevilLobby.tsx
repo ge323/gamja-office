@@ -1,5 +1,9 @@
 "use client";
 
+/* =========================================================
+   Types
+========================================================= */
+
 export type DevilLobbyPlayer = {
   id: string;
   nickname: string;
@@ -34,44 +38,93 @@ type DevilLobbyProps = {
     () => void;
 };
 
+/* =========================================================
+   테스트용 최소 인원
+
+   개발이 끝나면
+   4로 바꾸면 됨.
+========================================================= */
+
+const MIN_PLAYERS =
+  2;
+
+/* =========================================================
+   DevilLobby
+========================================================= */
+
 export default function DevilLobby({
   room,
   mySocketId,
   onLeave,
   onStart,
 }: DevilLobbyProps) {
-  /* =====================================================
+  /* ======================================================
      Host
-  ===================================================== */
+  ====================================================== */
 
   const isHost =
     room.hostId ===
     mySocketId;
 
-  const canStart =
-    room.players.length >= 4;
+  /* ======================================================
+     Start Check
+  ====================================================== */
 
-  /* =====================================================
+  const canStart =
+    room.players.length >=
+    MIN_PLAYERS;
+
+  const remainingPlayers =
+    Math.max(
+      0,
+
+      MIN_PLAYERS -
+        room.players.length
+    );
+
+  /* ======================================================
+     Empty Slots
+  ====================================================== */
+
+  const emptySlots =
+    Math.max(
+      0,
+
+      room.maxPlayers -
+        room.players.length
+    );
+
+  /* ======================================================
      Render
-  ===================================================== */
+  ====================================================== */
 
   return (
     <div
       data-no-move
       className="
-        absolute
+        fixed
         inset-0
-        z-[15000]
+        z-[20000]
         flex
         items-center
         justify-center
-        bg-black/55
+        bg-black/60
+        px-4
+        py-6
         backdrop-blur-[2px]
       "
     >
+      {/* =================================================
+          Lobby Card
+      ================================================= */}
+
       <div
         className="
-          w-[420px]
+          flex
+          max-h-[90vh]
+          w-full
+          max-w-[520px]
+          flex-col
           overflow-hidden
           rounded-2xl
           border
@@ -80,12 +133,13 @@ export default function DevilLobby({
           shadow-2xl
         "
       >
-        {/* =========================================
+        {/* =================================================
             Header
-        ========================================= */}
+        ================================================= */}
 
         <div
           className="
+            shrink-0
             border-b
             border-zinc-200
             px-6
@@ -100,12 +154,16 @@ export default function DevilLobby({
               gap-4
             "
           >
+            {/* =============================================
+                Title
+            ============================================= */}
+
             <div>
               <div
                 className="
-                  text-[10px]
+                  text-[9px]
                   font-bold
-                  tracking-[0.18em]
+                  tracking-[0.22em]
                   text-zinc-400
                 "
               >
@@ -115,7 +173,7 @@ export default function DevilLobby({
               <h2
                 className="
                   mt-1
-                  text-xl
+                  text-[22px]
                   font-black
                   text-zinc-900
                 "
@@ -131,18 +189,22 @@ export default function DevilLobby({
                 "
               >
                 다른 감자들이
-                참가하기를 기다리고
-                있습니다.
+                참가하기를 기다리고 있습니다.
               </p>
             </div>
 
+            {/* =============================================
+                Count
+            ============================================= */}
+
             <div
               className="
-                rounded-lg
+                shrink-0
+                rounded-xl
                 bg-zinc-900
-                px-3
+                px-4
                 py-2
-                text-[10px]
+                text-[11px]
                 font-bold
                 text-white
               "
@@ -158,17 +220,18 @@ export default function DevilLobby({
           </div>
         </div>
 
-        {/* =========================================
+        {/* =================================================
             Room Code
-        ========================================= */}
+        ================================================= */}
 
         <div
           className="
+            shrink-0
             border-b
             border-zinc-200
-            bg-white/60
+            bg-white/40
             px-6
-            py-3
+            py-4
           "
         >
           <div
@@ -176,6 +239,7 @@ export default function DevilLobby({
               flex
               items-center
               justify-between
+              gap-4
             "
           >
             <span
@@ -191,29 +255,38 @@ export default function DevilLobby({
               className="
                 font-mono
                 text-[11px]
-                font-bold
-                tracking-[0.15em]
+                font-black
+                tracking-[0.18em]
                 text-zinc-700
               "
             >
-              {room.id}
+              {
+                room.id
+              }
             </span>
           </div>
         </div>
 
-        {/* =========================================
-            Player List
-        ========================================= */}
+        {/* =================================================
+            Player Section
+        ================================================= */}
 
         <div
           className="
+            min-h-0
+            flex-1
+            overflow-y-auto
             px-6
             py-5
           "
         >
+          {/* ===============================================
+              Player Header
+          =============================================== */}
+
           <div
             className="
-              mb-3
+              mb-4
               flex
               items-center
               justify-between
@@ -235,9 +308,13 @@ export default function DevilLobby({
                 text-zinc-400
               "
             >
-              최소 4명
+              최소 {MIN_PLAYERS}명
             </span>
           </div>
+
+          {/* ===============================================
+              Players
+          =============================================== */}
 
           <div
             className="
@@ -261,6 +338,7 @@ export default function DevilLobby({
                     }
                     className="
                       flex
+                      min-h-[44px]
                       items-center
                       gap-3
                       rounded-xl
@@ -271,7 +349,9 @@ export default function DevilLobby({
                       py-2.5
                     "
                   >
-                    {/* Online */}
+                    {/* =====================================
+                        Online
+                    ===================================== */}
 
                     <span
                       className="
@@ -283,7 +363,9 @@ export default function DevilLobby({
                       "
                     />
 
-                    {/* Nickname */}
+                    {/* =====================================
+                        Nickname
+                    ===================================== */}
 
                     <div
                       className="
@@ -299,16 +381,21 @@ export default function DevilLobby({
                           text-zinc-700
                         "
                       >
-                        {player.nickname}
+                        {
+                          player.nickname
+                        }
                         {" 감자"}
                       </div>
                     </div>
 
-                    {/* Host */}
+                    {/* =====================================
+                        Host Badge
+                    ===================================== */}
 
                     {playerIsHost && (
                       <span
                         className="
+                          shrink-0
                           rounded-full
                           bg-amber-100
                           px-2
@@ -322,17 +409,21 @@ export default function DevilLobby({
                       </span>
                     )}
 
-                    {/* Me */}
+                    {/* =====================================
+                        Me
+                    ===================================== */}
 
                     {isMe && (
                       <span
                         className="
+                          shrink-0
                           rounded-full
                           bg-zinc-100
                           px-2
                           py-1
                           text-[8px]
-                          text-zinc-500
+                          font-medium
+                          text-zinc-400
                         "
                       >
                         나
@@ -343,17 +434,13 @@ export default function DevilLobby({
               }
             )}
 
-            {/* =================================
+            {/* ===============================================
                 Empty Slots
-            ================================= */}
+            =============================================== */}
 
             {Array.from({
               length:
-                Math.max(
-                  0,
-                  room.maxPlayers -
-                    room.players.length
-                ),
+                emptySlots,
             }).map(
               (
                 _,
@@ -365,13 +452,16 @@ export default function DevilLobby({
                   }
                   className="
                     flex
-                    h-[43px]
+                    min-h-[44px]
                     items-center
                     justify-center
                     rounded-xl
                     border
                     border-dashed
                     border-zinc-200
+                    bg-white/20
+                    px-3
+                    py-2.5
                     text-[9px]
                     text-zinc-300
                   "
@@ -383,16 +473,13 @@ export default function DevilLobby({
           </div>
         </div>
 
-        {/* =========================================
+        {/* =================================================
             Footer
-        ========================================= */}
+        ================================================= */}
 
         <div
           className="
-            flex
-            items-center
-            justify-between
-            gap-3
+            shrink-0
             border-t
             border-zinc-200
             bg-white/50
@@ -400,80 +487,111 @@ export default function DevilLobby({
             py-4
           "
         >
-          {/* Leave */}
-
-          <button
-            type="button"
-            onClick={
-              onLeave
-            }
+          <div
             className="
-              rounded-lg
-              border
-              border-zinc-200
-              bg-white
-              px-4
-              py-2
-              text-[10px]
-              font-semibold
-              text-zinc-500
-              transition
-              hover:bg-zinc-50
+              flex
+              items-center
+              justify-between
+              gap-3
             "
           >
-            나가기
-          </button>
+            {/* =============================================
+                Leave
+            ============================================= */}
 
-          {/* =====================================
-              Host
-          ===================================== */}
-
-          {isHost ? (
             <button
               type="button"
-              disabled={
-                !canStart
-              }
               onClick={
-                onStart
+                onLeave
               }
               className="
+                shrink-0
                 rounded-lg
-                bg-zinc-900
-                px-5
-                py-2
-                text-[10px]
-                font-bold
-                text-white
-                transition
-
-                enabled:hover:bg-zinc-700
-
-                disabled:cursor-not-allowed
-                disabled:bg-zinc-300
-                disabled:text-zinc-500
-              "
-            >
-              {canStart
-                ? "게임 시작"
-                : `${
-                    4 -
-                    room.players.length
-                  }명 더 필요`}
-            </button>
-          ) : (
-            <div
-              className="
-                rounded-lg
-                bg-zinc-100
+                border
+                border-zinc-200
+                bg-white
                 px-4
                 py-2
                 text-[10px]
+                font-semibold
+                text-zinc-500
+                transition
+                hover:bg-zinc-50
+                hover:text-red-500
+              "
+            >
+              나가기
+            </button>
+
+            {/* =============================================
+                Host
+            ============================================= */}
+
+            {isHost ? (
+              <button
+                type="button"
+                disabled={
+                  !canStart
+                }
+                onClick={
+                  onStart
+                }
+                className="
+                  min-w-[145px]
+                  rounded-lg
+                  bg-zinc-900
+                  px-5
+                  py-2
+                  text-[10px]
+                  font-bold
+                  text-white
+                  transition
+
+                  enabled:hover:bg-zinc-700
+
+                  disabled:cursor-not-allowed
+                  disabled:bg-zinc-200
+                  disabled:text-zinc-400
+                "
+              >
+                {canStart
+                  ? "게임 시작"
+                  : `${remainingPlayers}명 더 필요`}
+              </button>
+            ) : (
+              <div
+                className="
+                  flex-1
+                  rounded-lg
+                  bg-zinc-100
+                  px-4
+                  py-2.5
+                  text-center
+                  text-[9px]
+                  text-zinc-400
+                "
+              >
+                방장이 게임을 시작하기를 기다리는 중...
+              </div>
+            )}
+          </div>
+
+          {/* ===============================================
+              Status Description
+          =============================================== */}
+
+          {isHost && (
+            <div
+              className="
+                mt-3
+                text-right
+                text-[8px]
                 text-zinc-400
               "
             >
-              방장이 게임을
-              시작하기를 기다리는 중...
+              {canStart
+                ? `${room.players.length}명이 준비되었습니다.`
+                : `게임을 시작하려면 최소 ${MIN_PLAYERS}명이 필요합니다.`}
             </div>
           )}
         </div>

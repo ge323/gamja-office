@@ -44,7 +44,7 @@ const STORAGE_KEY =
   "gamja-office-player";
 
 /* =========================================================
-   Default Character
+   Character
 ========================================================= */
 
 const DEFAULT_CHARACTER_STYLE:
@@ -61,7 +61,7 @@ const DEFAULT_CHARACTER_STYLE:
 };
 
 /* =========================================================
-   Display Name
+   Name
 ========================================================= */
 
 function getDisplayName(
@@ -82,29 +82,17 @@ function getDisplayName(
 ========================================================= */
 
 export default function Home() {
-  /* ======================================================
-     Loading
-  ====================================================== */
-
   const [
     loaded,
     setLoaded,
   ] =
     useState(false);
 
-  /* ======================================================
-     Office Enter
-  ====================================================== */
-
   const [
     entered,
     setEntered,
   ] =
     useState(false);
-
-  /* ======================================================
-     Screen
-  ====================================================== */
 
   const [
     screen,
@@ -114,19 +102,11 @@ export default function Home() {
       "office"
     );
 
-  /* ======================================================
-     Nickname
-  ====================================================== */
-
   const [
     nickname,
     setNickname,
   ] =
     useState("");
-
-  /* ======================================================
-     Character
-  ====================================================== */
 
   const [
     characterStyle,
@@ -136,10 +116,6 @@ export default function Home() {
       DEFAULT_CHARACTER_STYLE
     );
 
-  /* ======================================================
-     Online Players
-  ====================================================== */
-
   const [
     onlinePlayers,
     setOnlinePlayers,
@@ -148,10 +124,6 @@ export default function Home() {
       OnlinePlayer[]
     >([]);
 
-  /* ======================================================
-     Devil Role
-  ====================================================== */
-
   const [
     devilRole,
     setDevilRole,
@@ -159,10 +131,6 @@ export default function Home() {
     useState<
       DevilRole | null
     >(null);
-
-  /* ======================================================
-     Devil Room
-  ====================================================== */
 
   const [
     devilRoomId,
@@ -173,7 +141,7 @@ export default function Home() {
     >(null);
 
   /* ======================================================
-     LocalStorage Load
+     Load
   ====================================================== */
 
   useEffect(() => {
@@ -184,7 +152,9 @@ export default function Home() {
         );
 
       if (!saved) {
-        setLoaded(true);
+        setLoaded(
+          true
+        );
 
         return;
       }
@@ -231,7 +201,9 @@ export default function Home() {
       );
     }
 
-    setLoaded(true);
+    setLoaded(
+      true
+    );
   }, []);
 
   /* ======================================================
@@ -270,7 +242,7 @@ export default function Home() {
   };
 
   /* ======================================================
-     Enter Office
+     Enter
   ====================================================== */
 
   const handleEnter =
@@ -307,7 +279,7 @@ export default function Home() {
     };
 
   /* ======================================================
-     Online Players
+     Online
   ====================================================== */
 
   const handleOnlinePlayersChange =
@@ -324,10 +296,7 @@ export default function Home() {
     );
 
   /* ======================================================
-     Game Role Received
-
-     GameWorld의 기존 Socket에서
-     devilGame:role을 받으면 호출
+     Role
   ====================================================== */
 
   const handleDevilRole =
@@ -354,10 +323,7 @@ export default function Home() {
     );
 
   /* ======================================================
-     Devil Game Start
-
-     역할 화면을 약 3초 보여준 뒤
-     실제 게임 맵으로 이동
+     Role Reveal Timer
   ====================================================== */
 
   useEffect(() => {
@@ -417,7 +383,7 @@ export default function Home() {
     };
 
   /* ======================================================
-     Leave Office
+     Leave
   ====================================================== */
 
   const handleLeave =
@@ -519,7 +485,7 @@ export default function Home() {
   }
 
   /* ======================================================
-     Character Customizer
+     Customizer
   ====================================================== */
 
   if (!entered) {
@@ -593,12 +559,13 @@ export default function Home() {
   }
 
   /* ======================================================
-     Devil Game
+     Potato War
   ====================================================== */
 
   if (
     screen ===
-    "devilGame"
+      "devilGame" &&
+    devilRole
   ) {
     return (
       <main
@@ -608,7 +575,7 @@ export default function Home() {
         "
       >
         {/* =====================================
-            Game Header
+            Header
         ===================================== */}
 
         <header
@@ -644,10 +611,11 @@ export default function Home() {
                 className="
                   mt-0.5
                   text-[9px]
+                  font-medium
                   text-white/40
                 "
               >
-                DEVIL GAME
+                🥔 감자 전쟁
               </div>
             </div>
 
@@ -667,6 +635,7 @@ export default function Home() {
                     bg-white/5
                     px-3
                     py-2
+                    font-mono
                     text-[9px]
                     text-white/50
                   "
@@ -692,43 +661,26 @@ export default function Home() {
                     nickname
                   )}
                 </div>
-
-                <div
-                  className={`
-                    mt-0.5
-                    text-[9px]
-
-                    ${
-                      devilRole ===
-                      "devil"
-                        ? "text-red-400"
-                        : "text-emerald-400"
-                    }
-                  `}
-                >
-                  {devilRole ===
-                  "devil"
-                    ? "😈 악마 감자"
-                    : "🥔 생존 감자"}
-                </div>
               </div>
             </div>
           </div>
         </header>
 
         {/* =====================================
-            Devil Game Map
+            Game
         ===================================== */}
 
-        <DevilGameWorld />
+        <DevilGameWorld
+          role={
+            devilRole
+          }
+        />
       </main>
     );
   }
 
   /* ======================================================
-     MAIN OFFICE
-     
-     기본 화면은 무조건 여기가 된다.
+     Main Office
   ====================================================== */
 
   return (
@@ -764,9 +716,7 @@ export default function Home() {
             py-3
           "
         >
-          {/* =====================================
-              Logo
-          ===================================== */}
+          {/* Logo */}
 
           <div
             className="
@@ -793,9 +743,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* =====================================
-              Online
-          ===================================== */}
+          {/* Online */}
 
           <div
             className="
@@ -832,9 +780,7 @@ export default function Home() {
             </span>
           </div>
 
-          {/* =====================================
-              User
-          ===================================== */}
+          {/* User */}
 
           <div
             className="
@@ -933,7 +879,7 @@ export default function Home() {
       </header>
 
       {/* =========================================
-          Main Office GameWorld
+          Main Office
       ========================================= */}
 
       <GameWorld
@@ -946,14 +892,6 @@ export default function Home() {
         onOnlinePlayersChange={
           handleOnlinePlayersChange
         }
-
-        /*
-         * 아래 두 props는
-         * 이번에 GameWorld에 추가할 것.
-         *
-         * 같은 Socket.IO 연결을 사용해서
-         * 게임방과 역할 이벤트를 처리한다.
-         */
         onDevilRole={
           handleDevilRole
         }
