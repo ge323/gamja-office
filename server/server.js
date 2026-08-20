@@ -276,57 +276,82 @@ io.on("connection", (socket) => {
   );
 
   /* =======================================================
-     Disconnect
-  ======================================================= */
+   Disconnect
+======================================================= */
 
-  socket.on(
-    "disconnect",
-    () => {
-      const player =
-        players[socket.id];
+socket.on(
+  "disconnect",
+  () => {
+    const player =
+      players[socket.id];
 
-      if (player) {
-        console.log(
-          "🥔 퇴장:",
-          `${player.nickname} 감자`
-        );
+    if (player) {
+      console.log(
+        "🥔 퇴장:",
+        `${player.nickname} 감자`
+      );
 
-        const systemMessage = {
-          id:
-            createId(),
+      const systemMessage = {
+        id:
+          createId(),
 
-          type:
-            "system",
+        type:
+          "system",
 
-          message:
-            `${player.nickname} 감자가 퇴장했습니다.`,
+        message:
+          `${player.nickname} 감자가 퇴장했습니다.`,
 
-          createdAt:
-            Date.now(),
-        };
+        createdAt:
+          Date.now(),
+      };
 
-        addChatMessage(
-          systemMessage
-        );
-
-        io.emit(
-          "chat:message",
-          systemMessage
-        );
-      }
-
-      delete players[
-        socket.id
-      ];
+      addChatMessage(
+        systemMessage
+      );
 
       io.emit(
-        "players:update",
-        Object.values(
-          players
-        )
+        "chat:message",
+        systemMessage
       );
     }
-  );
+
+    /* =====================================
+       플레이어 제거
+    ===================================== */
+
+    delete players[
+      socket.id
+    ];
+
+    /* =====================================
+       플레이어 목록 갱신
+    ===================================== */
+
+    io.emit(
+      "players:update",
+      Object.values(
+        players
+      )
+    );
+
+    /* =====================================
+       아무도 없으면 채팅 초기화
+    ===================================== */
+
+    if (
+      Object.keys(
+        players
+      ).length === 0
+    ) {
+      chatHistory.length =
+        0;
+
+      console.log(
+        "🧹 사무실이 비어서 채팅 기록을 초기화했습니다."
+      );
+    }
+  }
+);
 });
 
 /* =========================================================
