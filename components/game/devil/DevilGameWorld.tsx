@@ -11,6 +11,9 @@ import Potato from "@/components/character/Potato";
 import DevilOfficeMap, {
   DEVIL_MAP_HEIGHT,
   DEVIL_MAP_WIDTH,
+  DOOR_AREAS,
+  WALKABLE_AREAS,
+  type WalkableRect,
 } from "./DevilOfficeMap";
 
 import GameMapOverlay, {
@@ -28,7 +31,9 @@ type Position = {
 
 type MissionSpawn = {
   id: string;
+
   name: string;
+
   positions: Position[];
 };
 
@@ -36,92 +41,133 @@ type MissionSpawn = {
    Viewport
 ========================================================= */
 
-const VIEWPORT_WIDTH = 1100;
-const VIEWPORT_HEIGHT = 650;
+const VIEWPORT_WIDTH =
+  1100;
+
+const VIEWPORT_HEIGHT =
+  650;
 
 /* =========================================================
-   Player
+   Player Movement
+
+   px / second
 ========================================================= */
 
-const PLAYER_SPEED = 300;
+const PLAYER_SPEED =
+  260;
 
-const MIN_MOVE_TIME = 150;
-const MAX_MOVE_TIME = 2200;
+/*
+ * 목표 지점과 이 거리 이하가 되면
+ * 이동 완료로 처리
+ */
+const ARRIVAL_DISTANCE =
+  2;
+
+/*
+ * 이동 중 충돌을 검사하는 최소 단위
+ */
+const COLLISION_STEP =
+  4;
 
 /* =========================================================
-   미션 위치 후보
+   Missions
 ========================================================= */
 
 const MISSION_SPAWNS:
   MissionSpawn[] = [
   {
     id: "power",
+
     name: "전력 점검",
 
     positions: [
-      { x: 170, y: 180 },
-      { x: 310, y: 190 },
-      { x: 450, y: 220 },
-      { x: 180, y: 320 },
-      { x: 410, y: 330 },
+      {
+        x: 200,
+        y: 300,
+      },
+
+      {
+        x: 470,
+        y: 310,
+      },
     ],
   },
 
   {
     id: "archive",
+
     name: "문서 찾기",
 
     positions: [
-      { x: 170, y: 590 },
-      { x: 300, y: 620 },
-      { x: 470, y: 600 },
-      { x: 200, y: 760 },
-      { x: 430, y: 780 },
+      {
+        x: 170,
+        y: 800,
+      },
+
+      {
+        x: 490,
+        y: 800,
+      },
     ],
   },
 
   {
     id: "coffee",
+
     name: "커피 제조",
 
     positions: [
-      { x: 1690, y: 590 },
-      { x: 1830, y: 610 },
-      { x: 2010, y: 620 },
-      { x: 1730, y: 770 },
-      { x: 1980, y: 780 },
+      {
+        x: 1700,
+        y: 790,
+      },
+
+      {
+        x: 2020,
+        y: 790,
+      },
     ],
   },
 
   {
     id: "copy",
+
     name: "서류 복사",
 
     positions: [
-      { x: 170, y: 1040 },
-      { x: 320, y: 1060 },
-      { x: 470, y: 1080 },
-      { x: 200, y: 1210 },
-      { x: 430, y: 1220 },
+      {
+        x: 170,
+        y: 1230,
+      },
+
+      {
+        x: 490,
+        y: 1230,
+      },
     ],
   },
 
   {
     id: "server",
+
     name: "서버 점검",
 
     positions: [
-      { x: 1680, y: 1030 },
-      { x: 1810, y: 1060 },
-      { x: 1980, y: 1050 },
-      { x: 1740, y: 1210 },
-      { x: 1990, y: 1210 },
+      {
+        x: 1680,
+        y: 1220,
+      },
+
+      {
+        x: 2020,
+        y: 1220,
+      },
     ],
   },
 ];
 
 /* =========================================================
-   랜덤 미션 생성
+   Random Mission
 ========================================================= */
 
 function createRandomMissions():
@@ -134,21 +180,164 @@ function createRandomMissions():
             mission.positions.length
         );
 
-      const randomPosition =
+      const position =
         mission.positions[
           randomIndex
         ];
 
       return {
-        id: mission.id,
-        name: mission.name,
+        id:
+          mission.id,
 
-        x: randomPosition.x,
-        y: randomPosition.y,
+        name:
+          mission.name,
 
-        completed: false,
+        x:
+          position.x,
+
+        y:
+          position.y,
+
+        completed:
+          false,
       };
     }
+  );
+}
+
+/* =========================================================
+   Rect
+========================================================= */
+
+function isInsideRect(
+  x: number,
+  y: number,
+  rect:
+    WalkableRect
+) {
+  return (
+    x >= rect.x &&
+    x <=
+      rect.x +
+        rect.width &&
+    y >= rect.y &&
+    y <=
+      rect.y +
+        rect.height
+  );
+}
+
+/* =========================================================
+   Walkable
+========================================================= */
+
+function isWalkable(
+  x: number,
+  y: number
+) {
+  const areas = [
+    ...WALKABLE_AREAS,
+    ...DOOR_AREAS,
+  ];
+
+  return areas.some(
+    area =>
+      isInsideRect(
+        x,
+        y,
+        area
+      )
+  );
+}
+
+/* =========================================================
+   Path Check
+
+   현재 위치에서 클릭 위치까지
+   직선으로 이동 가능한지 검사.
+
+   벽을 가로질러 방 안을 클릭하면
+   이동하지 않는다.
+========================================================= */
+
+function isPathWalkable(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number
+) {
+  const dx =
+    toX -
+    fromX;
+
+  const dy =
+    toY -
+    fromY;
+
+  const distance =
+    Math.sqrt(
+      dx * dx +
+        dy * dy
+    );
+
+  const steps =
+    Math.max(
+      1,
+
+      Math.ceil(
+        distance /
+          COLLISION_STEP
+      )
+    );
+
+  for (
+    let index = 1;
+    index <= steps;
+    index += 1
+  ) {
+    const ratio =
+      index /
+      steps;
+
+    const x =
+      fromX +
+      dx *
+        ratio;
+
+    const y =
+      fromY +
+      dy *
+        ratio;
+
+    if (
+      !isWalkable(
+        x,
+        y
+      )
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/* =========================================================
+   Clamp
+========================================================= */
+
+function clamp(
+  value: number,
+  min: number,
+  max: number
+) {
+  return Math.max(
+    min,
+
+    Math.min(
+      max,
+      value
+    )
   );
 }
 
@@ -158,7 +347,7 @@ function createRandomMissions():
 
 export default function DevilGameWorld() {
   /* ======================================================
-     Refs
+     DOM Ref
   ====================================================== */
 
   const viewportRef =
@@ -166,15 +355,44 @@ export default function DevilGameWorld() {
       null
     );
 
-  const moveTimerRef =
+  /* ======================================================
+     Animation Refs
+  ====================================================== */
+
+  const animationFrameRef =
     useRef<number | null>(
       null
     );
 
-  /* ======================================================
-     Player Position
+  const lastFrameTimeRef =
+    useRef<number | null>(
+      null
+    );
 
-     실제 맵에서의 좌표
+  /*
+   * React state와 별개로
+   * 현재 실제 위치를 즉시 참조하기 위해 사용.
+   *
+   * 이동 도중 다시 클릭했을 때
+   * 이전 목적지가 아니라 현재 좌표에서
+   * 새 목적지로 이동하게 해준다.
+   */
+  const positionRef =
+    useRef<Position>({
+      x: 1100,
+      y: 700,
+    });
+
+  /*
+   * 현재 목표 지점
+   */
+  const targetPositionRef =
+    useRef<Position | null>(
+      null
+    );
+
+  /* ======================================================
+     Position
   ====================================================== */
 
   const [
@@ -183,7 +401,7 @@ export default function DevilGameWorld() {
   ] =
     useState<Position>({
       x: 1100,
-      y: 740,
+      y: 700,
     });
 
   /* ======================================================
@@ -195,12 +413,6 @@ export default function DevilGameWorld() {
     setMoving,
   ] =
     useState(false);
-
-  const [
-    moveDuration,
-    setMoveDuration,
-  ] =
-    useState(500);
 
   /* ======================================================
      Map
@@ -238,6 +450,311 @@ export default function DevilGameWorld() {
     useState(false);
 
   /* ======================================================
+     Stop Movement
+  ====================================================== */
+
+  const stopMovement =
+    () => {
+      targetPositionRef.current =
+        null;
+
+      lastFrameTimeRef.current =
+        null;
+
+      if (
+        animationFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          animationFrameRef.current
+        );
+
+        animationFrameRef.current =
+          null;
+      }
+
+      setMoving(
+        false
+      );
+    };
+
+  /* ======================================================
+     Movement Animation
+
+     CSS transition 대신
+     requestAnimationFrame으로 좌표를
+     매 프레임 직접 업데이트한다.
+  ====================================================== */
+
+  const animateMovement = (
+    timestamp: number
+  ) => {
+    const target =
+      targetPositionRef.current;
+
+    if (!target) {
+      stopMovement();
+
+      return;
+    }
+
+    const current =
+      positionRef.current;
+
+    /* =====================================
+       첫 프레임
+    ===================================== */
+
+    if (
+      lastFrameTimeRef.current ===
+      null
+    ) {
+      lastFrameTimeRef.current =
+        timestamp;
+
+      animationFrameRef.current =
+        requestAnimationFrame(
+          animateMovement
+        );
+
+      return;
+    }
+
+    /* =====================================
+       프레임 시간
+    ===================================== */
+
+    const deltaTime =
+      Math.min(
+        40,
+
+        timestamp -
+          lastFrameTimeRef.current
+      ) /
+      1000;
+
+    lastFrameTimeRef.current =
+      timestamp;
+
+    /* =====================================
+       목표까지 거리
+    ===================================== */
+
+    const dx =
+      target.x -
+      current.x;
+
+    const dy =
+      target.y -
+      current.y;
+
+    const distance =
+      Math.sqrt(
+        dx * dx +
+          dy * dy
+      );
+
+    /* =====================================
+       도착
+    ===================================== */
+
+    if (
+      distance <=
+      ARRIVAL_DISTANCE
+    ) {
+      const finalPosition = {
+        x:
+          target.x,
+
+        y:
+          target.y,
+      };
+
+      positionRef.current =
+        finalPosition;
+
+      setPosition(
+        finalPosition
+      );
+
+      stopMovement();
+
+      return;
+    }
+
+    /* =====================================
+       이번 프레임 이동 거리
+    ===================================== */
+
+    const moveDistance =
+      Math.min(
+        PLAYER_SPEED *
+          deltaTime,
+
+        distance
+      );
+
+    const directionX =
+      dx /
+      distance;
+
+    const directionY =
+      dy /
+      distance;
+
+    const nextX =
+      current.x +
+      directionX *
+        moveDistance;
+
+    const nextY =
+      current.y +
+      directionY *
+        moveDistance;
+
+    /* =====================================
+       혹시 이동 중 충돌 발생 시 정지
+    ===================================== */
+
+    if (
+      !isWalkable(
+        nextX,
+        nextY
+      )
+    ) {
+      stopMovement();
+
+      return;
+    }
+
+    /* =====================================
+       실제 좌표 갱신
+    ===================================== */
+
+    const nextPosition = {
+      x:
+        nextX,
+
+      y:
+        nextY,
+    };
+
+    positionRef.current =
+      nextPosition;
+
+    setPosition(
+      nextPosition
+    );
+
+    /* =====================================
+       다음 프레임
+    ===================================== */
+
+    animationFrameRef.current =
+      requestAnimationFrame(
+        animateMovement
+      );
+  };
+
+  /* ======================================================
+     Start Movement
+  ====================================================== */
+
+  const moveTo = (
+    targetX: number,
+    targetY: number
+  ) => {
+    const current =
+      positionRef.current;
+
+    /* =====================================
+       목적지 이동 가능 여부
+    ===================================== */
+
+    if (
+      !isWalkable(
+        targetX,
+        targetY
+      )
+    ) {
+      return;
+    }
+
+    /* =====================================
+       직선 경로 검사
+    ===================================== */
+
+    if (
+      !isPathWalkable(
+        current.x,
+        current.y,
+        targetX,
+        targetY
+      )
+    ) {
+      return;
+    }
+
+    const dx =
+      targetX -
+      current.x;
+
+    const dy =
+      targetY -
+      current.y;
+
+    const distance =
+      Math.sqrt(
+        dx * dx +
+          dy * dy
+      );
+
+    if (
+      distance <
+      ARRIVAL_DISTANCE
+    ) {
+      return;
+    }
+
+    /*
+     * 이동 중 다시 클릭하면
+     * 기존 애니메이션을 취소하고
+     * 현재 좌표에서 새 방향으로 이동.
+     */
+    if (
+      animationFrameRef.current !==
+      null
+    ) {
+      cancelAnimationFrame(
+        animationFrameRef.current
+      );
+
+      animationFrameRef.current =
+        null;
+    }
+
+    targetPositionRef.current = {
+      x:
+        targetX,
+
+      y:
+        targetY,
+    };
+
+    lastFrameTimeRef.current =
+      null;
+
+    setMoving(
+      true
+    );
+
+    animationFrameRef.current =
+      requestAnimationFrame(
+        animateMovement
+      );
+  };
+
+  /* ======================================================
      Keyboard
   ====================================================== */
 
@@ -273,7 +790,7 @@ export default function DevilGameWorld() {
       }
 
       /* =====================================
-         ESC = 지도 닫기
+         ESC
       ===================================== */
 
       if (
@@ -300,7 +817,7 @@ export default function DevilGameWorld() {
       }
 
       /* =====================================
-         R = 미션 재배치 테스트
+         R = 미션 위치 테스트
       ===================================== */
 
       if (
@@ -327,99 +844,50 @@ export default function DevilGameWorld() {
   }, []);
 
   /* ======================================================
-     Move
-  ====================================================== */
-
-  const moveTo = (
-    targetX: number,
-    targetY: number
-  ) => {
-    const dx =
-      targetX -
-      position.x;
-
-    const dy =
-      targetY -
-      position.y;
-
-    const distance =
-      Math.sqrt(
-        dx * dx +
-          dy * dy
-      );
-
-    if (
-      distance < 8
-    ) {
-      return;
-    }
-
-    const calculatedDuration =
-      (
-        distance /
-        PLAYER_SPEED
-      ) *
-      1000;
-
-    const duration =
-      Math.max(
-        MIN_MOVE_TIME,
-
-        Math.min(
-          MAX_MOVE_TIME,
-          calculatedDuration
-        )
-      );
-
-    if (
-      moveTimerRef.current
-    ) {
-      window.clearTimeout(
-        moveTimerRef.current
-      );
-    }
-
-    setMoveDuration(
-      duration
-    );
-
-    setMoving(
-      true
-    );
-
-    setPosition({
-      x: targetX,
-      y: targetY,
-    });
-
-    moveTimerRef.current =
-      window.setTimeout(
-        () => {
-          setMoving(
-            false
-          );
-        },
-        duration
-      );
-  };
-
-  /* ======================================================
      Camera
 
-     플레이어가 항상 화면 중앙에 오도록
-     맵 위치를 이동시킨다.
+     position이 매 프레임 바뀌므로
+     카메라도 플레이어를 부드럽게 따라온다.
   ====================================================== */
 
   const cameraX =
-    position.x -
-    VIEWPORT_WIDTH / 2;
+    clamp(
+      position.x -
+        VIEWPORT_WIDTH /
+          2,
+
+      0,
+
+      DEVIL_MAP_WIDTH -
+        VIEWPORT_WIDTH
+    );
 
   const cameraY =
-    position.y -
-    VIEWPORT_HEIGHT / 2;
+    clamp(
+      position.y -
+        VIEWPORT_HEIGHT /
+          2,
+
+      0,
+
+      DEVIL_MAP_HEIGHT -
+        VIEWPORT_HEIGHT
+    );
 
   /* ======================================================
-     World Click
+     Player Screen Position
+  ====================================================== */
+
+  const playerScreenX =
+    position.x -
+    cameraX;
+
+  const playerScreenY =
+    position.y -
+    cameraY;
+
+  /* ======================================================
+     Click
   ====================================================== */
 
   const handleWorldClick = (
@@ -432,11 +900,11 @@ export default function DevilGameWorld() {
       return;
     }
 
-    const clickedElement =
+    const targetElement =
       event.target as HTMLElement;
 
     if (
-      clickedElement.closest(
+      targetElement.closest(
         "[data-no-move]"
       )
     ) {
@@ -456,82 +924,28 @@ export default function DevilGameWorld() {
       viewport.getBoundingClientRect();
 
     /* =====================================
-       화면 중심에서 클릭까지의 차이
+       화면 클릭 좌표
     ===================================== */
 
-    const screenCenterX =
-      VIEWPORT_WIDTH / 2;
-
-    const screenCenterY =
-      VIEWPORT_HEIGHT / 2;
-
-    const clickedX =
+    const clickX =
       event.clientX -
       rect.left;
 
-    const clickedY =
+    const clickY =
       event.clientY -
       rect.top;
 
-    const offsetX =
-      clickedX -
-      screenCenterX;
-
-    const offsetY =
-      clickedY -
-      screenCenterY;
-
     /* =====================================
-       현재 플레이어 실제 좌표 기준
-       목표 좌표 계산
+       실제 월드 좌표
     ===================================== */
 
-    let targetX =
-      position.x +
-      offsetX;
+    const targetX =
+      cameraX +
+      clickX;
 
-    let targetY =
-      position.y +
-      offsetY;
-
-    /* =====================================
-       맵 경계 제한
-
-       화면 중심 고정을 유지하기 위해
-       맵 바깥으로 너무 가까이 가지 않게 함
-    ===================================== */
-
-    const minX =
-      VIEWPORT_WIDTH / 2;
-
-    const maxX =
-      DEVIL_MAP_WIDTH -
-      VIEWPORT_WIDTH / 2;
-
-    const minY =
-      VIEWPORT_HEIGHT / 2;
-
-    const maxY =
-      DEVIL_MAP_HEIGHT -
-      VIEWPORT_HEIGHT / 2;
-
-    targetX =
-      Math.max(
-        minX,
-        Math.min(
-          maxX,
-          targetX
-        )
-      );
-
-    targetY =
-      Math.max(
-        minY,
-        Math.min(
-          maxY,
-          targetY
-        )
-      );
+    const targetY =
+      cameraY +
+      clickY;
 
     moveTo(
       targetX,
@@ -556,10 +970,11 @@ export default function DevilGameWorld() {
   useEffect(() => {
     return () => {
       if (
-        moveTimerRef.current
+        animationFrameRef.current !==
+        null
       ) {
-        window.clearTimeout(
-          moveTimerRef.current
+        cancelAnimationFrame(
+          animationFrameRef.current
         );
       }
     };
@@ -610,7 +1025,11 @@ export default function DevilGameWorld() {
         }}
       >
         {/* =====================================
-            움직이는 맵
+            World
+
+            transition 없음.
+            실제 위치가 매 프레임 변경되므로
+            자연스럽게 이동한다.
         ===================================== */}
 
         <div
@@ -627,16 +1046,14 @@ export default function DevilGameWorld() {
               DEVIL_MAP_HEIGHT,
 
             transform:
-              `translate(${-cameraX}px, ${-cameraY}px)`,
+              `translate3d(
+                ${-cameraX}px,
+                ${-cameraY}px,
+                0
+              )`,
 
-            transitionProperty:
+            willChange:
               "transform",
-
-            transitionDuration:
-              `${moveDuration}ms`,
-
-            transitionTimingFunction:
-              "linear",
           }}
         >
           <DevilOfficeMap />
@@ -645,21 +1062,28 @@ export default function DevilGameWorld() {
         {/* =====================================
             Player
 
-            월드 안에 있지 않고
-            Viewport 중앙에 고정
+            캐릭터도 transition 사용하지 않음.
+            position 자체가 매 프레임 갱신된다.
         ===================================== */}
 
         <div
           className="
             pointer-events-none
             absolute
-            left-1/2
-            top-1/2
             z-[5000]
           "
           style={{
+            left:
+              playerScreenX,
+
+            top:
+              playerScreenY,
+
             transform:
               "translate(-50%, -100%)",
+
+            willChange:
+              "left, top",
           }}
         >
           <Potato
@@ -672,9 +1096,7 @@ export default function DevilGameWorld() {
         </div>
 
         {/* =====================================
-            Blackout Vision
-
-            플레이어 중심 주변만 보임
+            Blackout
         ===================================== */}
 
         {blackout && (
@@ -688,21 +1110,20 @@ export default function DevilGameWorld() {
             style={{
               background: `
                 radial-gradient(
-                  circle 210px at 50% 50%,
+                  circle 210px
+                  at ${playerScreenX}px ${playerScreenY}px,
 
-                  rgba(0, 0, 0, 0) 0px,
+                  rgba(0,0,0,0) 0px,
 
-                  rgba(0, 0, 0, 0.03) 90px,
+                  rgba(0,0,0,0.03) 90px,
 
-                  rgba(0, 0, 0, 0.15) 125px,
+                  rgba(0,0,0,0.18) 125px,
 
-                  rgba(0, 0, 0, 0.55) 165px,
+                  rgba(0,0,0,0.62) 165px,
 
-                  rgba(0, 0, 0, 0.92) 210px,
+                  rgba(0,0,0,0.95) 210px,
 
-                  rgba(0, 0, 0, 0.99) 260px,
-
-                  rgba(0, 0, 0, 1) 100%
+                  rgba(0,0,0,1) 270px
                 )
               `,
             }}
@@ -721,13 +1142,10 @@ export default function DevilGameWorld() {
             top-4
             z-[8000]
             rounded-xl
-            border
-            border-white/10
             bg-black/70
             px-4
             py-3
             text-white
-            shadow-lg
           "
         >
           <div
@@ -746,7 +1164,7 @@ export default function DevilGameWorld() {
               text-white/60
             "
           >
-            대형 맵 테스트
+            부드러운 이동 테스트
           </div>
 
           <div
@@ -778,15 +1196,12 @@ export default function DevilGameWorld() {
               z-[9000]
               -translate-x-1/2
               rounded-full
-              border
-              border-red-400/30
-              bg-red-950/85
+              bg-red-950/90
               px-5
               py-2
               text-[11px]
               font-bold
               text-red-200
-              shadow-lg
             "
           >
             ⚡ 정전 발생
@@ -808,48 +1223,21 @@ export default function DevilGameWorld() {
             gap-2
           "
         >
-          <div
-            className="
-              rounded-lg
-              bg-black/70
-              px-3
-              py-2
-              text-[10px]
-              text-white
-            "
-          >
-            M : 전체 지도
-          </div>
+          <Control>
+            M : 지도
+          </Control>
 
-          <div
-            className="
-              rounded-lg
-              bg-black/70
-              px-3
-              py-2
-              text-[10px]
-              text-white
-            "
-          >
+          <Control>
             B : 정전
-          </div>
+          </Control>
 
-          <div
-            className="
-              rounded-lg
-              bg-black/70
-              px-3
-              py-2
-              text-[10px]
-              text-white
-            "
-          >
+          <Control>
             R : 미션 재배치
-          </div>
+          </Control>
         </div>
 
         {/* =====================================
-            Map Overlay
+            Map
         ===================================== */}
 
         <GameMapOverlay
@@ -875,6 +1263,32 @@ export default function DevilGameWorld() {
           }}
         />
       </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   Control
+========================================================= */
+
+function Control({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <div
+      className="
+        rounded-lg
+        bg-black/70
+        px-3
+        py-2
+        text-[10px]
+        text-white
+      "
+    >
+      {children}
     </div>
   );
 }
