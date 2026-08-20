@@ -9,42 +9,58 @@ import type {
   HatType,
 } from "@/components/character/Accessories";
 
+/* =========================================================
+   Character Style
+========================================================= */
+
 export type CharacterStyle = {
-  glasses:
-    GlassesType;
-
-  hat:
-    HatType;
-
-  ribbon:
-    boolean;
-
-  tie:
-    boolean;
-
-  color:
-    PotatoColor;
+  glasses: GlassesType;
+  hat: HatType;
+  ribbon: boolean;
+  tie: boolean;
+  color: PotatoColor;
 };
 
+/* =========================================================
+   Props
+========================================================= */
+
 type CharacterCustomizerProps = {
-  nickname:
-    string;
+  nickname: string;
 
   setNickname: (
     nickname: string
   ) => void;
 
-  style:
-    CharacterStyle;
+  style: CharacterStyle;
 
   setStyle: (
-    style:
-      CharacterStyle
+    style: CharacterStyle
   ) => void;
 
-  onEnter:
-    () => void;
+  onEnter: () => void;
 };
+
+/* =========================================================
+   이름 표시 함수
+========================================================= */
+
+function getDisplayName(
+  nickname: string
+) {
+  const trimmed =
+    nickname.trim();
+
+  if (!trimmed) {
+    return "____ 감자";
+  }
+
+  return `${trimmed} 감자`;
+}
+
+/* =========================================================
+   CharacterCustomizer
+========================================================= */
 
 export default function CharacterCustomizer({
   nickname,
@@ -64,8 +80,39 @@ export default function CharacterCustomizer({
   };
 
   const canEnter =
-    nickname.trim().length >
-    0;
+    nickname.trim().length > 0;
+
+  /* ======================================================
+     닉네임 입력 처리
+  ====================================================== */
+
+  const handleNicknameChange = (
+    value: string
+  ) => {
+    /*
+     * 사용자가 실수로
+     * "감자"까지 입력했다면 제거
+     *
+     * 예:
+     * 퇴근 감자
+     * →
+     * 퇴근
+     */
+    const cleaned =
+      value
+        .replace(
+          /\s*감자\s*$/g,
+          ""
+        )
+        .slice(
+          0,
+          10
+        );
+
+    setNickname(
+      cleaned
+    );
+  };
 
   return (
     <main
@@ -94,9 +141,9 @@ export default function CharacterCustomizer({
           md:grid-cols-[0.9fr_1.1fr]
         "
       >
-        {/* ===============================
-            Preview
-        =============================== */}
+        {/* =========================================
+            캐릭터 미리보기
+        ========================================= */}
 
         <section
           className="
@@ -113,15 +160,26 @@ export default function CharacterCustomizer({
             md:border-r
           "
         >
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400">
+          <div
+            className="
+              text-[10px]
+              font-semibold
+              uppercase
+              tracking-[0.22em]
+              text-zinc-400
+            "
+          >
             Character Preview
           </div>
+
+          {/* 캐릭터 */}
 
           <div className="mt-12 scale-[1.8]">
             <Potato
               name={
-                nickname.trim() ||
-                "감자"
+                getDisplayName(
+                  nickname
+                )
               }
               glasses={
                 style.glasses
@@ -141,6 +199,8 @@ export default function CharacterCustomizer({
             />
           </div>
 
+          {/* 설명 */}
+
           <div
             className="
               mt-20
@@ -158,172 +218,268 @@ export default function CharacterCustomizer({
           >
             오늘 출근할 감자를
             <br />
-            원하는 모습으로
-            꾸며보세요.
+            원하는 모습으로 꾸며보세요.
           </div>
         </section>
 
-        {/* ===============================
-            Settings
-        =============================== */}
+        {/* =========================================
+            설정
+        ========================================= */}
 
         <section className="p-7 sm:p-9">
-          <div className="text-[10px] font-bold tracking-[0.18em] text-zinc-400">
+          <div
+            className="
+              text-[10px]
+              font-bold
+              tracking-[0.18em]
+              text-zinc-400
+            "
+          >
             GAMJA OFFICE
           </div>
 
-          <h1 className="mt-2 text-2xl font-bold">
+          <h1
+            className="
+              mt-2
+              text-2xl
+              font-bold
+            "
+          >
             출근 준비
           </h1>
 
-          <p className="mt-2 text-sm text-zinc-500">
-            닉네임과 캐릭터를
-            설정하고 입장하세요.
+          <p
+            className="
+              mt-2
+              text-sm
+              text-zinc-500
+            "
+          >
+            닉네임과 캐릭터를 설정하고 입장하세요.
           </p>
 
-          {/* 닉네임 */}
+          {/* =====================================
+              닉네임
+          ===================================== */}
 
           <div className="mt-7">
             <label
               htmlFor="nickname"
-              className="text-xs font-semibold"
+              className="
+                text-xs
+                font-semibold
+              "
             >
               닉네임
             </label>
 
-            <input
-              id="nickname"
-              value={
-                nickname
-              }
-              onChange={(
-                event
-              ) =>
-                setNickname(
-                  event.target
-                    .value
-                )
-              }
-              onKeyDown={(
-                event
-              ) => {
-                if (
-                  event.key ===
-                    "Enter" &&
-                  canEnter
-                ) {
-                  onEnter();
-                }
-              }}
-              maxLength={
-                12
-              }
-              placeholder="닉네임을 입력하세요"
+            {/* 입력창 */}
+
+            <div
               className="
                 mt-2
-                w-full
+                flex
+                overflow-hidden
                 rounded-xl
                 border
                 border-zinc-300
-                px-4
-                py-3
-                text-sm
-                outline-none
-                focus:border-zinc-500
-                focus:ring-4
-                focus:ring-zinc-100
+                bg-white
+                transition
+                focus-within:border-zinc-500
+                focus-within:ring-4
+                focus-within:ring-zinc-100
               "
-            />
+            >
+              <input
+                id="nickname"
+                value={
+                  nickname
+                }
+                onChange={(
+                  event
+                ) => {
+                  handleNicknameChange(
+                    event.target
+                      .value
+                  );
+                }}
+                onKeyDown={(
+                  event
+                ) => {
+                  if (
+                    event.key ===
+                      "Enter" &&
+                    canEnter
+                  ) {
+                    onEnter();
+                  }
+                }}
+                maxLength={
+                  10
+                }
+                placeholder="퇴근"
+                className="
+                  min-w-0
+                  flex-1
+                  border-0
+                  bg-transparent
+                  px-4
+                  py-3
+                  text-sm
+                  outline-none
+                "
+              />
 
-            <div className="mt-1 text-right text-[10px] text-zinc-400">
-              {
-                nickname.length
-              }
-              /12
+              {/* 감자 고정 */}
+
+              <div
+                className="
+                  flex
+                  items-center
+                  border-l
+                  border-zinc-200
+                  bg-zinc-50
+                  px-4
+                  text-sm
+                  font-semibold
+                  text-zinc-600
+                "
+              >
+                감자
+              </div>
+            </div>
+
+            {/* 이름 미리보기 */}
+
+            <div
+              className="
+                mt-2
+                flex
+                items-center
+                justify-between
+                gap-3
+              "
+            >
+              <div
+                className="
+                  min-w-0
+                  text-[10px]
+                  text-zinc-400
+                "
+              >
+                게임에서는{" "}
+                <span
+                  className="
+                    font-medium
+                    text-zinc-600
+                  "
+                >
+                  {getDisplayName(
+                    nickname
+                  )}
+                </span>
+                로 표시됩니다.
+              </div>
+
+              <div
+                className="
+                  shrink-0
+                  text-[10px]
+                  text-zinc-400
+                "
+              >
+                {
+                  nickname.length
+                }
+                /10
+              </div>
             </div>
           </div>
 
-          {/* ===============================
+          {/* =====================================
               감자 색
-          =============================== */}
-<OptionSection title="감자 색">
-  <ColorButton
-    label="기본"
-    color="#d9a15f"
-    active={
-      style.color ===
-      "default"
-    }
-    onClick={() =>
-      updateStyle({
-        color:
-          "default",
-      })
-    }
-  />
+          ===================================== */}
 
-  <ColorButton
-    label="황금"
-    color="#e5bb55"
-    active={
-      style.color ===
-      "gold"
-    }
-    onClick={() =>
-      updateStyle({
-        color:
-          "gold",
-      })
-    }
-  />
+          <OptionSection title="감자 색">
+            <ColorButton
+              label="기본"
+              color="#d9a15f"
+              active={
+                style.color ===
+                "default"
+              }
+              onClick={() =>
+                updateStyle({
+                  color:
+                    "default",
+                })
+              }
+            />
 
-  <ColorButton
-    label="고구마"
-    color="#c98266"
-    active={
-      style.color ===
-      "sweet"
-    }
-    onClick={() =>
-      updateStyle({
-        color:
-          "sweet",
-      })
-    }
-  />
+            <ColorButton
+              label="황금"
+              color="#e5bb55"
+              active={
+                style.color ===
+                "gold"
+              }
+              onClick={() =>
+                updateStyle({
+                  color:
+                    "gold",
+                })
+              }
+            />
 
-  <ColorButton
-    label="자색"
-    color="#9a769c"
-    active={
-      style.color ===
-      "purple"
-    }
-    onClick={() =>
-      updateStyle({
-        color:
-          "purple",
-      })
-    }
-  />
+            <ColorButton
+              label="고구마"
+              color="#c98266"
+              active={
+                style.color ===
+                "sweet"
+              }
+              onClick={() =>
+                updateStyle({
+                  color:
+                    "sweet",
+                })
+              }
+            />
 
-  <ColorButton
-    label="탄감자"
-    color="#5c4033"
-    active={
-      style.color ===
-      "burnt"
-    }
-    onClick={() =>
-      updateStyle({
-        color:
-          "burnt",
-      })
-    }
-  />
-</OptionSection>
+            <ColorButton
+              label="자색"
+              color="#9a769c"
+              active={
+                style.color ===
+                "purple"
+              }
+              onClick={() =>
+                updateStyle({
+                  color:
+                    "purple",
+                })
+              }
+            />
 
-          {/* 안경 */}
+            <ColorButton
+              label="탄감자"
+              color="#5c4033"
+              active={
+                style.color ===
+                "burnt"
+              }
+              onClick={() =>
+                updateStyle({
+                  color:
+                    "burnt",
+                })
+              }
+            />
+          </OptionSection>
+
+          {/* =====================================
+              안경
+          ===================================== */}
 
           <OptionSection title="안경">
             <OptionButton
@@ -372,7 +528,9 @@ export default function CharacterCustomizer({
             </OptionButton>
           </OptionSection>
 
-          {/* 모자 */}
+          {/* =====================================
+              모자
+          ===================================== */}
 
           <OptionSection title="모자">
             <OptionButton
@@ -421,7 +579,9 @@ export default function CharacterCustomizer({
             </OptionButton>
           </OptionSection>
 
-          {/* 장식 */}
+          {/* =====================================
+              장식
+          ===================================== */}
 
           <OptionSection title="장식">
             <OptionButton
@@ -453,26 +613,46 @@ export default function CharacterCustomizer({
             </OptionButton>
           </OptionSection>
 
+          {/* =====================================
+              초기화
+          ===================================== */}
+
           <button
             type="button"
             onClick={() =>
               setStyle({
                 glasses:
                   "none",
+
                 hat:
                   "none",
+
                 ribbon:
                   false,
+
                 tie:
                   false,
+
                 color:
                   "default",
               })
             }
-            className="mt-6 text-[11px] text-zinc-400 underline"
+            className="
+              mt-6
+              text-[11px]
+              text-zinc-400
+              underline
+              underline-offset-4
+              transition
+              hover:text-zinc-700
+            "
           >
             꾸미기 초기화
           </button>
+
+          {/* =====================================
+              입장
+          ===================================== */}
 
           <button
             type="button"
@@ -492,7 +672,9 @@ export default function CharacterCustomizer({
               text-sm
               font-semibold
               text-white
+              transition
               hover:bg-zinc-800
+              disabled:cursor-not-allowed
               disabled:bg-zinc-300
             "
           >
@@ -504,6 +686,10 @@ export default function CharacterCustomizer({
   );
 }
 
+/* =========================================================
+   Option Section
+========================================================= */
+
 function OptionSection({
   title,
   children,
@@ -514,16 +700,32 @@ function OptionSection({
 }) {
   return (
     <div className="mt-5">
-      <div className="mb-2 text-xs font-semibold">
+      <div
+        className="
+          mb-2
+          text-xs
+          font-semibold
+        "
+      >
         {title}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="
+          flex
+          flex-wrap
+          gap-2
+        "
+      >
         {children}
       </div>
     </div>
   );
 }
+
+/* =========================================================
+   Option Button
+========================================================= */
 
 function OptionButton({
   active,
@@ -538,18 +740,31 @@ function OptionButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={
+        onClick
+      }
       className={`
         rounded-lg
         border
         px-3
         py-2
         text-xs
+        transition
 
         ${
           active
-            ? "border-zinc-900 bg-zinc-900 text-white"
-            : "border-zinc-200 bg-white text-zinc-600"
+            ? `
+              border-zinc-900
+              bg-zinc-900
+              text-white
+            `
+            : `
+              border-zinc-200
+              bg-white
+              text-zinc-600
+              hover:border-zinc-300
+              hover:bg-zinc-50
+            `
         }
       `}
     >
@@ -557,6 +772,10 @@ function OptionButton({
     </button>
   );
 }
+
+/* =========================================================
+   Color Button
+========================================================= */
 
 function ColorButton({
   label,
@@ -572,7 +791,9 @@ function ColorButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={
+        onClick
+      }
       className={`
         flex
         items-center
@@ -582,11 +803,22 @@ function ColorButton({
         px-3
         py-2
         text-xs
+        transition
 
         ${
           active
-            ? "border-zinc-900 bg-zinc-100 text-zinc-900"
-            : "border-zinc-200 bg-white text-zinc-600"
+            ? `
+              border-zinc-900
+              bg-zinc-100
+              text-zinc-900
+            `
+            : `
+              border-zinc-200
+              bg-white
+              text-zinc-600
+              hover:border-zinc-300
+              hover:bg-zinc-50
+            `
         }
       `}
     >

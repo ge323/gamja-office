@@ -78,9 +78,9 @@ export default function Potato({
           닉네임
       ========================================= */}
 
-      <div className="mb-1 text-[11px] font-medium text-zinc-600">
-        {name}
-      </div>
+    <div className="-mb-1 text-[11px] font-medium text-zinc-600">
+    {name}
+    </div>
 
       {/* =========================================
           캐릭터 전체

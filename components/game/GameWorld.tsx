@@ -6,6 +6,11 @@ import {
   useState,
 } from "react";
 
+import {
+  io,
+  type Socket,
+} from "socket.io-client";
+
 import Potato from "@/components/character/Potato";
 
 import type {
@@ -35,6 +40,21 @@ type GameWorldProps = {
     CharacterStyle;
 };
 
+type RemotePlayer = {
+  id: string;
+
+  nickname: string;
+
+  x: number;
+
+  y: number;
+
+  characterStyle:
+    CharacterStyle;
+
+  moveDuration?: number;
+};
+
 /* =========================================================
    World
 ========================================================= */
@@ -59,6 +79,28 @@ const MAX_MOVE_TIME =
   1800;
 
 /* =========================================================
+   Socket Server
+========================================================= */
+
+const SOCKET_URL =
+  "http://localhost:4000";
+
+/* =========================================================
+   이름
+========================================================= */
+
+function getDisplayName(
+  nickname: string
+) {
+  const trimmed =
+    nickname.trim();
+
+  return trimmed
+    ? `${trimmed} 감자`
+    : "감자";
+}
+
+/* =========================================================
    GameWorld
 ========================================================= */
 
@@ -77,6 +119,11 @@ export default function GameWorld({
 
   const worldRef =
     useRef<HTMLDivElement | null>(
+      null
+    );
+
+  const socketRef =
+    useRef<Socket | null>(
       null
     );
 
@@ -106,7 +153,29 @@ export default function GameWorld({
     useState(1);
 
   /* ======================================================
-     Player State
+     내 Socket ID
+  ====================================================== */
+
+  const [
+    mySocketId,
+    setMySocketId,
+  ] =
+    useState("");
+
+  /* ======================================================
+     다른 플레이어
+  ====================================================== */
+
+  const [
+    remotePlayers,
+    setRemotePlayers,
+  ] =
+    useState<
+      RemotePlayer[]
+    >([]);
+
+  /* ======================================================
+     내 위치
   ====================================================== */
 
   const [
@@ -131,7 +200,7 @@ export default function GameWorld({
     useState(600);
 
   /* ======================================================
-     Interaction State
+     상호작용 말풍선
   ====================================================== */
 
   const [
@@ -141,7 +210,167 @@ export default function GameWorld({
     useState("");
 
   /* ======================================================
-     Responsive Scale
+     Socket 연결
+  ====================================================== */
+
+  useEffect(() => {
+    const socket =
+      io(
+        SOCKET_URL,
+        {
+          transports: [
+            "websocket",
+          ],
+        }
+      );
+
+    socketRef.current =
+      socket;
+
+    /* =====================================
+       연결 성공
+    ===================================== */
+
+    socket.on(
+      "connect",
+      () => {
+        console.log(
+          "🥔 서버 연결:",
+          socket.id
+        );
+
+        setMySocketId(
+          socket.id ?? ""
+        );
+
+        /* ===============================
+           입장 정보 전송
+        =============================== */
+
+        socket.emit(
+          "player:join",
+          {
+            nickname,
+
+            x:
+              position.x,
+
+            y:
+              position.y,
+
+            characterStyle,
+          }
+        );
+      }
+    );
+
+    /* =====================================
+       전체 플레이어 목록
+    ===================================== */
+
+    socket.on(
+      "players:update",
+      (
+        players:
+          RemotePlayer[]
+      ) => {
+        setRemotePlayers(
+          players
+        );
+      }
+    );
+
+    /* =====================================
+       다른 플레이어 이동
+    ===================================== */
+
+    socket.on(
+      "player:moved",
+      (data: {
+        id: string;
+        x: number;
+        y: number;
+        duration: number;
+      }) => {
+        setRemotePlayers(
+          previous =>
+            previous.map(
+              player =>
+                player.id ===
+                data.id
+                  ? {
+                      ...player,
+
+                      x:
+                        data.x,
+
+                      y:
+                        data.y,
+
+                      moveDuration:
+                        data.duration,
+                    }
+                  : player
+            )
+        );
+      }
+    );
+
+    /* =====================================
+       연결 종료
+    ===================================== */
+
+    socket.on(
+      "disconnect",
+      () => {
+        console.log(
+          "서버 연결 종료"
+        );
+      }
+    );
+
+    /* =====================================
+       Cleanup
+    ===================================== */
+
+    return () => {
+      socket.disconnect();
+
+      socketRef.current =
+        null;
+    };
+
+    /*
+     * 게임 입장할 때 한 번만 연결
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ======================================================
+     꾸미기 정보 서버 동기화
+  ====================================================== */
+
+  useEffect(() => {
+    const socket =
+      socketRef.current;
+
+    if (
+      !socket ||
+      !socket.connected
+    ) {
+      return;
+    }
+
+    socket.emit(
+      "player:style",
+      characterStyle
+    );
+  }, [
+    characterStyle,
+  ]);
+
+  /* ======================================================
+     반응형 Scale
   ====================================================== */
 
   useEffect(() => {
@@ -160,6 +389,7 @@ export default function GameWorld({
         const nextScale =
           Math.min(
             1,
+
             availableWidth /
               WORLD_WIDTH
           );
@@ -185,7 +415,7 @@ export default function GameWorld({
   }, []);
 
   /* ======================================================
-     Interaction Bubble
+     말풍선
   ====================================================== */
 
   const showInteraction = (
@@ -210,60 +440,129 @@ export default function GameWorld({
             ""
           );
         },
-        2000
+        2200
       );
   };
 
   /* ======================================================
-     Interaction Execute
+     랜덤 메시지
+  ====================================================== */
+
+  const getRandomMessage = (
+    messages: string[]
+  ) => {
+    const index =
+      Math.floor(
+        Math.random() *
+          messages.length
+      );
+
+    return messages[
+      index
+    ];
+  };
+
+  /* ======================================================
+     오브젝트 상호작용
   ====================================================== */
 
   const executeInteraction = (
     type:
       OfficeInteractionType
   ) => {
+    /* =====================================
+       커피
+    ===================================== */
+
     if (
       type ===
       "coffee"
     ) {
+      const messages = [
+        "☕ 커피 충전 완료!",
+        "☕ 역시 회사는 커피지.",
+        "☕ 따뜻하다...",
+        "☕ 한 잔만 더 마실까?",
+        "⚡ 카페인이 온몸에 퍼진다!",
+        "☕ 나는 이제 감자가 아니라 커피콩이다...",
+        "😌 커피 한 모금의 여유.",
+        "☕ 오늘 몇 잔째더라...?",
+      ];
+
       showInteraction(
-        "☕ 커피 충전 완료!"
+        getRandomMessage(
+          messages
+        )
       );
 
       return;
     }
+
+    /* =====================================
+       업무
+    ===================================== */
 
     if (
       type ===
       "chair"
     ) {
+      const messages = [
+        "💻 열심히 일하는 중!",
+        "💭 일하는 척하는 중...",
+        "👀 팀장님 지나가신다. 집중!",
+        "⌨️ 타닥타닥...",
+        "🥱 퇴근하고 싶다...",
+        "💼 오늘도 월급값 하는 감자.",
+        "📊 이 자료는 언제 끝나지...",
+        "🫠 집에 가고 싶다.",
+        "🧠 갑자기 집중력이 생겼다!",
+        "💭 점심 뭐 먹지?",
+      ];
+
       showInteraction(
-        "🪑 잠깐 쉬는 중..."
+        getRandomMessage(
+          messages
+        )
       );
 
       return;
     }
 
+    /* =====================================
+       복사기
+    ===================================== */
+
     if (
       type ===
       "copier"
     ) {
+      const messages = [
+        "📄 복사 완료!",
+        "🖨️ 위이잉... 출력 완료.",
+        "😵 용지가 걸렸습니다...",
+        "🖨️ 왜 하필 지금 고장이지?",
+        "📄 종이가 어디로 사라진 거지?",
+        "🖨️ 복사기가 나를 싫어한다.",
+        "📑 서류가 한 장 늘어났다.",
+        "🖨️ 오늘은 말을 잘 듣네.",
+      ];
+
       showInteraction(
-        "📄 복사 완료!"
+        getRandomMessage(
+          messages
+        )
       );
     }
   };
 
   /* ======================================================
-     Move To
-
-     일반 이동과 오브젝트 이동에서
-     공통으로 사용하는 함수
+     공통 이동
   ====================================================== */
 
   const moveTo = (
     targetX: number,
     targetY: number,
+
     interaction:
       OfficeInteractionType | null =
       null
@@ -282,9 +581,9 @@ export default function GameWorld({
           dy * dy
       );
 
-    /* ================================================
-       이미 근처에 있음
-    ================================================ */
+    /* =====================================
+       이미 근처
+    ===================================== */
 
     if (
       distance < 8
@@ -304,9 +603,9 @@ export default function GameWorld({
       return;
     }
 
-    /* ================================================
-       이동시간 계산
-    ================================================ */
+    /* =====================================
+       이동시간
+    ===================================== */
 
     const calculatedDuration =
       (
@@ -318,15 +617,16 @@ export default function GameWorld({
     const duration =
       Math.max(
         MIN_MOVE_TIME,
+
         Math.min(
           MAX_MOVE_TIME,
           calculatedDuration
         )
       );
 
-    /* ================================================
+    /* =====================================
        기존 이동 취소
-    ================================================ */
+    ===================================== */
 
     if (
       moveTimerRef.current
@@ -335,10 +635,6 @@ export default function GameWorld({
         moveTimerRef.current
       );
     }
-
-    /* ================================================
-       이동 준비
-    ================================================ */
 
     setInteractionMessage(
       ""
@@ -355,9 +651,9 @@ export default function GameWorld({
       true
     );
 
-    /* ================================================
-       이동
-    ================================================ */
+    /* =====================================
+       내 위치 변경
+    ===================================== */
 
     setPosition({
       x:
@@ -367,9 +663,26 @@ export default function GameWorld({
         targetY,
     });
 
-    /* ================================================
+    /* =====================================
+       ★ 다른 사람에게 이동 전달
+    ===================================== */
+
+    socketRef.current?.emit(
+      "player:move",
+      {
+        x:
+          targetX,
+
+        y:
+          targetY,
+
+        duration,
+      }
+    );
+
+    /* =====================================
        도착
-    ================================================ */
+    ===================================== */
 
     moveTimerRef.current =
       window.setTimeout(
@@ -397,7 +710,7 @@ export default function GameWorld({
   };
 
   /* ======================================================
-     Object Interaction
+     오브젝트 클릭
   ====================================================== */
 
   const handleInteract = (
@@ -412,7 +725,7 @@ export default function GameWorld({
   };
 
   /* ======================================================
-     World Click
+     바닥 클릭
   ====================================================== */
 
   const handleWorldClick = (
@@ -429,10 +742,6 @@ export default function GameWorld({
     const clickedElement =
       event.target as HTMLElement;
 
-    /*
-     * 오브젝트를 직접 클릭했다면
-     * OfficeMap에서 따로 처리
-     */
     if (
       clickedElement.closest(
         "[data-no-move]"
@@ -443,12 +752,6 @@ export default function GameWorld({
 
     const rect =
       world.getBoundingClientRect();
-
-    /* ================================================
-       Scale된 화면 좌표
-       →
-       실제 1100 x 650 좌표
-    ================================================ */
 
     let targetX =
       (
@@ -464,16 +767,18 @@ export default function GameWorld({
       ) /
       scale;
 
-    /* ================================================
-       World Boundary
-    ================================================ */
+    /* =====================================
+       경계
+    ===================================== */
 
     targetX =
       Math.max(
         45,
+
         Math.min(
           WORLD_WIDTH -
             45,
+
           targetX
         )
       );
@@ -481,17 +786,14 @@ export default function GameWorld({
     targetY =
       Math.max(
         110,
+
         Math.min(
           WORLD_HEIGHT -
             25,
+
           targetY
         )
       );
-
-    /* ================================================
-       일반 이동이면
-       예약 상호작용 취소
-    ================================================ */
 
     pendingInteractionRef.current =
       null;
@@ -528,6 +830,17 @@ export default function GameWorld({
   }, []);
 
   /* ======================================================
+     다른 사용자만 추출
+  ====================================================== */
+
+  const otherPlayers =
+    remotePlayers.filter(
+      player =>
+        player.id !==
+        mySocketId
+    );
+
+  /* ======================================================
      Render
   ====================================================== */
 
@@ -546,10 +859,6 @@ export default function GameWorld({
         py-4
       "
     >
-      {/* =============================================
-          Scale Wrapper
-      ============================================= */}
-
       <div
         style={{
           width:
@@ -561,13 +870,6 @@ export default function GameWorld({
             scale,
         }}
       >
-        {/* ===========================================
-            World
-
-            실제 내부 좌표는 항상
-            1100 × 650
-        =========================================== */}
-
         <div
           ref={
             worldRef
@@ -608,7 +910,94 @@ export default function GameWorld({
           />
 
           {/* =========================================
-              Player
+              다른 플레이어
+          ========================================= */}
+
+          {otherPlayers.map(
+            player => (
+              <div
+                key={
+                  player.id
+                }
+                className="
+                  pointer-events-none
+                  absolute
+                "
+                style={{
+                  left:
+                    player.x,
+
+                  top:
+                    player.y,
+
+                  transform:
+                    "translate(-50%, -100%)",
+
+                  transitionProperty:
+                    "left, top",
+
+                  transitionDuration:
+                    `${
+                      player.moveDuration ??
+                      300
+                    }ms`,
+
+                  transitionTimingFunction:
+                    "linear",
+
+                  zIndex:
+                    Math.round(
+                      player.y
+                    ) +
+                    100,
+                }}
+              >
+                <Potato
+                  name={
+                    getDisplayName(
+                      player.nickname
+                    )
+                  }
+                  glasses={
+                    player
+                      .characterStyle
+                      ?.glasses ??
+                    "none"
+                  }
+                  hat={
+                    player
+                      .characterStyle
+                      ?.hat ??
+                    "none"
+                  }
+                  ribbon={
+                    player
+                      .characterStyle
+                      ?.ribbon ??
+                    false
+                  }
+                  tie={
+                    player
+                      .characterStyle
+                      ?.tie ??
+                    false
+                  }
+                  color={
+                    player
+                      .characterStyle
+                      ?.color ??
+                    "default"
+                  }
+                  moving={
+                    false
+                  }
+                />
+              </div>
+            )
+          )}
+
+          {/* =========================================
+              내 플레이어
           ========================================= */}
 
           <div
@@ -639,33 +1028,70 @@ export default function GameWorld({
                 100,
             }}
           >
-            {/* =====================================
-                Interaction Bubble
-            ===================================== */}
-
             <InteractionBubble
               text={
                 interactionMessage
               }
             />
 
-            {/* =====================================
-                Character
-            ===================================== */}
-
             <Potato
-  name={nickname}
-  glasses={characterStyle.glasses}
-  hat={characterStyle.hat}
-  ribbon={characterStyle.ribbon}
-  tie={characterStyle.tie}
-  color={characterStyle.color}
-  moving={moving}
-/>
+              name={
+                getDisplayName(
+                  nickname
+                )
+              }
+              glasses={
+                characterStyle.glasses
+              }
+              hat={
+                characterStyle.hat
+              }
+              ribbon={
+                characterStyle.ribbon
+              }
+              tie={
+                characterStyle.tie
+              }
+              color={
+                characterStyle.color
+              }
+              moving={
+                moving
+              }
+            />
           </div>
 
           {/* =========================================
-              Help
+              접속 인원
+          ========================================= */}
+
+          <div
+            data-no-move
+            className="
+              absolute
+              right-[16px]
+              bottom-[16px]
+              z-[4000]
+              rounded-lg
+              border
+              border-zinc-200
+              bg-white/90
+              px-3
+              py-2
+              text-[10px]
+              text-zinc-500
+              shadow-sm
+            "
+          >
+            🟢{" "}
+            {
+              remotePlayers.length
+            }
+            명 접속
+          </div>
+
+          {/* =========================================
+              안내
           ========================================= */}
 
           <div
@@ -685,10 +1111,9 @@ export default function GameWorld({
               text-[10px]
               text-zinc-500
               shadow-sm
-              backdrop-blur
             "
           >
-            바닥 또는 오브젝트를 클릭해보세요.
+            바닥을 클릭해 이동하거나 사무실 물건을 눌러보세요.
           </div>
         </div>
       </div>

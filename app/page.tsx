@@ -12,34 +12,59 @@ import CharacterCustomizer, {
 import GameWorld from "@/components/game/GameWorld";
 
 /* =========================================================
-   저장할 데이터 타입
+   저장 데이터
 ========================================================= */
 
 type SavedPlayerData = {
   nickname: string;
-
-  characterStyle:
-    CharacterStyle;
+  characterStyle: CharacterStyle;
 };
 
 /* =========================================================
-   LocalStorage Key
+   LocalStorage
 ========================================================= */
 
 const STORAGE_KEY =
   "gamja-office-player";
 
 /* =========================================================
-   기본 캐릭터 설정
+   기본 스타일
 ========================================================= */
 
-const DEFAULT_CHARACTER_STYLE: CharacterStyle = {
-  glasses: "none",
-  hat: "none",
-  ribbon: false,
-  tie: false,
-  color: "default",
-};
+const DEFAULT_CHARACTER_STYLE: CharacterStyle =
+  {
+    glasses:
+      "none",
+
+    hat:
+      "none",
+
+    ribbon:
+      false,
+
+    tie:
+      false,
+
+    color:
+      "default",
+  };
+
+/* =========================================================
+   이름 표시
+========================================================= */
+
+function getDisplayName(
+  nickname: string
+) {
+  const trimmed =
+    nickname.trim();
+
+  if (!trimmed) {
+    return "감자";
+  }
+
+  return `${trimmed} 감자`;
+}
 
 /* =========================================================
    Home
@@ -47,9 +72,7 @@ const DEFAULT_CHARACTER_STYLE: CharacterStyle = {
 
 export default function Home() {
   /* ======================================================
-     LocalStorage 로딩 완료 여부
-
-     Next.js hydration 문제를 피하기 위해 사용
+     저장정보 로딩
   ====================================================== */
 
   const [
@@ -59,7 +82,7 @@ export default function Home() {
     useState(false);
 
   /* ======================================================
-     입장 여부
+     게임 입장 여부
   ====================================================== */
 
   const [
@@ -79,7 +102,7 @@ export default function Home() {
     useState("");
 
   /* ======================================================
-     캐릭터 외형
+     캐릭터 설정
   ====================================================== */
 
   const [
@@ -91,9 +114,7 @@ export default function Home() {
     );
 
   /* ======================================================
-     처음 페이지 실행
-
-     LocalStorage에 저장된 캐릭터가 있으면 불러오기
+     저장정보 불러오기
   ====================================================== */
 
   useEffect(() => {
@@ -103,40 +124,43 @@ export default function Home() {
           STORAGE_KEY
         );
 
-      /*
-       * 저장된 데이터 없음
-       */
       if (!saved) {
-        setLoaded(true);
+        setLoaded(
+          true
+        );
 
         return;
       }
 
-      /*
-       * JSON 문자열
-       * →
-       * JavaScript 객체
-       */
       const parsed =
         JSON.parse(
           saved
         ) as SavedPlayerData;
 
-      /*
-       * 닉네임 복원
-       */
+      /* 닉네임 */
+
       if (
         typeof parsed.nickname ===
         "string"
       ) {
+        /*
+         * 예전 저장 데이터에
+         * "LOL 감자" 등이 들어있을 경우도
+         * 감자 부분 제거
+         */
+        const cleanedNickname =
+          parsed.nickname.replace(
+            /\s*감자\s*$/g,
+            ""
+          );
+
         setNickname(
-          parsed.nickname
+          cleanedNickname
         );
       }
 
-      /*
-       * 캐릭터 설정 복원
-       */
+      /* 외형 */
+
       if (
         parsed.characterStyle
       ) {
@@ -149,28 +173,27 @@ export default function Home() {
       error
     ) {
       console.error(
-        "저장된 캐릭터 정보를 불러오지 못했습니다.",
+        "저장된 감자 정보를 불러오지 못했습니다.",
         error
       );
 
-      /*
-       * 저장 데이터가 깨졌다면 제거
-       */
       window.localStorage.removeItem(
         STORAGE_KEY
       );
     }
 
-    setLoaded(true);
+    setLoaded(
+      true
+    );
   }, []);
 
   /* ======================================================
-     Player 저장
+     저장
   ====================================================== */
 
   const savePlayer = (
     nextNickname: string,
-    nextCharacterStyle:
+    nextStyle:
       CharacterStyle
   ) => {
     const data:
@@ -179,7 +202,7 @@ export default function Home() {
           nextNickname,
 
         characterStyle:
-          nextCharacterStyle,
+          nextStyle,
       };
 
     try {
@@ -193,55 +216,50 @@ export default function Home() {
       error
     ) {
       console.error(
-        "캐릭터 정보를 저장하지 못했습니다.",
+        "감자 정보를 저장하지 못했습니다.",
         error
       );
     }
   };
 
   /* ======================================================
-     사무실 입장
+     입장
   ====================================================== */
 
   const handleEnter =
     () => {
-      const trimmedNickname =
+      let trimmed =
         nickname.trim();
 
       /*
-       * 닉네임 없으면 입장 불가
+       * 혹시 감자를 직접 입력했다면 제거
        */
-      if (
-        !trimmedNickname
-      ) {
+      trimmed =
+        trimmed.replace(
+          /\s*감자\s*$/g,
+          ""
+        );
+
+      if (!trimmed) {
         return;
       }
 
-      /*
-       * 앞뒤 공백 제거
-       */
       setNickname(
-        trimmedNickname
+        trimmed
       );
 
-      /*
-       * LocalStorage 저장
-       */
       savePlayer(
-        trimmedNickname,
+        trimmed,
         characterStyle
       );
 
-      /*
-       * 게임 입장
-       */
       setEntered(
         true
       );
     };
 
   /* ======================================================
-     저장된 정보 삭제
+     저장 정보 초기화
   ====================================================== */
 
   const handleResetPlayer =
@@ -273,9 +291,7 @@ export default function Home() {
     };
 
   /* ======================================================
-     LocalStorage 확인 전
-
-     잠깐 빈 화면이 나타나는 것을 방지
+     로딩
   ====================================================== */
 
   if (!loaded) {
@@ -326,11 +342,7 @@ export default function Home() {
           }
         />
 
-        {/* =========================================
-            저장 정보 초기화
-
-            저장된 닉네임이 있을 때만 표시
-        ========================================= */}
+        {/* 저장정보 초기화 */}
 
         {nickname && (
           <button
@@ -363,7 +375,7 @@ export default function Home() {
   }
 
   /* ======================================================
-     게임
+     게임 화면
   ====================================================== */
 
   return (
@@ -396,9 +408,7 @@ export default function Home() {
             py-3
           "
         >
-          {/* =====================================
-              Logo
-          ===================================== */}
+          {/* 로고 */}
 
           <div>
             <div
@@ -421,9 +431,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* =====================================
-              User
-          ===================================== */}
+          {/* 사용자 */}
 
           <div
             className="
@@ -432,8 +440,6 @@ export default function Home() {
               gap-4
             "
           >
-            {/* 사용자 상태 */}
-
             <div className="text-right">
               <div
                 className="
@@ -442,7 +448,9 @@ export default function Home() {
                   text-zinc-700
                 "
               >
-                {nickname}
+                {getDisplayName(
+                  nickname
+                )}
               </div>
 
               <div
@@ -469,9 +477,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* =================================
-                꾸미기
-            ================================= */}
+            {/* 꾸미기 */}
 
             <button
               type="button"
