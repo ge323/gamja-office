@@ -13,7 +13,9 @@ import DevilOfficeMap, {
   DEVIL_MAP_WIDTH,
 } from "./DevilOfficeMap";
 
-import GameMapOverlay from "./GameMapOverlay";
+import GameMapOverlay, {
+  type MissionMarker,
+} from "./GameMapOverlay";
 
 /* =========================================================
    Types
@@ -22,6 +24,12 @@ import GameMapOverlay from "./GameMapOverlay";
 type Position = {
   x: number;
   y: number;
+};
+
+type MissionSpawn = {
+  id: string;
+  name: string;
+  positions: Position[];
 };
 
 /* =========================================================
@@ -39,6 +47,110 @@ const PLAYER_SPEED = 300;
 
 const MIN_MOVE_TIME = 150;
 const MAX_MOVE_TIME = 2200;
+
+/* =========================================================
+   미션 위치 후보
+========================================================= */
+
+const MISSION_SPAWNS:
+  MissionSpawn[] = [
+  {
+    id: "power",
+    name: "전력 점검",
+
+    positions: [
+      { x: 170, y: 180 },
+      { x: 310, y: 190 },
+      { x: 450, y: 220 },
+      { x: 180, y: 320 },
+      { x: 410, y: 330 },
+    ],
+  },
+
+  {
+    id: "archive",
+    name: "문서 찾기",
+
+    positions: [
+      { x: 170, y: 590 },
+      { x: 300, y: 620 },
+      { x: 470, y: 600 },
+      { x: 200, y: 760 },
+      { x: 430, y: 780 },
+    ],
+  },
+
+  {
+    id: "coffee",
+    name: "커피 제조",
+
+    positions: [
+      { x: 1690, y: 590 },
+      { x: 1830, y: 610 },
+      { x: 2010, y: 620 },
+      { x: 1730, y: 770 },
+      { x: 1980, y: 780 },
+    ],
+  },
+
+  {
+    id: "copy",
+    name: "서류 복사",
+
+    positions: [
+      { x: 170, y: 1040 },
+      { x: 320, y: 1060 },
+      { x: 470, y: 1080 },
+      { x: 200, y: 1210 },
+      { x: 430, y: 1220 },
+    ],
+  },
+
+  {
+    id: "server",
+    name: "서버 점검",
+
+    positions: [
+      { x: 1680, y: 1030 },
+      { x: 1810, y: 1060 },
+      { x: 1980, y: 1050 },
+      { x: 1740, y: 1210 },
+      { x: 1990, y: 1210 },
+    ],
+  },
+];
+
+/* =========================================================
+   랜덤 미션 생성
+========================================================= */
+
+function createRandomMissions():
+  MissionMarker[] {
+  return MISSION_SPAWNS.map(
+    mission => {
+      const randomIndex =
+        Math.floor(
+          Math.random() *
+            mission.positions.length
+        );
+
+      const randomPosition =
+        mission.positions[
+          randomIndex
+        ];
+
+      return {
+        id: mission.id,
+        name: mission.name,
+
+        x: randomPosition.x,
+        y: randomPosition.y,
+
+        completed: false,
+      };
+    }
+  );
+}
 
 /* =========================================================
    DevilGameWorld
@@ -61,6 +173,8 @@ export default function DevilGameWorld() {
 
   /* ======================================================
      Player Position
+
+     실제 맵에서의 좌표
   ====================================================== */
 
   const [
@@ -89,12 +203,37 @@ export default function DevilGameWorld() {
     useState(500);
 
   /* ======================================================
-     Map Overlay
+     Map
   ====================================================== */
 
   const [
     mapOpen,
     setMapOpen,
+  ] =
+    useState(false);
+
+  /* ======================================================
+     Missions
+  ====================================================== */
+
+  const [
+    missions,
+    setMissions,
+  ] =
+    useState<
+      MissionMarker[]
+    >(
+      () =>
+        createRandomMissions()
+    );
+
+  /* ======================================================
+     Blackout
+  ====================================================== */
+
+  const [
+    blackout,
+    setBlackout,
   ] =
     useState(false);
 
@@ -110,10 +249,6 @@ export default function DevilGameWorld() {
       const target =
         event.target as HTMLElement;
 
-      /*
-       * input / textarea 사용 중에는
-       * M 단축키를 막음
-       */
       if (
         target.tagName ===
           "INPUT" ||
@@ -123,7 +258,9 @@ export default function DevilGameWorld() {
         return;
       }
 
-      /* M */
+      /* =====================================
+         M = 지도
+      ===================================== */
 
       if (
         event.key.toLowerCase() ===
@@ -135,7 +272,9 @@ export default function DevilGameWorld() {
         );
       }
 
-      /* ESC */
+      /* =====================================
+         ESC = 지도 닫기
+      ===================================== */
 
       if (
         event.key ===
@@ -143,6 +282,33 @@ export default function DevilGameWorld() {
       ) {
         setMapOpen(
           false
+        );
+      }
+
+      /* =====================================
+         B = 정전 테스트
+      ===================================== */
+
+      if (
+        event.key.toLowerCase() ===
+        "b"
+      ) {
+        setBlackout(
+          previous =>
+            !previous
+        );
+      }
+
+      /* =====================================
+         R = 미션 재배치 테스트
+      ===================================== */
+
+      if (
+        event.key.toLowerCase() ===
+        "r"
+      ) {
+        setMissions(
+          createRandomMissions()
         );
       }
     };
@@ -182,18 +348,11 @@ export default function DevilGameWorld() {
           dy * dy
       );
 
-    /*
-     * 너무 가까우면 이동하지 않음
-     */
     if (
       distance < 8
     ) {
       return;
     }
-
-    /* =====================================
-       이동 시간 계산
-    ===================================== */
 
     const calculatedDuration =
       (
@@ -212,10 +371,6 @@ export default function DevilGameWorld() {
         )
       );
 
-    /* =====================================
-       기존 이동 타이머 제거
-    ===================================== */
-
     if (
       moveTimerRef.current
     ) {
@@ -223,10 +378,6 @@ export default function DevilGameWorld() {
         moveTimerRef.current
       );
     }
-
-    /* =====================================
-       이동 시작
-    ===================================== */
 
     setMoveDuration(
       duration
@@ -237,16 +388,9 @@ export default function DevilGameWorld() {
     );
 
     setPosition({
-      x:
-        targetX,
-
-      y:
-        targetY,
+      x: targetX,
+      y: targetY,
     });
-
-    /* =====================================
-       이동 종료
-    ===================================== */
 
     moveTimerRef.current =
       window.setTimeout(
@@ -260,6 +404,21 @@ export default function DevilGameWorld() {
   };
 
   /* ======================================================
+     Camera
+
+     플레이어가 항상 화면 중앙에 오도록
+     맵 위치를 이동시킨다.
+  ====================================================== */
+
+  const cameraX =
+    position.x -
+    VIEWPORT_WIDTH / 2;
+
+  const cameraY =
+    position.y -
+    VIEWPORT_HEIGHT / 2;
+
+  /* ======================================================
      World Click
   ====================================================== */
 
@@ -267,9 +426,6 @@ export default function DevilGameWorld() {
     event:
       React.MouseEvent<HTMLDivElement>
   ) => {
-    /*
-     * 지도 열려있으면 이동 금지
-     */
     if (
       mapOpen
     ) {
@@ -279,9 +435,6 @@ export default function DevilGameWorld() {
     const clickedElement =
       event.target as HTMLElement;
 
-    /*
-     * HUD / UI 클릭 제외
-     */
     if (
       clickedElement.closest(
         "[data-no-move]"
@@ -303,57 +456,79 @@ export default function DevilGameWorld() {
       viewport.getBoundingClientRect();
 
     /* =====================================
-       현재 카메라 위치
+       화면 중심에서 클릭까지의 차이
     ===================================== */
 
-    const cameraX =
-      getCameraX(
-        position.x
-      );
+    const screenCenterX =
+      VIEWPORT_WIDTH / 2;
 
-    const cameraY =
-      getCameraY(
-        position.y
-      );
+    const screenCenterY =
+      VIEWPORT_HEIGHT / 2;
+
+    const clickedX =
+      event.clientX -
+      rect.left;
+
+    const clickedY =
+      event.clientY -
+      rect.top;
+
+    const offsetX =
+      clickedX -
+      screenCenterX;
+
+    const offsetY =
+      clickedY -
+      screenCenterY;
 
     /* =====================================
-       화면 좌표 → 실제 맵 좌표
+       현재 플레이어 실제 좌표 기준
+       목표 좌표 계산
     ===================================== */
 
     let targetX =
-      event.clientX -
-      rect.left +
-      cameraX;
+      position.x +
+      offsetX;
 
     let targetY =
-      event.clientY -
-      rect.top +
-      cameraY;
+      position.y +
+      offsetY;
 
     /* =====================================
-       맵 밖 이동 제한
+       맵 경계 제한
+
+       화면 중심 고정을 유지하기 위해
+       맵 바깥으로 너무 가까이 가지 않게 함
     ===================================== */
+
+    const minX =
+      VIEWPORT_WIDTH / 2;
+
+    const maxX =
+      DEVIL_MAP_WIDTH -
+      VIEWPORT_WIDTH / 2;
+
+    const minY =
+      VIEWPORT_HEIGHT / 2;
+
+    const maxY =
+      DEVIL_MAP_HEIGHT -
+      VIEWPORT_HEIGHT / 2;
 
     targetX =
       Math.max(
-        50,
-
+        minX,
         Math.min(
-          DEVIL_MAP_WIDTH -
-            50,
-
+          maxX,
           targetX
         )
       );
 
     targetY =
       Math.max(
-        100,
-
+        minY,
         Math.min(
-          DEVIL_MAP_HEIGHT -
-            30,
-
+          maxY,
           targetY
         )
       );
@@ -365,18 +540,14 @@ export default function DevilGameWorld() {
   };
 
   /* ======================================================
-     Camera
+     Remaining Missions
   ====================================================== */
 
-  const cameraX =
-    getCameraX(
-      position.x
-    );
-
-  const cameraY =
-    getCameraY(
-      position.y
-    );
+  const remainingMissionCount =
+    missions.filter(
+      mission =>
+        !mission.completed
+    ).length;
 
   /* ======================================================
      Cleanup
@@ -427,7 +598,7 @@ export default function DevilGameWorld() {
           rounded-xl
           border-[6px]
           border-zinc-800
-          bg-[#d8cfbd]
+          bg-black
           shadow-2xl
         "
         style={{
@@ -439,7 +610,7 @@ export default function DevilGameWorld() {
         }}
       >
         {/* =====================================
-            실제 대형 맵
+            움직이는 맵
         ===================================== */}
 
         <div
@@ -455,9 +626,6 @@ export default function DevilGameWorld() {
             height:
               DEVIL_MAP_HEIGHT,
 
-            /*
-             * 카메라가 플레이어를 따라감
-             */
             transform:
               `translate(${-cameraX}px, ${-cameraY}px)`,
 
@@ -471,50 +639,75 @@ export default function DevilGameWorld() {
               "linear",
           }}
         >
-          {/* =================================
-              Map
-          ================================= */}
-
           <DevilOfficeMap />
+        </div>
 
-          {/* =================================
-              Player
-          ================================= */}
+        {/* =====================================
+            Player
 
+            월드 안에 있지 않고
+            Viewport 중앙에 고정
+        ===================================== */}
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-1/2
+            z-[5000]
+          "
+          style={{
+            transform:
+              "translate(-50%, -100%)",
+          }}
+        >
+          <Potato
+            name="테스트 감자"
+            glasses="sunglasses"
+            moving={
+              moving
+            }
+          />
+        </div>
+
+        {/* =====================================
+            Blackout Vision
+
+            플레이어 중심 주변만 보임
+        ===================================== */}
+
+        {blackout && (
           <div
             className="
+              pointer-events-none
               absolute
-              z-[5000]
+              inset-0
+              z-[7000]
             "
             style={{
-              left:
-                position.x,
+              background: `
+                radial-gradient(
+                  circle 210px at 50% 50%,
 
-              top:
-                position.y,
+                  rgba(0, 0, 0, 0) 0px,
 
-              transform:
-                "translate(-50%, -100%)",
+                  rgba(0, 0, 0, 0.03) 90px,
 
-              transitionProperty:
-                "left, top",
+                  rgba(0, 0, 0, 0.15) 125px,
 
-              transitionDuration:
-                `${moveDuration}ms`,
+                  rgba(0, 0, 0, 0.55) 165px,
 
-              transitionTimingFunction:
-                "linear",
+                  rgba(0, 0, 0, 0.92) 210px,
+
+                  rgba(0, 0, 0, 0.99) 260px,
+
+                  rgba(0, 0, 0, 1) 100%
+                )
+              `,
             }}
-          >
-            <Potato
-              name="테스트 감자"
-              glasses="sunglasses"
-              moving={
-                moving
-              }
-            />
-          </div>
-        </div>
+          />
+        )}
 
         {/* =====================================
             HUD
@@ -555,10 +748,53 @@ export default function DevilGameWorld() {
           >
             대형 맵 테스트
           </div>
+
+          <div
+            className="
+              mt-2
+              text-[9px]
+              text-amber-300
+            "
+          >
+            미션{" "}
+            {
+              remainingMissionCount
+            }
+            개 남음
+          </div>
         </div>
 
         {/* =====================================
-            M 안내
+            Blackout Alert
+        ===================================== */}
+
+        {blackout && (
+          <div
+            data-no-move
+            className="
+              absolute
+              left-1/2
+              top-5
+              z-[9000]
+              -translate-x-1/2
+              rounded-full
+              border
+              border-red-400/30
+              bg-red-950/85
+              px-5
+              py-2
+              text-[11px]
+              font-bold
+              text-red-200
+              shadow-lg
+            "
+          >
+            ⚡ 정전 발생
+          </div>
+        )}
+
+        {/* =====================================
+            Controls
         ===================================== */}
 
         <div
@@ -568,17 +804,48 @@ export default function DevilGameWorld() {
             bottom-4
             right-4
             z-[8000]
-            rounded-lg
-            border
-            border-white/10
-            bg-black/70
-            px-3
-            py-2
-            text-[10px]
-            text-white/80
+            flex
+            gap-2
           "
         >
-          M : 전체 지도
+          <div
+            className="
+              rounded-lg
+              bg-black/70
+              px-3
+              py-2
+              text-[10px]
+              text-white
+            "
+          >
+            M : 전체 지도
+          </div>
+
+          <div
+            className="
+              rounded-lg
+              bg-black/70
+              px-3
+              py-2
+              text-[10px]
+              text-white
+            "
+          >
+            B : 정전
+          </div>
+
+          <div
+            className="
+              rounded-lg
+              bg-black/70
+              px-3
+              py-2
+              text-[10px]
+              text-white
+            "
+          >
+            R : 미션 재배치
+          </div>
         </div>
 
         {/* =====================================
@@ -595,6 +862,12 @@ export default function DevilGameWorld() {
           playerY={
             position.y
           }
+          missions={
+            missions
+          }
+          blackout={
+            blackout
+          }
           onClose={() => {
             setMapOpen(
               false
@@ -603,47 +876,5 @@ export default function DevilGameWorld() {
         />
       </div>
     </div>
-  );
-}
-
-/* =========================================================
-   Camera X
-========================================================= */
-
-function getCameraX(
-  playerX: number
-) {
-  return Math.max(
-    0,
-
-    Math.min(
-      DEVIL_MAP_WIDTH -
-        VIEWPORT_WIDTH,
-
-      playerX -
-        VIEWPORT_WIDTH /
-          2
-    )
-  );
-}
-
-/* =========================================================
-   Camera Y
-========================================================= */
-
-function getCameraY(
-  playerY: number
-) {
-  return Math.max(
-    0,
-
-    Math.min(
-      DEVIL_MAP_HEIGHT -
-        VIEWPORT_HEIGHT,
-
-      playerY -
-        VIEWPORT_HEIGHT /
-          2
-    )
   );
 }

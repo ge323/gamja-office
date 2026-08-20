@@ -5,14 +5,37 @@ import {
   DEVIL_MAP_WIDTH,
 } from "./DevilOfficeMap";
 
+/* =========================================================
+   Types
+========================================================= */
+
+export type MissionMarker = {
+  id: string;
+
+  name: string;
+
+  x: number;
+  y: number;
+
+  completed: boolean;
+};
+
 type GameMapOverlayProps = {
   open: boolean;
 
   playerX: number;
   playerY: number;
 
+  missions: MissionMarker[];
+
+  blackout: boolean;
+
   onClose: () => void;
 };
+
+/* =========================================================
+   Map
+========================================================= */
 
 const SCALE = 0.34;
 
@@ -90,10 +113,16 @@ const ROOMS = [
   },
 ];
 
+/* =========================================================
+   Component
+========================================================= */
+
 export default function GameMapOverlay({
   open,
   playerX,
   playerY,
+  missions,
+  blackout,
   onClose,
 }: GameMapOverlayProps) {
   if (!open) {
@@ -112,7 +141,9 @@ export default function GameMapOverlay({
         justify-center
         bg-black/80
       "
-      onClick={onClose}
+      onClick={
+        onClose
+      }
     >
       <div
         className="
@@ -125,18 +156,27 @@ export default function GameMapOverlay({
           shadow-2xl
         "
         style={{
-          width: DEVIL_MAP_WIDTH * SCALE,
-          height: DEVIL_MAP_HEIGHT * SCALE,
+          width:
+            DEVIL_MAP_WIDTH *
+            SCALE,
+
+          height:
+            DEVIL_MAP_HEIGHT *
+            SCALE,
         }}
         onClick={event => {
           event.stopPropagation();
         }}
       >
-        {/* 방 */}
+        {/* =====================================
+            방
+        ===================================== */}
 
         {ROOMS.map(room => (
           <div
-            key={room.name}
+            key={
+              room.name
+            }
             className="
               absolute
               flex
@@ -151,23 +191,109 @@ export default function GameMapOverlay({
               text-zinc-800
             "
             style={{
-              left: room.x * SCALE,
-              top: room.y * SCALE,
+              left:
+                room.x *
+                SCALE,
 
-              width: room.width * SCALE,
-              height: room.height * SCALE,
+              top:
+                room.y *
+                SCALE,
+
+              width:
+                room.width *
+                SCALE,
+
+              height:
+                room.height *
+                SCALE,
             }}
           >
-            {room.name}
+            {
+              room.name
+            }
           </div>
         ))}
 
-        {/* 현재 내 위치 */}
+        {/* =====================================
+            미션 위치
+
+            정전 아닐 때만 표시
+        ===================================== */}
+
+        {!blackout &&
+          missions
+            .filter(
+              mission =>
+                !mission.completed
+            )
+            .map(
+              mission => (
+                <div
+                  key={
+                    mission.id
+                  }
+                  className="
+                    absolute
+                    z-[60]
+                    -translate-x-1/2
+                    -translate-y-1/2
+                  "
+                  style={{
+                    left:
+                      mission.x *
+                      SCALE,
+
+                    top:
+                      mission.y *
+                      SCALE,
+                  }}
+                >
+                  {/* Glow */}
+
+                  <div
+                    className="
+                      absolute
+                      left-1/2
+                      top-1/2
+                      h-[26px]
+                      w-[26px]
+                      -translate-x-1/2
+                      -translate-y-1/2
+                      rounded-full
+                      bg-amber-300/25
+                      animate-ping
+                    "
+                  />
+
+                  {/* Main Dot */}
+
+                  <div
+                    className="
+                      relative
+                      h-[13px]
+                      w-[13px]
+                      rounded-full
+                      border-[2px]
+                      border-white
+                      bg-amber-300
+                      shadow-[0_0_14px_rgba(253,224,71,0.95)]
+                    "
+                    title={
+                      mission.name
+                    }
+                  />
+                </div>
+              )
+            )}
+
+        {/* =====================================
+            내 위치
+        ===================================== */}
 
         <div
           className="
             absolute
-            z-50
+            z-[80]
             h-[16px]
             w-[16px]
             -translate-x-1/2
@@ -179,19 +305,26 @@ export default function GameMapOverlay({
             shadow-lg
           "
           style={{
-            left: playerX * SCALE,
-            top: playerY * SCALE,
+            left:
+              playerX *
+              SCALE,
+
+            top:
+              playerY *
+              SCALE,
           }}
         />
 
-        {/* 제목 */}
+        {/* =====================================
+            제목
+        ===================================== */}
 
         <div
           className="
             absolute
             left-1/2
             top-4
-            z-50
+            z-[100]
             -translate-x-1/2
             rounded-full
             bg-black/70
@@ -205,12 +338,43 @@ export default function GameMapOverlay({
           GAMJA OFFICE MAP
         </div>
 
+        {/* =====================================
+            정전 안내
+        ===================================== */}
+
+        {blackout && (
+          <div
+            className="
+              absolute
+              left-1/2
+              top-[58px]
+              z-[100]
+              -translate-x-1/2
+              rounded-full
+              border
+              border-red-400/40
+              bg-red-950/80
+              px-4
+              py-2
+              text-[10px]
+              font-semibold
+              text-red-200
+            "
+          >
+            ⚡ 정전 중 · 미션 위치 확인 불가
+          </div>
+        )}
+
+        {/* =====================================
+            안내
+        ===================================== */}
+
         <div
           className="
             absolute
             bottom-4
             left-1/2
-            z-50
+            z-[100]
             -translate-x-1/2
             rounded-lg
             bg-black/70
