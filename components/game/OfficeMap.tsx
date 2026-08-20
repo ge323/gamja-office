@@ -1,6 +1,30 @@
 "use client";
 
-export default function OfficeMap() {
+export type OfficeInteractionType =
+  | "coffee"
+  | "chair"
+  | "copier";
+
+export type OfficeInteraction = {
+  type: OfficeInteractionType;
+
+  /*
+   * 감자가 상호작용할 때
+   * 최종적으로 서 있을 위치
+   */
+  targetX: number;
+  targetY: number;
+};
+
+type OfficeMapProps = {
+  onInteract: (
+    interaction: OfficeInteraction
+  ) => void;
+};
+
+export default function OfficeMap({
+  onInteract,
+}: OfficeMapProps) {
   return (
     <>
       {/* =========================================
@@ -11,6 +35,7 @@ export default function OfficeMap() {
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundColor: "#eadfc9",
+
           backgroundImage: `
             linear-gradient(
               to right,
@@ -23,6 +48,7 @@ export default function OfficeMap() {
               transparent 1px
             )
           `,
+
           backgroundSize: "32px 32px",
         }}
       />
@@ -45,17 +71,51 @@ export default function OfficeMap() {
         "
       >
         {/* 출입문 */}
+
         <div className="absolute left-[24px] top-[9px]">
-          <div className="mb-1 inline-block rounded-sm bg-emerald-600 px-2 py-0.5 text-[8px] font-bold text-white">
+          <div
+            className="
+              mb-1
+              inline-block
+              rounded-sm
+              bg-emerald-600
+              px-2
+              py-0.5
+              text-[8px]
+              font-bold
+              text-white
+            "
+          >
             EXIT
           </div>
 
-          <div className="relative h-[50px] w-[44px] rounded-sm border-[4px] border-zinc-800 bg-[#7b593f]">
-            <div className="absolute right-[5px] top-1/2 h-[4px] w-[4px] rounded-full bg-amber-300" />
+          <div
+            className="
+              relative
+              h-[50px]
+              w-[44px]
+              rounded-sm
+              border-[4px]
+              border-zinc-800
+              bg-[#7b593f]
+            "
+          >
+            <div
+              className="
+                absolute
+                right-[5px]
+                top-1/2
+                h-[4px]
+                w-[4px]
+                rounded-full
+                bg-amber-300
+              "
+            />
           </div>
         </div>
 
         {/* 공지판 */}
+
         <div
           data-no-move
           className="
@@ -82,17 +142,61 @@ export default function OfficeMap() {
         </div>
 
         {/* 창문 */}
+
         <div className="absolute left-[320px] top-[15px] flex gap-1">
-          <div className="h-[40px] w-[60px] rounded-sm border-[3px] border-zinc-700 bg-sky-100" />
-          <div className="h-[40px] w-[60px] rounded-sm border-[3px] border-zinc-700 bg-sky-100" />
+          <div
+            className="
+              h-[40px]
+              w-[60px]
+              rounded-sm
+              border-[3px]
+              border-zinc-700
+              bg-sky-100
+            "
+          />
+
+          <div
+            className="
+              h-[40px]
+              w-[60px]
+              rounded-sm
+              border-[3px]
+              border-zinc-700
+              bg-sky-100
+            "
+          />
         </div>
 
         {/* 서랍장 */}
-        <div className="absolute left-[450px] top-[18px] h-[38px] w-[90px] rounded-sm border-[3px] border-zinc-700 bg-zinc-400">
-          <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-zinc-600" />
+
+        <div
+          className="
+            absolute
+            left-[450px]
+            top-[18px]
+            h-[38px]
+            w-[90px]
+            rounded-sm
+            border-[3px]
+            border-zinc-700
+            bg-zinc-400
+          "
+        >
+          <div
+            className="
+              absolute
+              left-1/2
+              top-0
+              h-full
+              w-[2px]
+              -translate-x-1/2
+              bg-zinc-600
+            "
+          />
         </div>
 
         {/* 시계 */}
+
         <div
           className="
             absolute
@@ -110,44 +214,125 @@ export default function OfficeMap() {
           "
         >
           <div className="absolute h-[11px] w-[2px] -translate-y-[4px] bg-zinc-700" />
+
           <div className="absolute h-[2px] w-[8px] translate-x-[3px] bg-zinc-700" />
         </div>
 
         {/* 정수기 */}
-        <div className="absolute right-[285px] top-[10px]">
-          <div className="mx-auto h-[20px] w-[20px] rounded-t-lg border-[2px] border-blue-500 bg-sky-200" />
 
-          <div className="mx-auto h-[38px] w-[30px] rounded-sm border-[3px] border-zinc-600 bg-zinc-300" />
+        <div className="absolute right-[285px] top-[10px]">
+          <div
+            className="
+              mx-auto
+              h-[20px]
+              w-[20px]
+              rounded-t-lg
+              border-[2px]
+              border-blue-500
+              bg-sky-200
+            "
+          />
+
+          <div
+            className="
+              mx-auto
+              h-[38px]
+              w-[30px]
+              rounded-sm
+              border-[3px]
+              border-zinc-600
+              bg-zinc-300
+            "
+          />
         </div>
 
-        {/* 커피머신 */}
+        {/* =========================================
+            커피머신
+        ========================================= */}
+
         <div
           data-no-move
+          onClick={(event) => {
+            event.stopPropagation();
+
+            onInteract({
+              type: "coffee",
+
+              /*
+               * 커피머신 바로 아래
+               */
+              targetX: 885,
+              targetY: 135,
+            });
+          }}
+          title="커피 마시기"
           className="
             absolute
             right-[175px]
             top-[8px]
             h-[55px]
             w-[78px]
+            cursor-pointer
             rounded-sm
             border-[3px]
             border-[#5f4633]
             bg-[#8d6648]
+            transition
+            hover:brightness-110
           "
         >
-          <div className="absolute -top-[16px] left-1/2 -translate-x-1/2 bg-[#7a5439] px-2 py-0.5 text-[8px] font-bold text-white">
+          <div
+            className="
+              absolute
+              -top-[16px]
+              left-1/2
+              -translate-x-1/2
+              bg-[#7a5439]
+              px-2
+              py-0.5
+              text-[8px]
+              font-bold
+              text-white
+            "
+          >
             COFFEE
           </div>
 
-          <div className="absolute left-[10px] top-[10px] h-[32px] w-[30px] rounded-sm border-[3px] border-zinc-800 bg-zinc-700">
+          <div
+            className="
+              absolute
+              left-[10px]
+              top-[10px]
+              h-[32px]
+              w-[30px]
+              rounded-sm
+              border-[3px]
+              border-zinc-800
+              bg-zinc-700
+            "
+          >
             <div className="absolute left-[6px] top-[6px] h-[4px] w-[14px] bg-zinc-400" />
+
             <div className="absolute left-[10px] top-[15px] h-[8px] w-[8px] bg-zinc-950" />
           </div>
 
-          <div className="absolute bottom-[8px] right-[8px] h-[16px] w-[16px] rounded-b-md border-[2px] border-zinc-600 bg-white" />
+          <div
+            className="
+              absolute
+              bottom-[8px]
+              right-[8px]
+              h-[16px]
+              w-[16px]
+              rounded-b-md
+              border-[2px]
+              border-zinc-600
+              bg-white
+            "
+          />
         </div>
 
         {/* 자판기 */}
+
         <div
           data-no-move
           className="
@@ -163,10 +348,16 @@ export default function OfficeMap() {
           "
         >
           <div className="grid grid-cols-3 gap-[2px] p-[6px]">
-            {Array.from({ length: 9 }).map((_, index) => (
+            {Array.from({
+              length: 9,
+            }).map((_, index) => (
               <div
                 key={index}
-                className="h-[7px] rounded-[1px] bg-amber-300"
+                className="
+                  h-[7px]
+                  rounded-[1px]
+                  bg-amber-300
+                "
               />
             ))}
           </div>
@@ -185,6 +376,17 @@ export default function OfficeMap() {
       <Desk
         className="left-[60px] top-[155px]"
         double
+        chairInteractions={[
+          {
+            targetX: 115,
+            targetY: 315,
+          },
+          {
+            targetX: 255,
+            targetY: 315,
+          },
+        ]}
+        onInteract={onInteract}
       />
 
       {/* =========================================
@@ -196,7 +398,16 @@ export default function OfficeMap() {
         text="업무존 B"
       />
 
-      <Desk className="left-[410px] top-[155px]" />
+      <Desk
+        className="left-[410px] top-[155px]"
+        chairInteractions={[
+          {
+            targetX: 465,
+            targetY: 315,
+          },
+        ]}
+        onInteract={onInteract}
+      />
 
       {/* =========================================
           휴게존
@@ -216,6 +427,8 @@ export default function OfficeMap() {
           bg-[#7f9b75]
         "
       >
+        {/* 소파 */}
+
         <div
           className="
             absolute
@@ -231,8 +444,11 @@ export default function OfficeMap() {
           "
         >
           <div className="absolute left-[10px] top-[12px] h-[6px] w-[34px] rounded-full bg-[#bf8b3c]" />
+
           <div className="absolute right-[10px] top-[12px] h-[6px] w-[34px] rounded-full bg-[#bf8b3c]" />
         </div>
+
+        {/* 테이블 */}
 
         <div
           className="
@@ -258,7 +474,7 @@ export default function OfficeMap() {
       />
 
       {/* =========================================
-          회의실
+          회의실 영역
       ========================================= */}
 
       <div
@@ -281,6 +497,8 @@ export default function OfficeMap() {
         text="회의실"
       />
 
+      {/* 회의 테이블 */}
+
       <div
         data-no-move
         className="
@@ -300,15 +518,89 @@ export default function OfficeMap() {
         <div className="absolute right-[35px] top-[33px] h-[23px] w-[17px] rounded-sm bg-white" />
       </div>
 
-      <Chair className="left-[330px] top-[355px]" />
-      <Chair className="left-[430px] top-[355px]" />
-      <Chair className="left-[530px] top-[355px]" />
-      <Chair className="left-[630px] top-[355px]" />
+      {/* =========================================
+          회의실 의자
+      ========================================= */}
 
-      <Chair className="left-[330px] top-[485px]" />
-      <Chair className="left-[430px] top-[485px]" />
-      <Chair className="left-[530px] top-[485px]" />
-      <Chair className="left-[630px] top-[485px]" />
+      <Chair
+        className="left-[330px] top-[355px]"
+        interaction={{
+          type: "chair",
+          targetX: 347,
+          targetY: 350,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[430px] top-[355px]"
+        interaction={{
+          type: "chair",
+          targetX: 447,
+          targetY: 350,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[530px] top-[355px]"
+        interaction={{
+          type: "chair",
+          targetX: 547,
+          targetY: 350,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[630px] top-[355px]"
+        interaction={{
+          type: "chair",
+          targetX: 647,
+          targetY: 350,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[330px] top-[485px]"
+        interaction={{
+          type: "chair",
+          targetX: 347,
+          targetY: 570,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[430px] top-[485px]"
+        interaction={{
+          type: "chair",
+          targetX: 447,
+          targetY: 570,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[530px] top-[485px]"
+        interaction={{
+          type: "chair",
+          targetX: 547,
+          targetY: 570,
+        }}
+        onInteract={onInteract}
+      />
+
+      <Chair
+        className="left-[630px] top-[485px]"
+        interaction={{
+          type: "chair",
+          targetX: 647,
+          targetY: 570,
+        }}
+        onInteract={onInteract}
+      />
 
       {/* =========================================
           복사기
@@ -316,19 +608,48 @@ export default function OfficeMap() {
 
       <div
         data-no-move
+        onClick={(event) => {
+          event.stopPropagation();
+
+          onInteract({
+            type: "copier",
+
+            /*
+             * 복사기 오른쪽
+             */
+            targetX: 125,
+            targetY: 440,
+          });
+        }}
+        title="복사하기"
         className="
           absolute
           left-[20px]
           top-[360px]
           h-[105px]
           w-[64px]
+          cursor-pointer
           rounded-sm
           border-[4px]
           border-zinc-700
           bg-zinc-300
+          transition
+          hover:brightness-105
         "
       >
-        <div className="absolute left-[7px] top-[9px] h-[25px] w-[45px] rounded-sm border-[3px] border-zinc-600 bg-zinc-100" />
+        <div
+          className="
+            absolute
+            left-[7px]
+            top-[9px]
+            h-[25px]
+            w-[45px]
+            rounded-sm
+            border-[3px]
+            border-zinc-600
+            bg-zinc-100
+          "
+        />
 
         <div className="absolute bottom-[16px] left-[10px] h-[8px] w-[38px] bg-zinc-500" />
       </div>
@@ -356,13 +677,37 @@ export default function OfficeMap() {
           bg-[#a9d4e3]
         "
       >
-        <div className="absolute left-[15px] top-[18px] h-[70px] w-[45px] rounded-sm border-[4px] border-zinc-600 bg-[#6fa9c1]">
+        <div
+          className="
+            absolute
+            left-[15px]
+            top-[18px]
+            h-[70px]
+            w-[45px]
+            rounded-sm
+            border-[4px]
+            border-zinc-600
+            bg-[#6fa9c1]
+          "
+        >
           <div className="mt-3 text-center text-lg font-bold text-white">
             +
           </div>
         </div>
 
-        <div className="absolute right-[15px] top-[18px] h-[70px] w-[45px] rounded-sm border-[4px] border-zinc-600 bg-[#6fa9c1]">
+        <div
+          className="
+            absolute
+            right-[15px]
+            top-[18px]
+            h-[70px]
+            w-[45px]
+            rounded-sm
+            border-[4px]
+            border-zinc-600
+            bg-[#6fa9c1]
+          "
+        >
           <div className="mt-3 text-center text-lg font-bold text-white">
             +
           </div>
@@ -392,13 +737,49 @@ export default function OfficeMap() {
           bg-[#d7e9f2]
         "
       >
-        <div className="absolute left-[18px] top-[25px] h-[58px] w-[135px] rounded-sm border-[4px] border-zinc-600 bg-[#8b8f88]">
-          <div className="absolute left-[15px] top-[10px] h-[25px] w-[42px] rounded-sm border-[3px] border-zinc-600 bg-sky-100" />
+        <div
+          className="
+            absolute
+            left-[18px]
+            top-[25px]
+            h-[58px]
+            w-[135px]
+            rounded-sm
+            border-[4px]
+            border-zinc-600
+            bg-[#8b8f88]
+          "
+        >
+          <div
+            className="
+              absolute
+              left-[15px]
+              top-[10px]
+              h-[25px]
+              w-[42px]
+              rounded-sm
+              border-[3px]
+              border-zinc-600
+              bg-sky-100
+            "
+          />
 
           <div className="absolute right-[18px] top-[8px] h-[30px] w-[35px] rounded-sm bg-zinc-700" />
         </div>
 
-        <div className="absolute right-[10px] top-[12px] h-[102px] w-[48px] rounded-sm border-[4px] border-zinc-600 bg-zinc-200">
+        <div
+          className="
+            absolute
+            right-[10px]
+            top-[12px]
+            h-[102px]
+            w-[48px]
+            rounded-sm
+            border-[4px]
+            border-zinc-600
+            bg-zinc-200
+          "
+        >
           <div className="absolute left-0 top-[38px] h-[3px] w-full bg-zinc-500" />
         </div>
 
@@ -417,6 +798,7 @@ export default function OfficeMap() {
                 #add7e8 50%
               )
             `,
+
             backgroundSize: "24px 24px",
           }}
         />
@@ -432,11 +814,13 @@ export default function OfficeMap() {
       ========================================= */}
 
       <MiniPlant className="bottom-[18px] left-[240px]" />
+
       <MiniPlant className="bottom-[18px] left-[290px]" />
+
       <MiniPlant className="bottom-[18px] left-[340px]" />
 
       {/* =========================================
-          입구 매트
+          입구
       ========================================= */}
 
       <div
@@ -466,9 +850,9 @@ export default function OfficeMap() {
   );
 }
 
-/* =========================================
-   Components
-========================================= */
+/* =========================================================
+   ZoneLabel
+========================================================= */
 
 function ZoneLabel({
   text,
@@ -501,12 +885,28 @@ function ZoneLabel({
   );
 }
 
+/* =========================================================
+   Desk
+========================================================= */
+
+type ChairPosition = {
+  targetX: number;
+  targetY: number;
+};
+
 function Desk({
   className,
   double = false,
+  chairInteractions = [],
+  onInteract,
 }: {
   className: string;
   double?: boolean;
+  chairInteractions?: ChairPosition[];
+
+  onInteract: (
+    interaction: OfficeInteraction
+  ) => void;
 }) {
   return (
     <div
@@ -514,7 +914,11 @@ function Desk({
       className={`
         absolute
         h-[90px]
-        ${double ? "w-[280px]" : "w-[190px]"}
+        ${
+          double
+            ? "w-[280px]"
+            : "w-[190px]"
+        }
         rounded-sm
         border-[4px]
         border-[#65462d]
@@ -524,18 +928,58 @@ function Desk({
     >
       <Monitor className="left-[22px]" />
 
-      {double && <Monitor className="right-[22px]" />}
+      {double && (
+        <Monitor className="right-[22px]" />
+      )}
 
       <div className="absolute bottom-[9px] left-[18px] h-[13px] w-[28px] rounded-sm bg-zinc-200" />
 
       <div className="absolute bottom-[10px] right-[20px] h-[14px] w-[18px] rounded-sm bg-amber-100" />
 
-      <Chair className="left-[30px] top-[72px]" />
+      {chairInteractions[0] && (
+        <Chair
+          className="left-[30px] top-[72px]"
+          interaction={{
+            type: "chair",
+            targetX:
+              chairInteractions[0]
+                .targetX,
 
-      {double && <Chair className="right-[30px] top-[72px]" />}
+            targetY:
+              chairInteractions[0]
+                .targetY,
+          }}
+          onInteract={onInteract}
+        />
+      )}
+
+      {double &&
+        chairInteractions[1] && (
+          <Chair
+            className="right-[30px] top-[72px]"
+            interaction={{
+              type: "chair",
+
+              targetX:
+                chairInteractions[1]
+                  .targetX,
+
+              targetY:
+                chairInteractions[1]
+                  .targetY,
+            }}
+            onInteract={
+              onInteract
+            }
+          />
+        )}
     </div>
   );
 }
+
+/* =========================================================
+   Monitor
+========================================================= */
 
 function Monitor({
   className,
@@ -556,28 +1000,60 @@ function Monitor({
         ${className}
       `}
     >
-      <div className="absolute bottom-[-10px] left-1/2 h-[9px] w-[5px] -translate-x-1/2 bg-zinc-700" />
+      <div
+        className="
+          absolute
+          bottom-[-10px]
+          left-1/2
+          h-[9px]
+          w-[5px]
+          -translate-x-1/2
+          bg-zinc-700
+        "
+      />
     </div>
   );
 }
 
+/* =========================================================
+   Chair
+========================================================= */
+
 function Chair({
   className,
+  interaction,
+  onInteract,
 }: {
   className: string;
+  interaction: OfficeInteraction;
+
+  onInteract: (
+    interaction: OfficeInteraction
+  ) => void;
 }) {
   return (
     <div
       data-no-move
+      onClick={(event) => {
+        event.stopPropagation();
+
+        onInteract(
+          interaction
+        );
+      }}
+      title="앉아서 쉬기"
       className={`
         absolute
         z-10
         h-[42px]
         w-[35px]
+        cursor-pointer
         rounded-sm
         border-[4px]
         border-zinc-700
         bg-[#5b7185]
+        transition
+        hover:brightness-110
         ${className}
       `}
     >
@@ -587,6 +1063,10 @@ function Chair({
     </div>
   );
 }
+
+/* =========================================================
+   Plant
+========================================================= */
 
 function MiniPlant({
   className,
@@ -598,11 +1078,44 @@ function MiniPlant({
       data-no-move
       className={`absolute h-[48px] w-[38px] ${className}`}
     >
-      <div className="absolute left-[3px] top-[4px] h-[22px] w-[15px] rotate-[-25deg] rounded-full bg-emerald-700" />
+      <div
+        className="
+          absolute
+          left-[3px]
+          top-[4px]
+          h-[22px]
+          w-[15px]
+          rotate-[-25deg]
+          rounded-full
+          bg-emerald-700
+        "
+      />
 
-      <div className="absolute right-[3px] top-[2px] h-[22px] w-[15px] rotate-[25deg] rounded-full bg-emerald-600" />
+      <div
+        className="
+          absolute
+          right-[3px]
+          top-[2px]
+          h-[22px]
+          w-[15px]
+          rotate-[25deg]
+          rounded-full
+          bg-emerald-600
+        "
+      />
 
-      <div className="absolute bottom-0 left-1/2 h-[22px] w-[22px] -translate-x-1/2 rounded-b-sm bg-[#91623e]" />
+      <div
+        className="
+          absolute
+          bottom-0
+          left-1/2
+          h-[22px]
+          w-[22px]
+          -translate-x-1/2
+          rounded-b-sm
+          bg-[#91623e]
+        "
+      />
     </div>
   );
 }
