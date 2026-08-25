@@ -11,7 +11,9 @@ import {
   type Socket,
 } from "socket.io-client";
 
-import Potato from "@/components/character/Potato";
+import Potato, {
+  type PotatoDirection,
+} from "@/components/character/Potato";
 
 import type {
   CharacterStyle,
@@ -90,6 +92,8 @@ type RemotePlayer = {
   moveDuration?: number;
 
   moving?: boolean;
+
+  direction?: PotatoDirection;
 };
 
 /* =========================================================
@@ -135,6 +139,29 @@ function getDisplayName(
   return trimmed
     ? `${trimmed} 감자`
     : "감자";
+}
+
+function getMoveDirection(
+  dx: number,
+  dy: number,
+  fallback: PotatoDirection = "down"
+): PotatoDirection {
+  if (
+    Math.abs(dx) < 0.001 &&
+    Math.abs(dy) < 0.001
+  ) {
+    return fallback;
+  }
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0
+      ? "right"
+      : "left";
+  }
+
+  return dy > 0
+    ? "down"
+    : "up";
 }
 
 /* =========================================================
@@ -306,6 +333,14 @@ export default function GameWorld({
     setMoving,
   ] =
     useState(false);
+
+  const [
+    direction,
+    setDirection,
+  ] =
+    useState<PotatoDirection>(
+      "down"
+    );
 
   const [
     moveDuration,
@@ -579,6 +614,11 @@ export default function GameWorld({
                   moving:
                     old?.moving ??
                     false,
+
+                  direction:
+                    old?.direction ??
+                    player.direction ??
+                    "down",
                 };
               }
             );
@@ -602,25 +642,45 @@ export default function GameWorld({
         setRemotePlayers(
           previous =>
             previous.map(
-              player =>
-                player.id ===
-                data.id
-                  ? {
-                      ...player,
+              player => {
+                if (
+                  player.id !==
+                  data.id
+                ) {
+                  return player;
+                }
 
-                      x:
-                        data.x,
+                const nextDirection =
+                  getMoveDirection(
+                    data.x -
+                      player.x,
 
-                      y:
-                        data.y,
+                    data.y -
+                      player.y,
 
-                      moveDuration:
-                        data.duration,
+                    player.direction ??
+                      "down"
+                  );
 
-                      moving:
-                        true,
-                    }
-                  : player
+                return {
+                  ...player,
+
+                  x:
+                    data.x,
+
+                  y:
+                    data.y,
+
+                  moveDuration:
+                    data.duration,
+
+                  moving:
+                    true,
+
+                  direction:
+                    nextDirection,
+                };
+              }
             )
         );
 
@@ -1043,6 +1103,13 @@ export default function GameWorld({
       targetY -
       position.y;
 
+    const nextDirection =
+      getMoveDirection(
+        dx,
+        dy,
+        direction
+      );
+
     const distance =
       Math.sqrt(
         dx * dx +
@@ -1107,6 +1174,10 @@ export default function GameWorld({
 
     setMoveDuration(
       duration
+    );
+
+    setDirection(
+      nextDirection
     );
 
     setMoving(
@@ -2191,6 +2262,10 @@ export default function GameWorld({
                     player.moving ??
                     false
                   }
+                  direction={
+                    player.direction ??
+                    "down"
+                  }
                 />
               </div>
             )
@@ -2278,6 +2353,9 @@ export default function GameWorld({
               }
               moving={
                 moving
+              }
+              direction={
+                direction
               }
             />
           </div>
