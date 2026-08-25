@@ -1466,13 +1466,14 @@ app.get(
 ========================================================= */
 
 const PORT =
-  4000;
+  process.env.PORT || 4000;
 
 server.listen(
   PORT,
+  "0.0.0.0",
   () => {
     console.log(
-      `🥔 Gamja Office server running on http://localhost:${PORT}`
+      `🥔 Gamja Office server running on port ${PORT}`
     );
   }
 );
