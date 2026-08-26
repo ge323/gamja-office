@@ -5,6 +5,10 @@ import Accessories, {
   type HatType,
 } from "./Accessories";
 
+/* =========================================================
+   Types
+========================================================= */
+
 export type PotatoColor =
   | "default"
   | "gold"
@@ -22,11 +26,9 @@ type PotatoProps = {
   name?: string;
 
   glasses?: GlassesType;
-
   hat?: HatType;
 
   ribbon?: boolean;
-
   tie?: boolean;
 
   moving?: boolean;
@@ -35,16 +37,32 @@ type PotatoProps = {
 
   color?: PotatoColor;
 
-  /**
-   * 캐릭터 전체 확대/축소.
+  /*
+   * 로비 등에서 캐릭터 크기를 조절할 때 사용
    *
-   * 기본값 1.
-   *
-   * 예:
-   * scale={0.8}
-   * scale={1.2}
+   * 기본: 1
    */
   scale?: number;
+
+  /*
+   * 감자 전쟁 상태
+   */
+  ghost?: boolean;
+
+  /*
+   * 악마가 공격 모션 중인지
+   */
+  attacking?: boolean;
+
+  /*
+   * 악마 역할인지
+   */
+  evil?: boolean;
+
+  /*
+   * 공격당한 순간
+   */
+  hit?: boolean;
 };
 
 /* =========================================================
@@ -98,11 +116,9 @@ export default function Potato({
   name = "감자",
 
   glasses = "none",
-
   hat = "none",
 
   ribbon = false,
-
   tie = false,
 
   moving = false,
@@ -112,6 +128,11 @@ export default function Potato({
   color = "default",
 
   scale = 1,
+
+  ghost = false,
+  attacking = false,
+  evil = false,
+  hit = false,
 }: PotatoProps) {
   const potatoColor =
     POTATO_COLORS[color];
@@ -128,36 +149,24 @@ export default function Potato({
   const facingRight =
     direction === "right";
 
+  const facingSide =
+    facingLeft ||
+    facingRight;
+
   /* =======================================================
-     Direction animation classes
+     Character animation
   ======================================================= */
 
-  const stageClass =
-    moving
-      ? `potato-stage-moving potato-moving-${direction}`
-      : "";
-
-  const leftArmClass =
-    moving
-      ? direction === "up"
-        ? "potato-arm-up-left"
-        : direction === "left"
-          ? "potato-arm-left-facing-left"
-          : direction === "right"
-            ? "potato-arm-left-facing-right"
-            : "potato-arm-down-left"
-      : "";
-
-  const rightArmClass =
-    moving
-      ? direction === "up"
-        ? "potato-arm-up-right"
-        : direction === "left"
-          ? "potato-arm-right-facing-left"
-          : direction === "right"
-            ? "potato-arm-right-facing-right"
-            : "potato-arm-down-right"
-      : "";
+  const characterAnimation =
+    ghost
+      ? "potato-ghost-float"
+      : hit
+        ? "potato-hit"
+        : attacking
+          ? "potato-attack-body"
+          : moving
+            ? "potato-direction-bounce"
+            : "";
 
   return (
     <div className="flex flex-col items-center">
@@ -166,401 +175,907 @@ export default function Potato({
       ===================================================== */}
 
       <div
-        className="
-          relative
-          z-20
-
+        className={`
           -mb-1
 
           whitespace-nowrap
 
           text-[11px]
           font-medium
-          text-zinc-600
-        "
+
+          ${
+            ghost
+              ? "text-sky-300"
+              : evil
+                ? "text-red-500"
+                : "text-zinc-600"
+          }
+        `}
       >
+        {ghost && "👻 "}
         {name}
       </div>
 
       {/* =====================================================
           Scale wrapper
 
-          내부 디자인은 항상 80 × 100 비율로 유지하고
-          바깥에서 전체를 한 번에 scale 한다.
+          실제 캐릭터 좌표는 항상 80 x 100 유지.
+          해상도와 상관없이 한 덩어리로 확대/축소된다.
       ===================================================== */}
 
       <div
-        className="
-          relative
-
-          h-[100px]
-          w-[80px]
-
-          shrink-0
-        "
+        className="relative shrink-0"
         style={{
-          transform:
-            `scale(${scale})`,
+          width:
+            80 * scale,
 
-          transformOrigin:
-            "top center",
+          height:
+            100 * scale,
         }}
       >
-        {/* =================================================
-            Character Stage
-        ================================================= */}
-
         <div
           className={`
             relative
 
-            h-full
-            w-full
+            h-[100px]
+            w-[80px]
 
-            ${stageClass}
+            origin-top-left
+
+            ${characterAnimation}
+
+            ${
+              !moving &&
+              !attacking &&
+              facingLeft
+                ? "potato-lean-left"
+                : ""
+            }
+
+            ${
+              !moving &&
+              !attacking &&
+              facingRight
+                ? "potato-lean-right"
+                : ""
+            }
           `}
+          style={{
+            transform:
+              `scale(${scale})`,
+
+            /*
+             * ghost 상태에서도 클릭 판정 등의
+             * 실제 크기는 유지한다.
+             */
+            opacity:
+              ghost
+                ? 0.65
+                : 1,
+          }}
         >
           {/* =================================================
-              Shadow
+              Ghost Aura
+          ================================================= */}
+
+          {ghost && (
+            <>
+              <div
+                className="
+                  pointer-events-none
+
+                  absolute
+
+                  left-1/2
+                  top-[2px]
+
+                  h-[84px]
+                  w-[68px]
+
+                  -translate-x-1/2
+
+                  rounded-[50%]
+
+                  bg-sky-300/15
+
+                  blur-[8px]
+                "
+              />
+
+              <div
+                className="
+                  pointer-events-none
+
+                  absolute
+
+                  left-1/2
+                  top-[8px]
+
+                  h-[75px]
+                  w-[58px]
+
+                  -translate-x-1/2
+
+                  rounded-[50%]
+
+                  border
+                  border-sky-200/50
+                "
+              />
+            </>
+          )}
+
+          {/* =================================================
+              Evil Aura
+          ================================================= */}
+
+          {evil &&
+            !ghost && (
+              <div
+                className="
+                  pointer-events-none
+
+                  absolute
+
+                  left-1/2
+                  top-[7px]
+
+                  h-[77px]
+                  w-[61px]
+
+                  -translate-x-1/2
+
+                  rounded-[50%]
+
+                  bg-red-500/10
+
+                  blur-[7px]
+                "
+              />
+            )}
+
+          {/* =================================================
+              Left Arm
           ================================================= */}
 
           <div
             className={`
               absolute
 
-              bottom-[1%]
-              left-1/2
+              left-[10px]
+              top-[48px]
 
-              h-[6%]
+              z-0
 
-              -translate-x-1/2
+              h-[4px]
+              w-[18px]
+
+              origin-right
 
               rounded-full
 
-              bg-zinc-900/10
-
-              transition-all
-              duration-150
+              ${
+                ghost
+                  ? "bg-sky-950/70"
+                  : "bg-zinc-900"
+              }
 
               ${
-                moving
-                  ? "w-[34%]"
-                  : "w-[42%]"
+                attacking
+                  ? "potato-attack-left-arm"
+                  : moving
+                    ? facingUp
+                      ? "potato-arm-up-left"
+                      : facingSide
+                        ? "potato-arm-side-left"
+                        : "potato-arm-left"
+                    : "rotate-[25deg]"
               }
             `}
           />
 
           {/* =================================================
-              BODY GROUP
-
-              이 박스가 캐릭터의 기준점.
-              팔다리도 이 박스를 기준으로 붙는다.
+              Right Arm
           ================================================= */}
 
           <div
-            className="
+            className={`
+              absolute
+
+              right-[10px]
+              top-[48px]
+
+              z-0
+
+              h-[4px]
+              w-[18px]
+
+              origin-left
+
+              rounded-full
+
+              ${
+                ghost
+                  ? "bg-sky-950/70"
+                  : "bg-zinc-900"
+              }
+
+              ${
+                attacking
+                  ? "potato-attack-right-arm"
+                  : moving
+                    ? facingUp
+                      ? "potato-arm-up-right"
+                      : facingSide
+                        ? "potato-arm-side-right"
+                        : "potato-arm-right"
+                    : "-rotate-[25deg]"
+              }
+            `}
+          />
+
+          {/* =================================================
+              Knife
+
+              공격 중인 악마에게만 표시.
+          ================================================= */}
+
+          {attacking &&
+            !ghost && (
+              <div
+                className="
+                  potato-knife
+
+                  pointer-events-none
+
+                  absolute
+
+                  right-[-6px]
+                  top-[28px]
+
+                  z-30
+
+                  h-[42px]
+                  w-[24px]
+
+                  origin-bottom-left
+                "
+              >
+                {/* Blade */}
+
+                <div
+                  className="
+                    absolute
+
+                    left-[8px]
+                    top-0
+
+                    h-[27px]
+                    w-[8px]
+
+                    -rotate-[12deg]
+
+                    rounded-t-full
+
+                    border
+                    border-zinc-500
+
+                    bg-zinc-200
+
+                    shadow
+                  "
+                >
+                  <div
+                    className="
+                      absolute
+
+                      right-[1px]
+                      top-[3px]
+
+                      h-[18px]
+                      w-[2px]
+
+                      bg-white/80
+                    "
+                  />
+                </div>
+
+                {/* Handle */}
+
+                <div
+                  className="
+                    absolute
+
+                    bottom-0
+                    left-[7px]
+
+                    h-[16px]
+                    w-[10px]
+
+                    -rotate-[12deg]
+
+                    rounded-sm
+
+                    border
+                    border-zinc-950
+
+                    bg-[#6f3d28]
+                  "
+                />
+              </div>
+            )}
+
+          {/* =================================================
+              Left Leg
+          ================================================= */}
+
+          <div
+            className={`
+              absolute
+
+              bottom-[5px]
+              left-[29px]
+
+              z-0
+
+              h-[21px]
+              w-[4px]
+
+              origin-top
+
+              rounded-full
+
+              ${
+                ghost
+                  ? "bg-sky-950/60"
+                  : "bg-zinc-900"
+              }
+
+              ${
+                moving &&
+                !ghost
+                  ? "potato-leg-left"
+                  : ""
+              }
+            `}
+          />
+
+          {/* =================================================
+              Right Leg
+          ================================================= */}
+
+          <div
+            className={`
+              absolute
+
+              bottom-[5px]
+              right-[29px]
+
+              z-0
+
+              h-[21px]
+              w-[4px]
+
+              origin-top
+
+              rounded-full
+
+              ${
+                ghost
+                  ? "bg-sky-950/60"
+                  : "bg-zinc-900"
+              }
+
+              ${
+                moving &&
+                !ghost
+                  ? "potato-leg-right"
+                  : ""
+              }
+            `}
+          />
+
+          {/* =================================================
+              Shadow
+
+              유령은 그림자가 매우 약함.
+          ================================================= */}
+
+          <div
+            className={`
+              absolute
+
+              bottom-[1px]
+              left-1/2
+
+              h-[6px]
+
+              -translate-x-1/2
+
+              rounded-full
+
+              transition-all
+              duration-150
+
+              ${
+                ghost
+                  ? "w-[22px] bg-sky-900/5"
+                  : moving
+                    ? "w-[28px] bg-zinc-900/10"
+                    : "w-[34px] bg-zinc-900/10"
+              }
+            `}
+          />
+
+          {/* =================================================
+              Body
+          ================================================= */}
+
+          <div
+            className={`
               absolute
 
               left-1/2
-              top-[8%]
+              top-[8px]
 
-              h-[75%]
-              w-[72.5%]
+              z-10
+
+              h-[75px]
+              w-[58px]
 
               -translate-x-1/2
-            "
+
+              rounded-[48%_52%_46%_54%/42%_46%_54%_58%]
+
+              border-[4px]
+
+              ${
+                ghost
+                  ? "border-sky-950/70"
+                  : hit
+                    ? "border-red-600"
+                    : "border-zinc-900"
+              }
+
+              transition
+              duration-100
+            `}
+            style={{
+              backgroundColor:
+                ghost
+                  ? "#b8dcea"
+                  : hit
+                    ? "#ef8b7f"
+                    : potatoColor.body,
+
+              boxShadow:
+                ghost
+                  ? "inset -5px -5px 0 rgba(50,100,130,0.15)"
+                  : evil
+                    ? `inset -5px -5px 0 ${potatoColor.shadow}33, 0 0 12px rgba(239,68,68,0.30)`
+                    : `inset -5px -5px 0 ${potatoColor.shadow}33`,
+            }}
           >
             {/* =============================================
-                LEFT ARM
-
-                몸통 좌측 경계에 직접 연결.
+                Potato spots
             ============================================= */}
 
-            <div
-              className={`
-                absolute
+            <PotatoSpot
+              left={10}
+              top={12}
+              color={
+                ghost
+                  ? "#73a6b8"
+                  : potatoColor.spot
+              }
+            />
 
-                left-[-18%]
-                top-[53%]
+            <PotatoSpot
+              right={9}
+              top={17}
+              color={
+                ghost
+                  ? "#73a6b8"
+                  : potatoColor.spot
+              }
+            />
 
-                z-0
+            <PotatoSpot
+              left={7}
+              top={42}
+              color={
+                ghost
+                  ? "#73a6b8"
+                  : potatoColor.spot
+              }
+            />
 
-                h-[5.3%]
-                w-[31%]
-
-                origin-right
-
-                rounded-full
-
-                bg-zinc-900
-
-                ${
-                  moving
-                    ? leftArmClass
-                    : "rotate-[25deg]"
-                }
-              `}
+            <PotatoSpot
+              right={10}
+              bottom={10}
+              color={
+                ghost
+                  ? "#73a6b8"
+                  : potatoColor.spot
+              }
             />
 
             {/* =============================================
-                RIGHT ARM
+                HIT FACE
+
+                피격 중에는 방향 얼굴보다 이 얼굴을 우선 표시.
             ============================================= */}
 
-            <div
-              className={`
-                absolute
-
-                right-[-18%]
-                top-[53%]
-
-                z-0
-
-                h-[5.3%]
-                w-[31%]
-
-                origin-left
-
-                rounded-full
-
-                bg-zinc-900
-
-                ${
-                  moving
-                    ? rightArmClass
-                    : "-rotate-[25deg]"
-                }
-              `}
-            />
-
-            {/* =============================================
-                LEFT LEG
-
-                몸 아래에서 시작하도록 body 기준 배치.
-            ============================================= */}
-
-            <div
-              className={`
-                absolute
-
-                bottom-[-24%]
-                left-[33%]
-
-                z-0
-
-                h-[27%]
-                w-[6.5%]
-
-                origin-top
-
-                rounded-full
-
-                bg-zinc-900
-
-                ${
-                  moving
-                    ? "potato-leg-left"
-                    : ""
-                }
-              `}
-            />
-
-            {/* =============================================
-                RIGHT LEG
-            ============================================= */}
-
-            <div
-              className={`
-                absolute
-
-                bottom-[-24%]
-                right-[33%]
-
-                z-0
-
-                h-[27%]
-                w-[6.5%]
-
-                origin-top
-
-                rounded-full
-
-                bg-zinc-900
-
-                ${
-                  moving
-                    ? "potato-leg-right"
-                    : ""
-                }
-              `}
-            />
-
-            {/* =============================================
-                Potato Body
-
-                팔다리보다 z-index가 높아서
-                연결 부위를 자연스럽게 가린다.
-            ============================================= */}
-
-            <div
-              className="
-                absolute
-                inset-0
-
-                z-10
-
-                overflow-visible
-
-                rounded-[48%_52%_46%_54%/42%_46%_54%_58%]
-
-                border-[4px]
-                border-zinc-900
-              "
-              style={{
-                backgroundColor:
-                  potatoColor.body,
-
-                boxShadow:
-                  `inset -5px -5px 0 ${potatoColor.shadow}33`,
-              }}
-            >
-              {/* =========================================
-                  Potato Spots
-              ========================================= */}
-
-              <PotatoSpot
-                left="17%"
-                top="15%"
-                color={
-                  potatoColor.spot
-                }
-              />
-
-              <PotatoSpot
-                right="15%"
-                top="22%"
-                color={
-                  potatoColor.spot
-                }
-              />
-
-              <PotatoSpot
-                left="13%"
-                top="56%"
-                color={
-                  potatoColor.spot
-                }
-              />
-
-              <PotatoSpot
-                right="18%"
-                bottom="14%"
-                color={
-                  potatoColor.spot
-                }
-              />
-
-              <PotatoSpot
-                left="43%"
-                top="10%"
-                size={2}
-                color={
-                  potatoColor.spot
-                }
-              />
-
-              {/* =========================================
-                  DOWN
-                  정면
-              ========================================= */}
-
-              {facingDown && (
+            {hit &&
+              !ghost && (
                 <>
-                  {/* Cheeks */}
+                  {/* 왼쪽 눈 */}
 
                   <div
                     className="
                       absolute
 
-                      left-[12%]
-                      top-[54%]
+                      left-[10px]
+                      top-[29px]
 
-                      h-[7%]
-                      w-[13%]
+                      h-[8px]
+                      w-[8px]
 
-                      rounded-full
-
-                      bg-rose-300/60
+                      rotate-45
                     "
-                  />
+                  >
+                    <div
+                      className="
+                        absolute
+                        left-1/2
+                        top-0
+
+                        h-full
+                        w-[2px]
+
+                        -translate-x-1/2
+
+                        bg-zinc-900
+                      "
+                    />
+
+                    <div
+                      className="
+                        absolute
+                        left-0
+                        top-1/2
+
+                        h-[2px]
+                        w-full
+
+                        -translate-y-1/2
+
+                        bg-zinc-900
+                      "
+                    />
+                  </div>
+
+                  {/* 오른쪽 눈 */}
 
                   <div
                     className="
                       absolute
 
-                      right-[12%]
-                      top-[54%]
+                      right-[10px]
+                      top-[29px]
 
-                      h-[7%]
-                      w-[13%]
+                      h-[8px]
+                      w-[8px]
 
-                      rounded-full
-
-                      bg-rose-300/60
+                      rotate-45
                     "
-                  />
+                  >
+                    <div
+                      className="
+                        absolute
+                        left-1/2
+                        top-0
 
-                  {/* Eyes */}
+                        h-full
+                        w-[2px]
 
-                  <div
-                    className="
-                      absolute
+                        -translate-x-1/2
 
-                      left-[21%]
-                      top-[40%]
+                        bg-zinc-900
+                      "
+                    />
 
-                      h-[8%]
-                      w-[10%]
+                    <div
+                      className="
+                        absolute
+                        left-0
+                        top-1/2
 
-                      rounded-[1px]
+                        h-[2px]
+                        w-full
 
-                      bg-zinc-900
-                    "
-                  />
+                        -translate-y-1/2
 
-                  <div
-                    className="
-                      absolute
+                        bg-zinc-900
+                      "
+                    />
+                  </div>
 
-                      right-[21%]
-                      top-[40%]
-
-                      h-[8%]
-                      w-[10%]
-
-                      rounded-[1px]
-
-                      bg-zinc-900
-                    "
-                  />
-
-                  {/* Mouth */}
+                  {/* 놀란 입 */}
 
                   <div
                     className="
                       absolute
 
                       left-1/2
-                      top-[59%]
+                      top-[45px]
 
-                      h-[7%]
-                      w-[21%]
+                      h-[9px]
+                      w-[9px]
 
                       -translate-x-1/2
 
-                      border-b-[3px]
+                      rounded-full
+
+                      border-[2px]
                       border-zinc-900
                     "
                   />
+
+                  {/* 충격 표시 */}
+
+                  <div
+                    className="
+                      absolute
+
+                      -right-[13px]
+                      -top-[10px]
+
+                      text-[18px]
+                      font-black
+
+                      text-red-600
+                    "
+                  >
+                    !
+                  </div>
+                </>
+              )}
+
+            {/* =============================================
+                DOWN / FRONT
+            ============================================= */}
+
+            {!hit &&
+              facingDown && (
+                <>
+                  {/* Cheeks */}
+
+                  {!evil && (
+                    <>
+                      <div
+                        className="
+                          absolute
+
+                          left-[7px]
+                          top-[40px]
+
+                          h-[5px]
+                          w-[7px]
+
+                          rounded-full
+
+                          bg-rose-300/60
+                        "
+                      />
+
+                      <div
+                        className="
+                          absolute
+
+                          right-[7px]
+                          top-[40px]
+
+                          h-[5px]
+                          w-[7px]
+
+                          rounded-full
+
+                          bg-rose-300/60
+                        "
+                      />
+                    </>
+                  )}
+
+                  {/* =====================================
+                      Normal eyes
+                  ===================================== */}
+
+                  {!evil && (
+                    <>
+                      <div
+                        className="
+                          absolute
+
+                          left-[12px]
+                          top-[30px]
+
+                          h-[6px]
+                          w-[6px]
+
+                          rounded-[1px]
+
+                          bg-zinc-900
+                        "
+                      />
+
+                      <div
+                        className="
+                          absolute
+
+                          right-[12px]
+                          top-[30px]
+
+                          h-[6px]
+                          w-[6px]
+
+                          rounded-[1px]
+
+                          bg-zinc-900
+                        "
+                      />
+                    </>
+                  )}
+
+                  {/* =====================================
+                      Evil eyes
+                  ===================================== */}
+
+                  {evil && (
+                    <>
+                      <div
+                        className="
+                          absolute
+
+                          left-[9px]
+                          top-[28px]
+
+                          h-[9px]
+                          w-[12px]
+
+                          rotate-[13deg]
+
+                          border-b-[4px]
+                          border-red-700
+                        "
+                      />
+
+                      <div
+                        className="
+                          absolute
+
+                          right-[9px]
+                          top-[28px]
+
+                          h-[9px]
+                          w-[12px]
+
+                          -rotate-[13deg]
+
+                          border-b-[4px]
+                          border-red-700
+                        "
+                      />
+
+                      <div
+                        className="
+                          absolute
+
+                          left-[14px]
+                          top-[33px]
+
+                          h-[4px]
+                          w-[4px]
+
+                          rounded-full
+
+                          bg-zinc-950
+                        "
+                      />
+
+                      <div
+                        className="
+                          absolute
+
+                          right-[14px]
+                          top-[33px]
+
+                          h-[4px]
+                          w-[4px]
+
+                          rounded-full
+
+                          bg-zinc-950
+                        "
+                      />
+                    </>
+                  )}
+
+                  {/* Mouth */}
+
+                  {evil ? (
+                    <div
+                      className="
+                        absolute
+
+                        left-1/2
+                        top-[45px]
+
+                        h-[9px]
+                        w-[18px]
+
+                        -translate-x-1/2
+
+                        rounded-b-full
+
+                        border-b-[3px]
+                        border-zinc-950
+                      "
+                    >
+                      <div
+                        className="
+                          absolute
+
+                          bottom-[-2px]
+                          left-[3px]
+
+                          h-[5px]
+                          w-[4px]
+
+                          rotate-[12deg]
+
+                          bg-white
+
+                          [clip-path:polygon(0_0,100%_0,50%_100%)]
+                        "
+                      />
+
+                      <div
+                        className="
+                          absolute
+
+                          bottom-[-2px]
+                          right-[3px]
+
+                          h-[5px]
+                          w-[4px]
+
+                          -rotate-[12deg]
+
+                          bg-white
+
+                          [clip-path:polygon(0_0,100%_0,50%_100%)]
+                        "
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="
+                        absolute
+
+                        left-1/2
+                        top-[44px]
+
+                        h-[5px]
+                        w-[12px]
+
+                        -translate-x-1/2
+
+                        border-b-[3px]
+                        border-zinc-900
+                      "
+                    />
+                  )}
 
                   <Accessories
                     glasses={
@@ -579,24 +1094,22 @@ export default function Potato({
                 </>
               )}
 
-              {/* =========================================
-                  UP
-                  뒷모습
-              ========================================= */}
+            {/* =============================================
+                UP / BACK
+            ============================================= */}
 
-              {facingUp && (
+            {!hit &&
+              facingUp && (
                 <>
-                  {/* 뒤통수 하이라이트 */}
-
                   <div
                     className="
                       absolute
 
-                      left-[15%]
-                      top-[17%]
+                      left-[8px]
+                      top-[12px]
 
-                      h-[24%]
-                      w-[20%]
+                      h-[18px]
+                      w-[12px]
 
                       rotate-[20deg]
 
@@ -606,26 +1119,69 @@ export default function Potato({
                     "
                   />
 
-                  {/* Back spots */}
-
                   <PotatoSpot
-                    right="24%"
-                    top="39%"
+                    right={14}
+                    top={31}
                     size={4}
                     color={
-                      potatoColor.spot
+                      ghost
+                        ? "#73a6b8"
+                        : potatoColor.spot
                     }
                   />
 
                   <PotatoSpot
-                    left="34%"
-                    top="60%"
+                    left={19}
+                    top={45}
                     color={
-                      potatoColor.spot
+                      ghost
+                        ? "#73a6b8"
+                        : potatoColor.spot
                     }
                   />
 
-                  {/* 뒤에서도 모자 / 리본 유지 */}
+                  {/* 악마 뿔 */}
+
+                  {evil &&
+                    !ghost && (
+                      <>
+                        <div
+                          className="
+                            absolute
+
+                            -left-[3px]
+                            top-[-8px]
+
+                            h-[16px]
+                            w-[11px]
+
+                            -rotate-[20deg]
+
+                            bg-red-800
+
+                            [clip-path:polygon(50%_0,100%_100%,0_100%)]
+                          "
+                        />
+
+                        <div
+                          className="
+                            absolute
+
+                            -right-[3px]
+                            top-[-8px]
+
+                            h-[16px]
+                            w-[11px]
+
+                            rotate-[20deg]
+
+                            bg-red-800
+
+                            [clip-path:polygon(50%_0,100%_100%,0_100%)]
+                          "
+                        />
+                      </>
+                    )}
 
                   <Accessories
                     glasses="none"
@@ -640,64 +1196,91 @@ export default function Potato({
                 </>
               )}
 
-              {/* =========================================
-                  LEFT
-              ========================================= */}
+            {/* =============================================
+                LEFT
+            ============================================= */}
 
-              {facingLeft && (
+            {!hit &&
+              facingLeft && (
                 <>
-                  {/* Eye */}
-
                   <div
-                    className="
+                    className={`
                       absolute
 
-                      left-[16%]
-                      top-[40%]
+                      left-[10px]
+                      top-[31px]
 
-                      h-[9%]
-                      w-[10%]
+                      h-[7px]
+                      w-[6px]
 
                       rounded-[2px]
 
-                      bg-zinc-900
-                    "
+                      ${
+                        evil
+                          ? "bg-red-800"
+                          : "bg-zinc-900"
+                      }
+                    `}
                   />
 
-                  {/* Cheek */}
+                  {!evil && (
+                    <div
+                      className="
+                        absolute
+
+                        left-[7px]
+                        top-[41px]
+
+                        h-[5px]
+                        w-[7px]
+
+                        rounded-full
+
+                        bg-rose-300/60
+                      "
+                    />
+                  )}
 
                   <div
-                    className="
+                    className={`
                       absolute
 
-                      left-[10%]
-                      top-[54%]
+                      left-[9px]
+                      top-[48px]
 
-                      h-[7%]
-                      w-[13%]
-
-                      rounded-full
-
-                      bg-rose-300/60
-                    "
-                  />
-
-                  {/* Mouth */}
-
-                  <div
-                    className="
-                      absolute
-
-                      left-[15%]
-                      top-[63%]
-
-                      h-[5%]
-                      w-[16%]
+                      h-[3px]
+                      w-[9px]
 
                       border-b-[3px]
-                      border-zinc-900
-                    "
+
+                      ${
+                        evil
+                          ? "border-red-900"
+                          : "border-zinc-900"
+                      }
+                    `}
                   />
+
+                  {evil &&
+                    !ghost && (
+                      <div
+                        className="
+                          absolute
+
+                          -left-[4px]
+                          top-[-7px]
+
+                          h-[16px]
+                          w-[11px]
+
+                          -rotate-[24deg]
+
+                          bg-red-800
+
+                          [clip-path:polygon(50%_0,100%_100%,0_100%)]
+                        "
+                      />
+                    )}
 
                   <Accessories
                     glasses={
@@ -716,64 +1299,91 @@ export default function Potato({
                 </>
               )}
 
-              {/* =========================================
-                  RIGHT
-              ========================================= */}
+            {/* =============================================
+                RIGHT
+            ============================================= */}
 
-              {facingRight && (
+            {!hit &&
+              facingRight && (
                 <>
-                  {/* Eye */}
-
                   <div
-                    className="
+                    className={`
                       absolute
 
-                      right-[16%]
-                      top-[40%]
+                      right-[10px]
+                      top-[31px]
 
-                      h-[9%]
-                      w-[10%]
+                      h-[7px]
+                      w-[6px]
 
                       rounded-[2px]
 
-                      bg-zinc-900
-                    "
+                      ${
+                        evil
+                          ? "bg-red-800"
+                          : "bg-zinc-900"
+                      }
+                    `}
                   />
 
-                  {/* Cheek */}
+                  {!evil && (
+                    <div
+                      className="
+                        absolute
+
+                        right-[7px]
+                        top-[41px]
+
+                        h-[5px]
+                        w-[7px]
+
+                        rounded-full
+
+                        bg-rose-300/60
+                      "
+                    />
+                  )}
 
                   <div
-                    className="
+                    className={`
                       absolute
 
-                      right-[10%]
-                      top-[54%]
+                      right-[9px]
+                      top-[48px]
 
-                      h-[7%]
-                      w-[13%]
-
-                      rounded-full
-
-                      bg-rose-300/60
-                    "
-                  />
-
-                  {/* Mouth */}
-
-                  <div
-                    className="
-                      absolute
-
-                      right-[15%]
-                      top-[63%]
-
-                      h-[5%]
-                      w-[16%]
+                      h-[3px]
+                      w-[9px]
 
                       border-b-[3px]
-                      border-zinc-900
-                    "
+
+                      ${
+                        evil
+                          ? "border-red-900"
+                          : "border-zinc-900"
+                      }
+                    `}
                   />
+
+                  {evil &&
+                    !ghost && (
+                      <div
+                        className="
+                          absolute
+
+                          -right-[4px]
+                          top-[-7px]
+
+                          h-[16px]
+                          w-[11px]
+
+                          rotate-[24deg]
+
+                          bg-red-800
+
+                          [clip-path:polygon(50%_0,100%_100%,0_100%)]
+                        "
+                      />
+                    )}
 
                   <Accessories
                     glasses={
@@ -791,245 +1401,376 @@ export default function Potato({
                   />
                 </>
               )}
-            </div>
+
+            {/* =============================================
+                Ghost Face Overlay
+
+                유령은 기존 방향 얼굴 위에
+                작은 유령 표시를 추가한다.
+            ============================================= */}
+
+            {ghost && (
+              <div
+                className="
+                  pointer-events-none
+
+                  absolute
+
+                  -right-[7px]
+                  -top-[9px]
+
+                  flex
+                  h-[19px]
+                  w-[19px]
+
+                  items-center
+                  justify-center
+
+                  rounded-full
+
+                  border
+                  border-sky-100/70
+
+                  bg-sky-500/80
+
+                  text-[10px]
+
+                  shadow
+                "
+              >
+                👻
+              </div>
+            )}
           </div>
+
+          {/* =================================================
+              Attack effect
+          ================================================= */}
+
+          {attacking &&
+            !ghost && (
+              <div
+                className="
+                  potato-slash
+
+                  pointer-events-none
+
+                  absolute
+
+                  right-[-18px]
+                  top-[16px]
+
+                  z-40
+
+                  h-[58px]
+                  w-[58px]
+
+                  rounded-full
+
+                  border-r-[4px]
+                  border-t-[4px]
+                  border-red-400/80
+                "
+              />
+            )}
+
+          {/* =================================================
+              Hit flash
+          ================================================= */}
+
+          {hit &&
+            !ghost && (
+              <div
+                className="
+                  potato-hit-flash
+
+                  pointer-events-none
+
+                  absolute
+
+                  -inset-[8px]
+
+                  z-50
+
+                  rounded-full
+
+                  border-[3px]
+                  border-red-400/70
+                "
+              />
+            )}
         </div>
       </div>
 
       {/* =====================================================
-          Animation
-
-          모든 애니메이션은 캐릭터 자체 좌표만 변경.
-          화면 해상도에는 의존하지 않는다.
+          Animation CSS
       ===================================================== */}
 
       <style>{`
-        @keyframes potatoBounceDown {
-          0% {
-            transform: translateY(0px);
+        @keyframes directionBounce {
+          0%,
+          100% {
+            translate: 0 0;
           }
 
           50% {
-            transform: translateY(-4px);
-          }
-
-          100% {
-            transform: translateY(0px);
+            translate: 0 -4px;
           }
         }
 
-        @keyframes potatoBounceUp {
-          0% {
-            transform: translateY(0px);
+        @keyframes armLeft {
+          0%,
+          100% {
+            transform: rotate(18deg);
           }
 
           50% {
-            transform: translateY(-3px);
-          }
-
-          100% {
-            transform: translateY(0px);
+            transform: rotate(48deg);
           }
         }
 
-        @keyframes potatoBounceSide {
-          0% {
-            transform: translateY(0px) rotate(0deg);
-          }
-
-          25% {
-            transform: translateY(-2px) rotate(-1deg);
+        @keyframes armRight {
+          0%,
+          100% {
+            transform: rotate(-18deg);
           }
 
           50% {
-            transform: translateY(-4px) rotate(0deg);
-          }
-
-          75% {
-            transform: translateY(-2px) rotate(1deg);
-          }
-
-          100% {
-            transform: translateY(0px) rotate(0deg);
-          }
-        }
-
-        @keyframes armDownLeft {
-          0% {
-            transform: rotate(20deg);
-          }
-
-          50% {
-            transform: rotate(45deg);
-          }
-
-          100% {
-            transform: rotate(20deg);
-          }
-        }
-
-        @keyframes armDownRight {
-          0% {
-            transform: rotate(-20deg);
-          }
-
-          50% {
-            transform: rotate(-45deg);
-          }
-
-          100% {
-            transform: rotate(-20deg);
+            transform: rotate(-48deg);
           }
         }
 
         @keyframes armUpLeft {
-          0% {
-            transform: rotate(40deg);
+          0%,
+          100% {
+            transform: rotate(42deg);
           }
 
           50% {
             transform: rotate(12deg);
           }
-
-          100% {
-            transform: rotate(40deg);
-          }
         }
 
         @keyframes armUpRight {
-          0% {
-            transform: rotate(-40deg);
+          0%,
+          100% {
+            transform: rotate(-42deg);
           }
 
           50% {
             transform: rotate(-12deg);
           }
-
-          100% {
-            transform: rotate(-40deg);
-          }
         }
 
-        @keyframes armLeftFacingLeft {
-          0% {
-            transform: rotate(12deg);
+        @keyframes sideArmLeft {
+          0%,
+          100% {
+            transform: rotate(10deg);
           }
 
           50% {
-            transform: rotate(38deg);
-          }
-
-          100% {
-            transform: rotate(12deg);
+            transform: rotate(52deg);
           }
         }
 
-        @keyframes armRightFacingLeft {
-          0% {
-            transform: rotate(-32deg);
+        @keyframes sideArmRight {
+          0%,
+          100% {
+            transform: rotate(-52deg);
           }
 
           50% {
             transform: rotate(-10deg);
           }
-
-          100% {
-            transform: rotate(-32deg);
-          }
-        }
-
-        @keyframes armLeftFacingRight {
-          0% {
-            transform: rotate(32deg);
-          }
-
-          50% {
-            transform: rotate(10deg);
-          }
-
-          100% {
-            transform: rotate(32deg);
-          }
-        }
-
-        @keyframes armRightFacingRight {
-          0% {
-            transform: rotate(-12deg);
-          }
-
-          50% {
-            transform: rotate(-38deg);
-          }
-
-          100% {
-            transform: rotate(-12deg);
-          }
         }
 
         @keyframes legLeft {
-          0% {
-            transform: rotate(11deg);
+          0%,
+          100% {
+            transform: rotate(13deg);
           }
 
           50% {
-            transform: rotate(-11deg);
-          }
-
-          100% {
-            transform: rotate(11deg);
+            transform: rotate(-13deg);
           }
         }
 
         @keyframes legRight {
-          0% {
-            transform: rotate(-11deg);
+          0%,
+          100% {
+            transform: rotate(-13deg);
           }
 
           50% {
-            transform: rotate(11deg);
+            transform: rotate(13deg);
+          }
+        }
+
+        /* ===============================================
+           Ghost
+        =============================================== */
+
+        @keyframes ghostFloat {
+          0%,
+          100% {
+            translate: 0 -2px;
+          }
+
+          50% {
+            translate: 0 -10px;
+          }
+        }
+
+        /* ===============================================
+           Attack
+        =============================================== */
+
+        @keyframes attackBody {
+          0% {
+            translate: 0 0;
+          }
+
+          35% {
+            translate: 7px -1px;
+          }
+
+          65% {
+            translate: 9px 1px;
           }
 
           100% {
-            transform: rotate(-11deg);
+            translate: 0 0;
           }
         }
 
-        .potato-moving-down {
+        @keyframes attackRightArm {
+          0% {
+            transform: rotate(-25deg);
+          }
+
+          40% {
+            transform: rotate(-100deg);
+          }
+
+          70% {
+            transform: rotate(15deg);
+          }
+
+          100% {
+            transform: rotate(-25deg);
+          }
+        }
+
+        @keyframes attackLeftArm {
+          0%,
+          100% {
+            transform: rotate(25deg);
+          }
+
+          50% {
+            transform: rotate(5deg);
+          }
+        }
+
+        @keyframes knifeSwing {
+          0% {
+            transform: rotate(-45deg);
+          }
+
+          45% {
+            transform: rotate(45deg);
+          }
+
+          100% {
+            transform: rotate(-15deg);
+          }
+        }
+
+        @keyframes slash {
+          0% {
+            opacity: 0;
+            transform: rotate(-30deg) scale(0.6);
+          }
+
+          40% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: rotate(35deg) scale(1.15);
+          }
+        }
+
+        /* ===============================================
+           Hit
+        =============================================== */
+
+        @keyframes hitShake {
+          0% {
+            translate: 0 0;
+          }
+
+          20% {
+            translate: -6px 0;
+          }
+
+          40% {
+            translate: 6px -2px;
+          }
+
+          60% {
+            translate: -5px 1px;
+          }
+
+          80% {
+            translate: 4px 0;
+          }
+
+          100% {
+            translate: 0 0;
+          }
+        }
+
+        @keyframes hitFlash {
+          0% {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+
+          40% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: scale(1.25);
+          }
+        }
+
+        /* ===============================================
+           Classes
+        =============================================== */
+
+        .potato-direction-bounce {
           animation:
-            potatoBounceDown
+            directionBounce
             0.34s
             ease-in-out
             infinite;
         }
 
-        .potato-moving-up {
+        .potato-arm-left {
           animation:
-            potatoBounceUp
+            armLeft
             0.34s
             ease-in-out
             infinite;
         }
 
-        .potato-moving-left,
-        .potato-moving-right {
+        .potato-arm-right {
           animation:
-            potatoBounceSide
-            0.34s
-            ease-in-out
-            infinite;
-        }
-
-        .potato-arm-down-left {
-          animation:
-            armDownLeft
-            0.34s
-            ease-in-out
-            infinite;
-        }
-
-        .potato-arm-down-right {
-          animation:
-            armDownRight
+            armRight
             0.34s
             ease-in-out
             infinite;
@@ -1051,33 +1792,17 @@ export default function Potato({
             infinite;
         }
 
-        .potato-arm-left-facing-left {
+        .potato-arm-side-left {
           animation:
-            armLeftFacingLeft
+            sideArmLeft
             0.34s
             ease-in-out
             infinite;
         }
 
-        .potato-arm-right-facing-left {
+        .potato-arm-side-right {
           animation:
-            armRightFacingLeft
-            0.34s
-            ease-in-out
-            infinite;
-        }
-
-        .potato-arm-left-facing-right {
-          animation:
-            armLeftFacingRight
-            0.34s
-            ease-in-out
-            infinite;
-        }
-
-        .potato-arm-right-facing-right {
-          animation:
-            armRightFacingRight
+            sideArmRight
             0.34s
             ease-in-out
             infinite;
@@ -1099,18 +1824,96 @@ export default function Potato({
             infinite;
         }
 
+        .potato-lean-left {
+          rotate: -2deg;
+        }
+
+        .potato-lean-right {
+          rotate: 2deg;
+        }
+
+        .potato-ghost-float {
+          animation:
+            ghostFloat
+            1.4s
+            ease-in-out
+            infinite;
+        }
+
+        .potato-attack-body {
+          animation:
+            attackBody
+            0.48s
+            ease-out
+            1;
+        }
+
+        .potato-attack-left-arm {
+          animation:
+            attackLeftArm
+            0.48s
+            ease-out
+            1;
+        }
+
+        .potato-attack-right-arm {
+          animation:
+            attackRightArm
+            0.48s
+            ease-out
+            1;
+        }
+
+        .potato-knife {
+          animation:
+            knifeSwing
+            0.48s
+            ease-out
+            1;
+        }
+
+        .potato-slash {
+          animation:
+            slash
+            0.48s
+            ease-out
+            1;
+        }
+
+        .potato-hit {
+          animation:
+            hitShake
+            0.48s
+            ease-out
+            1;
+        }
+
+        .potato-hit-flash {
+          animation:
+            hitFlash
+            0.48s
+            ease-out
+            1;
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .potato-stage-moving,
-          .potato-arm-down-left,
-          .potato-arm-down-right,
+          .potato-direction-bounce,
+          .potato-arm-left,
+          .potato-arm-right,
           .potato-arm-up-left,
           .potato-arm-up-right,
-          .potato-arm-left-facing-left,
-          .potato-arm-right-facing-left,
-          .potato-arm-left-facing-right,
-          .potato-arm-right-facing-right,
+          .potato-arm-side-left,
+          .potato-arm-side-right,
           .potato-leg-left,
-          .potato-leg-right {
+          .potato-leg-right,
+          .potato-ghost-float,
+          .potato-attack-body,
+          .potato-attack-left-arm,
+          .potato-attack-right-arm,
+          .potato-knife,
+          .potato-slash,
+          .potato-hit,
+          .potato-hit-flash {
             animation: none !important;
           }
         }
@@ -1124,13 +1927,10 @@ export default function Potato({
 ========================================================= */
 
 type PotatoSpotProps = {
-  left?: string;
-
-  right?: string;
-
-  top?: string;
-
-  bottom?: string;
+  left?: number;
+  right?: number;
+  top?: number;
+  bottom?: number;
 
   size?: number;
 
@@ -1139,11 +1939,8 @@ type PotatoSpotProps = {
 
 function PotatoSpot({
   left,
-
   right,
-
   top,
-
   bottom,
 
   size = 3,
@@ -1154,17 +1951,28 @@ function PotatoSpot({
     <div
       className="
         absolute
-
         rounded-full
       "
       style={{
-        left,
+        left:
+          left !== undefined
+            ? `${left}px`
+            : undefined,
 
-        right,
+        right:
+          right !== undefined
+            ? `${right}px`
+            : undefined,
 
-        top,
+        top:
+          top !== undefined
+            ? `${top}px`
+            : undefined,
 
-        bottom,
+        bottom:
+          bottom !== undefined
+            ? `${bottom}px`
+            : undefined,
 
         width:
           `${size}px`,

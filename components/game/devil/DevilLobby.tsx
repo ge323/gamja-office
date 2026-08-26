@@ -1,12 +1,17 @@
 "use client";
 
-/* =========================================================
-   Types
-========================================================= */
+import type {
+  CharacterStyle,
+} from "@/components/character/CharacterCustomizer";
+
+import Potato from "@/components/character/Potato";
 
 export type DevilLobbyPlayer = {
   id: string;
   nickname: string;
+
+  characterStyle?:
+    CharacterStyle;
 };
 
 export type DevilLobbyRoom = {
@@ -16,12 +21,16 @@ export type DevilLobbyRoom = {
 
   status:
     | "waiting"
+    | "countdown"
     | "playing";
 
   maxPlayers: number;
 
   players:
     DevilLobbyPlayer[];
+
+  countdownEndsAt?:
+    number | null;
 };
 
 type DevilLobbyProps = {
@@ -29,7 +38,7 @@ type DevilLobbyProps = {
     DevilLobbyRoom;
 
   mySocketId:
-    string | null;
+    string;
 
   onLeave:
     () => void;
@@ -39,14 +48,69 @@ type DevilLobbyProps = {
 };
 
 /* =========================================================
-   테스트용 최소 인원
-
-   개발이 끝나면
-   4로 바꾸면 됨.
+   Constants
 ========================================================= */
 
 const MIN_PLAYERS =
   2;
+
+/*
+ * 로비 캐릭터 자리.
+ *
+ * 최대 6명 정도를 기준으로
+ * 사무실 안에 자연스럽게 배치.
+ */
+const LOBBY_POSITIONS = [
+  {
+    left: "20%",
+    top: "37%",
+  },
+
+  {
+    left: "42%",
+    top: "34%",
+  },
+
+  {
+    left: "66%",
+    top: "38%",
+  },
+
+  {
+    left: "29%",
+    top: "67%",
+  },
+
+  {
+    left: "52%",
+    top: "65%",
+  },
+
+  {
+    left: "76%",
+    top: "66%",
+  },
+];
+
+/* =========================================================
+   Helpers
+========================================================= */
+
+function displayName(
+  nickname: string
+) {
+  const clean =
+    nickname
+      .replace(
+        /\s*감자\s*$/g,
+        ""
+      )
+      .trim();
+
+  return clean
+    ? `${clean} 감자`
+    : "감자";
+}
 
 /* =========================================================
    DevilLobby
@@ -54,282 +118,600 @@ const MIN_PLAYERS =
 
 export default function DevilLobby({
   room,
+
   mySocketId,
+
   onLeave,
+
   onStart,
 }: DevilLobbyProps) {
-  /* ======================================================
-     Host
-  ====================================================== */
-
   const isHost =
     room.hostId ===
     mySocketId;
 
-  /* ======================================================
-     Start Check
-  ====================================================== */
+  const playerCount =
+    room.players.length;
 
   const canStart =
-    room.players.length >=
-    MIN_PLAYERS;
+    isHost &&
+    room.status ===
+      "waiting" &&
+    playerCount >=
+      MIN_PLAYERS;
 
-  const remainingPlayers =
+  const needCount =
     Math.max(
       0,
-
       MIN_PLAYERS -
-        room.players.length
+        playerCount
     );
-
-  /* ======================================================
-     Empty Slots
-  ====================================================== */
-
-  const emptySlots =
-    Math.max(
-      0,
-
-      room.maxPlayers -
-        room.players.length
-    );
-
-  /* ======================================================
-     Render
-  ====================================================== */
 
   return (
     <div
       data-no-move
       className="
-        fixed
+        absolute
         inset-0
         z-[20000]
+
         flex
         items-center
         justify-center
-        bg-black/60
-        px-4
-        py-6
-        backdrop-blur-[2px]
+
+        bg-black/50
+
+        px-5
+        py-5
+
+        backdrop-blur-[3px]
       "
     >
-      {/* =================================================
-          Lobby Card
-      ================================================= */}
+      {/* =====================================================
+          Lobby Window
+      ===================================================== */}
 
       <div
         className="
           flex
-          max-h-[90vh]
+
+          h-[min(760px,92vh)]
           w-full
-          max-w-[520px]
+          max-w-[980px]
+
           flex-col
+
           overflow-hidden
-          rounded-2xl
+
+          rounded-[26px]
+
           border
-          border-zinc-200
-          bg-[#f8f5ef]
-          shadow-2xl
+          border-zinc-700
+
+          bg-[#171717]
+
+          shadow-[0_28px_90px_rgba(0,0,0,0.45)]
         "
       >
         {/* =================================================
             Header
         ================================================= */}
 
-        <div
+        <header
           className="
+            flex
             shrink-0
+            items-center
+            justify-between
+
             border-b
-            border-zinc-200
-            px-6
-            py-5
-          "
-        >
-          <div
-            className="
-              flex
-              items-start
-              justify-between
-              gap-4
-            "
-          >
-            {/* =============================================
-                Title
-            ============================================= */}
+            border-zinc-800
 
-            <div>
-              <div
-                className="
-                  text-[9px]
-                  font-bold
-                  tracking-[0.22em]
-                  text-zinc-400
-                "
-              >
-                GAMJA OFFICE GAME
-              </div>
+            bg-[#101010]
 
-              <h2
-                className="
-                  mt-1
-                  text-[22px]
-                  font-black
-                  text-zinc-900
-                "
-              >
-                😈 악마 감자
-              </h2>
-
-              <p
-                className="
-                  mt-1
-                  text-[11px]
-                  text-zinc-500
-                "
-              >
-                다른 감자들이
-                참가하기를 기다리고 있습니다.
-              </p>
-            </div>
-
-            {/* =============================================
-                Count
-            ============================================= */}
-
-            <div
-              className="
-                shrink-0
-                rounded-xl
-                bg-zinc-900
-                px-4
-                py-2
-                text-[11px]
-                font-bold
-                text-white
-              "
-            >
-              {
-                room.players.length
-              }
-              {" / "}
-              {
-                room.maxPlayers
-              }
-            </div>
-          </div>
-        </div>
-
-        {/* =================================================
-            Room Code
-        ================================================= */}
-
-        <div
-          className="
-            shrink-0
-            border-b
-            border-zinc-200
-            bg-white/40
             px-6
             py-4
           "
         >
+          <div>
+            <div
+              className="
+                text-[9px]
+                font-bold
+
+                tracking-[0.22em]
+
+                text-zinc-500
+              "
+            >
+              GAMJA OFFICE GAME
+            </div>
+
+            <div
+              className="
+                mt-1
+
+                flex
+                items-center
+                gap-2
+              "
+            >
+              <span
+                className="
+                  text-[18px]
+                "
+              >
+                🥔
+              </span>
+
+              <h2
+                className="
+                  text-[18px]
+                  font-black
+
+                  text-white
+                "
+              >
+                감자 전쟁 로비
+              </h2>
+            </div>
+
+            <p
+              className="
+                mt-1
+
+                text-[10px]
+
+                text-zinc-500
+              "
+            >
+              게임이 시작되기 전,
+              사무실에서 다른 감자들을 기다려주세요.
+            </p>
+          </div>
+
           <div
             className="
               flex
               items-center
-              justify-between
-              gap-4
+              gap-2
             "
           >
-            <span
+            <div
               className="
-                text-[10px]
-                text-zinc-400
-              "
-            >
-              방 코드
-            </span>
+                rounded-xl
 
-            <span
-              className="
+                border
+                border-zinc-700
+
+                bg-zinc-900
+
+                px-3
+                py-2
+
                 font-mono
-                text-[11px]
-                font-black
-                tracking-[0.18em]
-                text-zinc-700
+
+                text-[10px]
+                font-bold
+
+                tracking-[0.12em]
+
+                text-zinc-300
               "
             >
-              {
-                room.id
-              }
-            </span>
+              {room.id}
+            </div>
+
+            <div
+              className="
+                rounded-xl
+
+                bg-white
+
+                px-3
+                py-2
+
+                text-[10px]
+                font-black
+
+                text-zinc-900
+              "
+            >
+              {playerCount}
+              {" / "}
+              {room.maxPlayers}
+            </div>
           </div>
-        </div>
+        </header>
 
         {/* =================================================
-            Player Section
+            Office Lobby
         ================================================= */}
 
         <div
           className="
+            relative
+
             min-h-0
             flex-1
-            overflow-y-auto
-            px-6
-            py-5
+
+            overflow-hidden
+
+            bg-[#373431]
           "
         >
-          {/* ===============================================
-              Player Header
-          =============================================== */}
+          {/* =============================================
+              바깥 벽
+          ============================================= */}
 
           <div
             className="
-              mb-4
-              flex
-              items-center
-              justify-between
+              absolute
+              inset-[22px]
+
+              rounded-[18px]
+
+              border-[6px]
+              border-[#262422]
+
+              bg-[#d9c7a8]
+
+              shadow-inner
             "
-          >
-            <span
-              className="
-                text-[11px]
-                font-bold
-                text-zinc-700
-              "
-            >
-              참가 감자
-            </span>
+          />
 
-            <span
-              className="
-                text-[9px]
-                text-zinc-400
-              "
-            >
-              최소 {MIN_PLAYERS}명
-            </span>
-          </div>
-
-          {/* ===============================================
-              Players
-          =============================================== */}
+          {/* =============================================
+              바닥
+          ============================================= */}
 
           <div
             className="
-              space-y-2
+              absolute
+
+              left-[38px]
+              right-[38px]
+              top-[38px]
+              bottom-[38px]
+
+              overflow-hidden
+
+              rounded-[12px]
+
+              bg-[#d9c7a8]
             "
           >
+            {/* 바닥 줄 */}
+
+            <div
+              className="
+                absolute
+                inset-0
+
+                opacity-[0.16]
+
+                [background-image:linear-gradient(to_right,#765f48_1px,transparent_1px),linear-gradient(to_bottom,#765f48_1px,transparent_1px)]
+
+                [background-size:44px_44px]
+              "
+            />
+
+            {/* =========================================
+                상단 벽 / 안내판
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                left-[7%]
+                top-[5%]
+
+                h-[15%]
+                w-[30%]
+
+                rounded-md
+
+                border-[5px]
+                border-[#6a513a]
+
+                bg-[#b98e61]
+
+                shadow-md
+              "
+            >
+              <div
+                className="
+                  absolute
+                  inset-x-3
+                  top-3
+
+                  flex
+                  items-center
+                  justify-center
+
+                  rounded
+
+                  bg-[#f1e9da]
+
+                  py-2
+
+                  text-[9px]
+                  font-black
+
+                  text-zinc-600
+                "
+              >
+                GAMJA OFFICE
+              </div>
+            </div>
+
+            {/* =========================================
+                시계
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                right-[10%]
+                top-[7%]
+
+                flex
+                h-11
+                w-11
+
+                items-center
+                justify-center
+
+                rounded-full
+
+                border-[4px]
+                border-zinc-700
+
+                bg-[#f8f4ea]
+
+                text-[13px]
+
+                shadow
+              "
+            >
+              🕒
+            </div>
+
+            {/* =========================================
+                책상 1
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                left-[11%]
+                top-[27%]
+
+                h-[17%]
+                w-[23%]
+
+                rounded-[4px]
+
+                border-[5px]
+                border-[#60462f]
+
+                bg-[#a9784e]
+
+                shadow-md
+              "
+            >
+              <div
+                className="
+                  absolute
+
+                  left-[15%]
+                  top-[18%]
+
+                  h-[42%]
+                  w-[30%]
+
+                  rounded-sm
+
+                  bg-zinc-800
+
+                  shadow
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  right-[15%]
+                  top-[22%]
+
+                  h-[13%]
+                  w-[24%]
+
+                  rounded-sm
+
+                  bg-[#d3c2a1]
+                "
+              />
+            </div>
+
+            {/* =========================================
+                책상 2
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                right-[11%]
+                top-[27%]
+
+                h-[17%]
+                w-[23%]
+
+                rounded-[4px]
+
+                border-[5px]
+                border-[#60462f]
+
+                bg-[#a9784e]
+
+                shadow-md
+              "
+            >
+              <div
+                className="
+                  absolute
+
+                  right-[15%]
+                  top-[18%]
+
+                  h-[42%]
+                  w-[30%]
+
+                  rounded-sm
+
+                  bg-zinc-800
+
+                  shadow
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  left-[15%]
+                  top-[22%]
+
+                  h-[13%]
+                  w-[24%]
+
+                  rounded-sm
+
+                  bg-[#d3c2a1]
+                "
+              />
+            </div>
+
+            {/* =========================================
+                중앙 회의 테이블
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                left-1/2
+                top-[49%]
+
+                h-[18%]
+                w-[28%]
+
+                -translate-x-1/2
+
+                rounded-[40%]
+
+                border-[5px]
+                border-[#5e4631]
+
+                bg-[#9b704d]
+
+                shadow-lg
+              "
+            >
+              <div
+                className="
+                  absolute
+
+                  left-1/2
+                  top-1/2
+
+                  -translate-x-1/2
+                  -translate-y-1/2
+
+                  rounded-lg
+
+                  bg-[#efe5d3]
+
+                  px-3
+                  py-1
+
+                  text-[8px]
+                  font-bold
+
+                  text-zinc-500
+                "
+              >
+                WAITING
+              </div>
+            </div>
+
+            {/* =========================================
+                하단 소파
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                bottom-[7%]
+                left-[8%]
+
+                h-[11%]
+                w-[28%]
+
+                rounded-lg
+
+                border-[4px]
+                border-[#40503f]
+
+                bg-[#71886e]
+
+                shadow
+              "
+            />
+
+            {/* =========================================
+                식물
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                bottom-[7%]
+                right-[10%]
+
+                text-[38px]
+              "
+            >
+              🪴
+            </div>
+
+            {/* =========================================
+                캐릭터
+            ========================================= */}
+
             {room.players.map(
-              player => {
-                const playerIsHost =
+              (
+                player,
+                index
+              ) => {
+                const host =
                   player.id ===
                   room.hostId;
 
-                const isMe =
+                const me =
                   player.id ===
                   mySocketId;
+
+                const position =
+                  LOBBY_POSITIONS[
+                    index %
+                      LOBBY_POSITIONS.length
+                  ];
 
                 return (
                   <div
@@ -337,152 +719,334 @@ export default function DevilLobby({
                       player.id
                     }
                     className="
+                      absolute
+
+                      z-30
+
                       flex
-                      min-h-[44px]
+                      -translate-x-1/2
+                      -translate-y-1/2
+
+                      flex-col
                       items-center
-                      gap-3
-                      rounded-xl
-                      border
-                      border-zinc-200
-                      bg-white
-                      px-3
-                      py-2.5
                     "
+                    style={{
+                      left:
+                        position.left,
+
+                      top:
+                        position.top,
+                    }}
                   >
-                    {/* =====================================
-                        Online
-                    ===================================== */}
-
-                    <span
-                      className="
-                        h-2
-                        w-2
-                        shrink-0
-                        rounded-full
-                        bg-emerald-500
-                      "
-                    />
-
-                    {/* =====================================
-                        Nickname
-                    ===================================== */}
+                    {/* =================================
+                        상태 배지
+                    ================================= */}
 
                     <div
                       className="
-                        min-w-0
-                        flex-1
+                        mb-1
+
+                        flex
+                        h-[18px]
+
+                        items-center
+                        gap-1
                       "
                     >
-                      <div
-                        className="
-                          truncate
-                          text-[11px]
-                          font-semibold
-                          text-zinc-700
-                        "
-                      >
-                        {
-                          player.nickname
-                        }
-                        {" 감자"}
-                      </div>
+                      {host && (
+                        <span
+                          className="
+                            rounded-full
+
+                            bg-amber-100
+
+                            px-2
+                            py-0.5
+
+                            text-[8px]
+                            font-black
+
+                            text-amber-700
+
+                            shadow-sm
+                          "
+                        >
+                          👑 방장
+                        </span>
+                      )}
+
+                      {me && (
+                        <span
+                          className="
+                            rounded-full
+
+                            bg-zinc-900
+
+                            px-2
+                            py-0.5
+
+                            text-[8px]
+                            font-black
+
+                            text-white
+
+                            shadow-sm
+                          "
+                        >
+                          나
+                        </span>
+                      )}
                     </div>
 
-                    {/* =====================================
-                        Host Badge
-                    ===================================== */}
+                    {/* =================================
+                        Potato
+                    ================================= */}
 
-                    {playerIsHost && (
+                    <Potato
+                      name={
+                        displayName(
+                          player.nickname
+                        )
+                      }
+                      glasses={
+                        player
+                          .characterStyle
+                          ?.glasses ??
+                        "none"
+                      }
+                      hat={
+                        player
+                          .characterStyle
+                          ?.hat ??
+                        "none"
+                      }
+                      ribbon={
+                        player
+                          .characterStyle
+                          ?.ribbon ??
+                        false
+                      }
+                      tie={
+                        player
+                          .characterStyle
+                          ?.tie ??
+                        false
+                      }
+                      color={
+                        player
+                          .characterStyle
+                          ?.color ??
+                        "default"
+                      }
+                      direction="down"
+                      moving={
+                        false
+                      }
+                      scale={
+                        0.9
+                      }
+                    />
+
+                    {/* =================================
+                        접속 표시
+                    ================================= */}
+
+                    <div
+                      className="
+                        mt-[-2px]
+
+                        flex
+                        items-center
+                        gap-1
+
+                        rounded-full
+
+                        bg-white/90
+
+                        px-2
+                        py-1
+
+                        text-[8px]
+                        font-semibold
+
+                        text-zinc-500
+
+                        shadow-sm
+                      "
+                    >
                       <span
                         className="
-                          shrink-0
-                          rounded-full
-                          bg-amber-100
-                          px-2
-                          py-1
-                          text-[8px]
-                          font-bold
-                          text-amber-700
-                        "
-                      >
-                        👑 방장
-                      </span>
-                    )}
+                          h-1.5
+                          w-1.5
 
-                    {/* =====================================
-                        Me
-                    ===================================== */}
-
-                    {isMe && (
-                      <span
-                        className="
-                          shrink-0
                           rounded-full
-                          bg-zinc-100
-                          px-2
-                          py-1
-                          text-[8px]
-                          font-medium
-                          text-zinc-400
+
+                          bg-emerald-500
                         "
-                      >
-                        나
-                      </span>
-                    )}
+                      />
+
+                      준비 완료
+                    </div>
                   </div>
                 );
               }
             )}
 
-            {/* ===============================================
-                Empty Slots
-            =============================================== */}
+            {/* =========================================
+                빈 슬롯
+            ========================================= */}
 
             {Array.from({
               length:
-                emptySlots,
+                Math.max(
+                  0,
+                  Math.min(
+                    LOBBY_POSITIONS.length,
+                    room.maxPlayers
+                  ) -
+                    playerCount
+                ),
             }).map(
               (
                 _,
-                index
-              ) => (
-                <div
-                  key={
-                    `empty-${index}`
-                  }
-                  className="
-                    flex
-                    min-h-[44px]
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-dashed
-                    border-zinc-200
-                    bg-white/20
-                    px-3
-                    py-2.5
-                    text-[9px]
-                    text-zinc-300
-                  "
-                >
-                  참가자 기다리는 중...
-                </div>
-              )
+                emptyIndex
+              ) => {
+                const index =
+                  playerCount +
+                  emptyIndex;
+
+                const position =
+                  LOBBY_POSITIONS[
+                    index %
+                      LOBBY_POSITIONS.length
+                  ];
+
+                return (
+                  <div
+                    key={
+                      `empty-${emptyIndex}`
+                    }
+                    className="
+                      absolute
+
+                      z-20
+
+                      flex
+
+                      -translate-x-1/2
+                      -translate-y-1/2
+
+                      flex-col
+                      items-center
+                    "
+                    style={{
+                      left:
+                        position.left,
+
+                      top:
+                        position.top,
+                    }}
+                  >
+                    <div
+                      className="
+                        flex
+
+                        h-[74px]
+                        w-[58px]
+
+                        items-center
+                        justify-center
+
+                        rounded-[50%]
+
+                        border-2
+                        border-dashed
+                        border-zinc-500/25
+
+                        bg-white/15
+
+                        text-xl
+
+                        text-zinc-500/30
+                      "
+                    >
+                      ?
+                    </div>
+
+                    <div
+                      className="
+                        mt-2
+
+                        rounded-full
+
+                        bg-black/15
+
+                        px-2
+                        py-1
+
+                        text-[8px]
+
+                        text-zinc-600/70
+                      "
+                    >
+                      기다리는 중
+                    </div>
+                  </div>
+                );
+              }
             )}
+
+            {/* =========================================
+                로비 메시지
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                bottom-[3%]
+                left-1/2
+
+                -translate-x-1/2
+
+                rounded-full
+
+                border
+                border-white/50
+
+                bg-white/80
+
+                px-4
+                py-2
+
+                text-[9px]
+                font-semibold
+
+                text-zinc-600
+
+                shadow
+
+                backdrop-blur-sm
+              "
+            >
+              🥔 참가 감자들이 모두 모이면 게임을 시작할 수 있어요.
+            </div>
           </div>
         </div>
 
         {/* =================================================
-            Footer
+            Footer Controls
         ================================================= */}
 
-        <div
+        <footer
           className="
             shrink-0
+
             border-t
-            border-zinc-200
-            bg-white/50
+            border-zinc-800
+
+            bg-[#101010]
+
             px-6
             py-4
           "
@@ -491,110 +1055,170 @@ export default function DevilLobby({
             className="
               flex
               items-center
-              justify-between
               gap-3
             "
           >
-            {/* =============================================
+            {/* =========================================
                 Leave
-            ============================================= */}
+            ========================================= */}
 
             <button
               type="button"
+
               onClick={
                 onLeave
               }
+
               className="
-                shrink-0
-                rounded-lg
+                rounded-xl
+
                 border
-                border-zinc-200
-                bg-white
+                border-zinc-700
+
+                bg-zinc-900
+
                 px-4
-                py-2
+                py-3
+
                 text-[10px]
-                font-semibold
-                text-zinc-500
+                font-bold
+
+                text-zinc-400
+
                 transition
-                hover:bg-zinc-50
-                hover:text-red-500
+
+                hover:border-red-500/50
+                hover:bg-red-500/10
+                hover:text-red-400
               "
             >
               나가기
             </button>
 
-            {/* =============================================
-                Host
-            ============================================= */}
+            {/* =========================================
+                Status
+            ========================================= */}
 
-            {isHost ? (
-              <button
-                type="button"
-                disabled={
-                  !canStart
-                }
-                onClick={
-                  onStart
-                }
-                className="
-                  min-w-[145px]
-                  rounded-lg
-                  bg-zinc-900
-                  px-5
-                  py-2
-                  text-[10px]
-                  font-bold
-                  text-white
-                  transition
-
-                  enabled:hover:bg-zinc-700
-
-                  disabled:cursor-not-allowed
-                  disabled:bg-zinc-200
-                  disabled:text-zinc-400
-                "
-              >
-                {canStart
-                  ? "게임 시작"
-                  : `${remainingPlayers}명 더 필요`}
-              </button>
-            ) : (
-              <div
-                className="
-                  flex-1
-                  rounded-lg
-                  bg-zinc-100
-                  px-4
-                  py-2.5
-                  text-center
-                  text-[9px]
-                  text-zinc-400
-                "
-              >
-                방장이 게임을 시작하기를 기다리는 중...
-              </div>
-            )}
-          </div>
-
-          {/* ===============================================
-              Status Description
-          =============================================== */}
-
-          {isHost && (
             <div
               className="
-                mt-3
-                text-right
-                text-[8px]
-                text-zinc-400
+                min-w-0
+                flex-1
               "
             >
-              {canStart
-                ? `${room.players.length}명이 준비되었습니다.`
-                : `게임을 시작하려면 최소 ${MIN_PLAYERS}명이 필요합니다.`}
+              <div
+                className="
+                  text-center
+
+                  text-[9px]
+
+                  text-zinc-500
+                "
+              >
+                현재{" "}
+                <span
+                  className="
+                    font-black
+                    text-white
+                  "
+                >
+                  {playerCount}명
+                </span>
+                이 로비에 있습니다.
+              </div>
+
+              <div
+                className="
+                  mt-1
+
+                  text-center
+
+                  text-[8px]
+
+                  text-zinc-600
+                "
+              >
+                게임이 시작되면
+                모든 참가자가 같은 사무실 맵으로 이동합니다.
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* =========================================
+                Start
+            ========================================= */}
+
+            <div
+              className="
+                w-[180px]
+              "
+            >
+              {isHost ? (
+                <button
+                  type="button"
+
+                  disabled={
+                    !canStart
+                  }
+
+                  onClick={
+                    onStart
+                  }
+
+                  className="
+                    w-full
+
+                    rounded-xl
+
+                    bg-white
+
+                    px-4
+                    py-3
+
+                    text-[10px]
+                    font-black
+
+                    text-zinc-900
+
+                    transition
+
+                    enabled:hover:bg-amber-100
+
+                    disabled:cursor-not-allowed
+                    disabled:bg-zinc-800
+                    disabled:text-zinc-600
+                  "
+                >
+                  {needCount >
+                  0
+                    ? `${needCount}명 더 필요`
+                    : "게임 시작"}
+                </button>
+              ) : (
+                <div
+                  className="
+                    rounded-xl
+
+                    border
+                    border-zinc-800
+
+                    bg-zinc-900
+
+                    px-4
+                    py-3
+
+                    text-center
+
+                    text-[9px]
+
+                    text-zinc-500
+                  "
+                >
+                  방장이 시작하기를
+                  기다리는 중...
+                </div>
+              )}
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

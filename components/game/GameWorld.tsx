@@ -421,6 +421,42 @@ export default function GameWorld({
     >(null);
 
   /*
+   * 게임 시작 카운트다운
+   */
+  const [
+    gameCountdown,
+    setGameCountdown,
+  ] = useState<number | null>(null);
+
+  useEffect(() => {
+    const endsAt =
+      currentDevilRoom?.status === "countdown"
+        ? Number(currentDevilRoom.countdownEndsAt ?? 0)
+        : 0;
+
+    if (!endsAt) {
+      setGameCountdown(null);
+      return;
+    }
+
+    const update = () => {
+      const seconds = Math.max(
+        0,
+        Math.ceil((endsAt - Date.now()) / 1000)
+      );
+      setGameCountdown(seconds);
+    };
+
+    update();
+    const timer = window.setInterval(update, 200);
+
+    return () => window.clearInterval(timer);
+  }, [
+    currentDevilRoom?.status,
+    currentDevilRoom?.countdownEndsAt,
+  ]);
+
+  /*
    * 게임방 에러
    */
   const [
@@ -2096,7 +2132,7 @@ export default function GameWorld({
           기존 사무실 화면 위에 표시
       ================================================= */}
 
-      {currentDevilRoom && (
+      {currentDevilRoom?.status === "waiting" && (
         <DevilLobby
           room={
             currentDevilRoom
@@ -2111,6 +2147,31 @@ export default function GameWorld({
             handleStartDevilGame
           }
         />
+      )}
+
+      {currentDevilRoom?.status === "countdown" && (
+        <div
+          data-no-move
+          className="pointer-events-none absolute inset-0 z-[19000] flex items-center justify-center"
+        >
+          <div className="rounded-3xl border border-white/20 bg-black/75 px-10 py-7 text-center text-white shadow-2xl backdrop-blur-sm">
+            <div className="text-[10px] font-bold tracking-[0.24em] text-amber-300">
+              감자 전쟁 준비
+            </div>
+            <div className="mt-2 text-[48px] font-black leading-none">
+              {gameCountdown ?? "…"}
+            </div>
+            <div className="mt-3 text-[12px] font-bold">
+              사무실에서 잠시 대기하세요
+            </div>
+            <div className="mt-1 text-[10px] text-white/55">
+              카운트다운이 끝나면 역할이 배정되고 게임이 시작됩니다.
+            </div>
+            <div className="mt-3 text-[9px] text-emerald-300">
+              참가자 {currentDevilRoom.players.length}명 모두 같은 게임으로 이동합니다.
+            </div>
+          </div>
+        </div>
       )}
 
       {/* =================================================
