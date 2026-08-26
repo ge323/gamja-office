@@ -1078,18 +1078,11 @@ export default function Potato({
                   )}
 
                   <Accessories
-                    glasses={
-                      glasses
-                    }
-                    hat={
-                      hat
-                    }
-                    ribbon={
-                      ribbon
-                    }
-                    tie={
-                      tie
-                    }
+                    glasses={glasses}
+                    hat={hat}
+                    ribbon={ribbon}
+                    tie={tie}
+                    direction={direction}
                   />
                 </>
               )}
@@ -1184,14 +1177,11 @@ export default function Potato({
                     )}
 
                   <Accessories
-                    glasses="none"
-                    hat={
-                      hat
-                    }
-                    ribbon={
-                      ribbon
-                    }
-                    tie={false}
+                    glasses={glasses}
+                    hat={hat}
+                    ribbon={ribbon}
+                    tie={tie}
+                    direction={direction}
                   />
                 </>
               )}
