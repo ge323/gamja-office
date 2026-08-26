@@ -23,6 +23,11 @@ export type DevilLobbyPlayer = {
 
   characterStyle?:
     CharacterStyle;
+
+  /*
+   * 게임 준비 상태
+   */
+  ready?: boolean;
 };
 
 export type DevilLobbyRoom = {
@@ -68,8 +73,11 @@ type DevilLobbyProps = {
     () => void;
 
   /*
-   * 대기실 채팅
+   * 준비 / 준비 취소
    */
+  onToggleReady:
+    () => void;
+
   messages?:
     DevilLobbyChatMessage[];
 
@@ -145,6 +153,8 @@ export default function DevilLobby({
 
   onStart,
 
+  onToggleReady,
+
   messages = [],
 
   onSendMessage,
@@ -175,6 +185,40 @@ export default function DevilLobby({
   const playerCount =
     room.players.length;
 
+  const me =
+    room.players.find(
+      player =>
+        player.id ===
+        mySocketId
+    );
+
+  const isReady =
+    Boolean(
+      me?.ready
+    );
+
+  const readyCount =
+    room.players.filter(
+      player =>
+        player.ready
+    ).length;
+
+  const enoughPlayers =
+    playerCount >=
+    MIN_PLAYERS;
+
+  /*
+   * 방장을 포함해서
+   * 전원이 준비해야 한다.
+   */
+  const allReady =
+    enoughPlayers &&
+    room.players.every(
+      player =>
+        player.ready ===
+        true
+    );
+
   const needPlayers =
     Math.max(
       0,
@@ -187,8 +231,7 @@ export default function DevilLobby({
     isHost &&
     room.status ===
       "waiting" &&
-    playerCount >=
-      MIN_PLAYERS;
+    allReady;
 
   /* =======================================================
      Chat Auto Scroll
@@ -242,7 +285,6 @@ export default function DevilLobby({
   return (
     <div
       data-no-move
-
       className="
         fixed
         inset-0
@@ -264,7 +306,7 @@ export default function DevilLobby({
       "
     >
       {/* =================================================
-          Lobby Window
+          Lobby
       ================================================= */}
 
       <div
@@ -328,9 +370,7 @@ export default function DevilLobby({
               className="
                 text-[8px]
                 font-black
-
                 tracking-[0.22em]
-
                 text-zinc-500
 
                 max-[900px]:hidden
@@ -381,7 +421,7 @@ export default function DevilLobby({
                 max-[900px]:hidden
               "
             >
-              창고 대기실에서 다른 감자를 기다리고 있습니다.
+              준비를 마치고 다른 감자를 기다려주세요.
             </p>
           </div>
 
@@ -396,6 +436,8 @@ export default function DevilLobby({
               gap-2
             "
           >
+            {/* 방 코드 */}
+
             <div
               className="
                 rounded-lg
@@ -425,6 +467,8 @@ export default function DevilLobby({
               {room.id}
             </div>
 
+            {/* 인원 */}
+
             <div
               className="
                 rounded-lg
@@ -446,6 +490,33 @@ export default function DevilLobby({
               {playerCount}
               {" / "}
               {room.maxPlayers}
+            </div>
+
+            {/* 준비 현황 */}
+
+            <div
+              className="
+                rounded-lg
+
+                border
+                border-emerald-500/30
+
+                bg-emerald-500/10
+
+                px-3
+                py-2
+
+                text-[9px]
+                font-black
+
+                text-emerald-400
+
+                max-[900px]:px-2
+                max-[900px]:py-1.5
+                max-[900px]:text-[8px]
+              "
+            >
+              ✓ {readyCount}/{playerCount}
             </div>
           </div>
         </header>
@@ -488,9 +559,7 @@ export default function DevilLobby({
               max-[900px]:border-[3px]
             "
           >
-            {/* =============================================
-                Floor
-            ============================================= */}
+            {/* Floor */}
 
             <div
               className="
@@ -505,9 +574,7 @@ export default function DevilLobby({
               "
             />
 
-            {/* =============================================
-                Top Wall
-            ============================================= */}
+            {/* Top Wall */}
 
             <div
               className="
@@ -529,9 +596,7 @@ export default function DevilLobby({
               "
             />
 
-            {/* =============================================
-                Fluorescent Light
-            ============================================= */}
+            {/* Light */}
 
             <div
               className="
@@ -557,9 +622,7 @@ export default function DevilLobby({
               "
             />
 
-            {/* =============================================
-                Sign
-            ============================================= */}
+            {/* Sign */}
 
             <div
               className="
@@ -597,25 +660,15 @@ export default function DevilLobby({
               STORAGE B-02
             </div>
 
-            {/* =============================================
-                Left Shelf
-            ============================================= */}
-
             <WarehouseShelf
               side="left"
             />
-
-            {/* =============================================
-                Right Shelf
-            ============================================= */}
 
             <WarehouseShelf
               side="right"
             />
 
-            {/* =============================================
-                Boxes
-            ============================================= */}
+            {/* Boxes */}
 
             <div
               className="
@@ -677,9 +730,7 @@ export default function DevilLobby({
               "
             />
 
-            {/* =============================================
-                Equipment
-            ============================================= */}
+            {/* Equipment */}
 
             <div
               className="
@@ -715,9 +766,7 @@ export default function DevilLobby({
               />
             </div>
 
-            {/* =============================================
-                Exit
-            ============================================= */}
+            {/* Exit */}
 
             <div
               className="
@@ -773,9 +822,7 @@ export default function DevilLobby({
               </div>
             </div>
 
-            {/* =============================================
-                Waiting Zone
-            ============================================= */}
+            {/* Waiting Zone */}
 
             <div
               className="
@@ -796,16 +843,16 @@ export default function DevilLobby({
               "
             />
 
-            {/* =============================================
+            {/* =================================================
                 Players
-            ============================================= */}
+            ================================================= */}
 
             {room.players.map(
               (
                 player,
                 index
               ) => {
-                const position =
+                const playerPosition =
                   PLAYER_POSITIONS[
                     index %
                       PLAYER_POSITIONS.length
@@ -815,16 +862,20 @@ export default function DevilLobby({
                   player.id ===
                   room.hostId;
 
-                const me =
+                const myPlayer =
                   player.id ===
                   mySocketId;
+
+                const ready =
+                  Boolean(
+                    player.ready
+                  );
 
                 return (
                   <div
                     key={
                       player.id
                     }
-
                     className="
                       absolute
                       z-30
@@ -839,15 +890,16 @@ export default function DevilLobby({
 
                       max-[900px]:scale-[0.72]
                     "
-
                     style={{
                       left:
-                        position.left,
+                        playerPosition.left,
 
                       top:
-                        position.top,
+                        playerPosition.top,
                     }}
                   >
+                    {/* Role badges */}
+
                     <div
                       className="
                         mb-1
@@ -879,7 +931,7 @@ export default function DevilLobby({
                         </span>
                       )}
 
-                      {me && (
+                      {myPlayer && (
                         <span
                           className="
                             rounded-full
@@ -900,61 +952,57 @@ export default function DevilLobby({
                       )}
                     </div>
 
+                    {/* Character */}
+
                     <Potato
                       name={
                         getDisplayName(
                           player.nickname
                         )
                       }
-
                       glasses={
                         player
                           .characterStyle
                           ?.glasses ??
                         "none"
                       }
-
                       hat={
                         player
                           .characterStyle
                           ?.hat ??
                         "none"
                       }
-
                       ribbon={
                         player
                           .characterStyle
                           ?.ribbon ??
                         false
                       }
-
                       tie={
                         player
                           .characterStyle
                           ?.tie ??
                         false
                       }
-
                       color={
                         player
                           .characterStyle
                           ?.color ??
                         "default"
                       }
-
                       direction="down"
-
                       moving={
                         false
                       }
-
                       scale={
                         0.9
                       }
                     />
 
+                    {/* Ready Status */}
+
                     <div
-                      className="
+                      className={`
                         mt-[-3px]
 
                         flex
@@ -963,40 +1011,58 @@ export default function DevilLobby({
 
                         rounded-full
 
-                        bg-white/90
+                        border
 
                         px-2
                         py-1
 
                         text-[7px]
-                        font-bold
-
-                        text-zinc-600
+                        font-black
 
                         shadow
-                      "
+
+                        ${
+                          ready
+                            ? `
+                              border-emerald-200
+                              bg-emerald-50
+                              text-emerald-600
+                            `
+                            : `
+                              border-zinc-200
+                              bg-white/90
+                              text-zinc-400
+                            `
+                        }
+                      `}
                     >
                       <span
-                        className="
+                        className={`
                           h-1.5
                           w-1.5
 
                           rounded-full
 
-                          bg-emerald-500
-                        "
+                          ${
+                            ready
+                              ? "bg-emerald-500"
+                              : "bg-zinc-300"
+                          }
+                        `}
                       />
 
-                      대기 중
+                      {ready
+                        ? "준비 완료"
+                        : "준비 중..."}
                     </div>
                   </div>
                 );
               }
             )}
 
-            {/* =============================================
+            {/* =================================================
                 Empty Slots
-            ============================================= */}
+            ================================================= */}
 
             {Array.from({
               length:
@@ -1018,7 +1084,7 @@ export default function DevilLobby({
                   playerCount +
                   emptyIndex;
 
-                const position =
+                const playerPosition =
                   PLAYER_POSITIONS[
                     index %
                       PLAYER_POSITIONS.length
@@ -1029,7 +1095,6 @@ export default function DevilLobby({
                     key={
                       `empty-${emptyIndex}`
                     }
-
                     className="
                       absolute
                       z-10
@@ -1044,13 +1109,12 @@ export default function DevilLobby({
 
                       max-[900px]:scale-75
                     "
-
                     style={{
                       left:
-                        position.left,
+                        playerPosition.left,
 
                       top:
-                        position.top,
+                        playerPosition.top,
                     }}
                   >
                     <div
@@ -1079,18 +1143,29 @@ export default function DevilLobby({
                     >
                       ?
                     </div>
+
+                    <div
+                      className="
+                        mt-2
+
+                        text-[7px]
+
+                        text-white/20
+                      "
+                    >
+                      참가자 대기
+                    </div>
                   </div>
                 );
               }
             )}
 
-            {/* =============================================
+            {/* =================================================
                 Lobby Chat
-            ============================================= */}
+            ================================================= */}
 
             <div
               data-no-move
-
               className="
                 absolute
 
@@ -1125,7 +1200,7 @@ export default function DevilLobby({
                 max-[900px]:w-[215px]
               "
             >
-              {/* Chat Header */}
+              {/* Header */}
 
               <div
                 className="
@@ -1159,7 +1234,6 @@ export default function DevilLobby({
                 <span
                   className="
                     text-[7px]
-
                     text-emerald-400
                   "
                 >
@@ -1173,7 +1247,6 @@ export default function DevilLobby({
                 ref={
                   chatScrollRef
                 }
-
                 className="
                   min-h-0
                   flex-1
@@ -1196,6 +1269,7 @@ export default function DevilLobby({
                   <div
                     className="
                       py-3
+
                       text-center
 
                       text-[8px]
@@ -1213,7 +1287,6 @@ export default function DevilLobby({
                         key={
                           item.id
                         }
-
                         className="
                           break-words
 
@@ -1264,17 +1337,13 @@ export default function DevilLobby({
               >
                 <input
                   type="text"
-
                   value={
                     chatInput
                   }
-
                   maxLength={
                     100
                   }
-
                   placeholder="메시지 입력..."
-
                   onChange={
                     event => {
                       setChatInput(
@@ -1284,12 +1353,8 @@ export default function DevilLobby({
                       );
                     }
                   }
-
                   onKeyDown={
                     event => {
-                      /*
-                       * 상위 게임 이동 이벤트 방지
-                       */
                       event.stopPropagation();
 
                       if (
@@ -1302,13 +1367,11 @@ export default function DevilLobby({
                       }
                     }
                   }
-
                   onClick={
                     event => {
                       event.stopPropagation();
                     }
                   }
-
                   className="
                     min-w-0
                     flex-1
@@ -1334,15 +1397,12 @@ export default function DevilLobby({
 
                 <button
                   type="button"
-
                   onClick={
                     sendMessage
                   }
-
                   disabled={
                     !chatInput.trim()
                   }
-
                   className="
                     border-l
                     border-white/10
@@ -1394,8 +1454,10 @@ export default function DevilLobby({
           <div
             className="
               flex
+
               items-center
-              gap-4
+
+              gap-3
 
               max-[900px]:gap-2
             "
@@ -1404,11 +1466,9 @@ export default function DevilLobby({
 
             <button
               type="button"
-
               onClick={
                 onLeave
               }
-
               className="
                 shrink-0
 
@@ -1462,7 +1522,15 @@ export default function DevilLobby({
                   max-[900px]:text-[8px]
                 "
               >
-                현재{" "}
+                준비 완료{" "}
+                <span
+                  className="
+                    text-emerald-400
+                  "
+                >
+                  {readyCount}
+                </span>
+                {" / "}
                 <span
                   className="
                     text-white
@@ -1470,8 +1538,6 @@ export default function DevilLobby({
                 >
                   {playerCount}명
                 </span>
-                {" "}
-                참가
               </div>
 
               <div
@@ -1485,33 +1551,92 @@ export default function DevilLobby({
                   max-[900px]:hidden
                 "
               >
-                참가자 모두 같은 게임 맵으로 이동합니다.
+                모든 참가자가 준비하면 방장이 게임을 시작할 수 있습니다.
               </div>
             </div>
 
-            {/* Start */}
+            {/* Ready */}
 
-            <div
-              className="
-                w-[190px]
-
+            <button
+              type="button"
+              disabled={
+                room.status !==
+                "waiting"
+              }
+              onClick={
+                onToggleReady
+              }
+              className={`
                 shrink-0
 
-                max-[900px]:w-[135px]
-              "
+                rounded-xl
+
+                px-4
+                py-3
+
+                text-[9px]
+                font-black
+
+                transition
+
+                max-[900px]:rounded-lg
+                max-[900px]:px-3
+                max-[900px]:py-2
+                max-[900px]:text-[8px]
+
+                ${
+                  isReady
+                    ? `
+                      border
+                      border-emerald-500/40
+
+                      bg-emerald-500/15
+
+                      text-emerald-400
+
+                      hover:bg-emerald-500/25
+                    `
+                    : `
+                      border
+                      border-amber-400/40
+
+                      bg-amber-400
+
+                      text-zinc-950
+
+                      hover:bg-amber-300
+                    `
+                }
+
+                disabled:cursor-not-allowed
+                disabled:opacity-40
+              `}
             >
-              {isHost ? (
+              {isReady
+                ? "✓ 준비 취소"
+                : "준비하기"}
+            </button>
+
+            {/* Host Start */}
+
+            {isHost && (
+              <div
+                className="
+                  w-[190px]
+
+                  shrink-0
+
+                  max-[900px]:w-[135px]
+                "
+              >
                 <button
                   type="button"
-
                   disabled={
                     !canStart
                   }
-
                   onClick={
                     onStart
                   }
-
                   className="
                     w-full
 
@@ -1541,40 +1666,14 @@ export default function DevilLobby({
                     max-[900px]:text-[8px]
                   "
                 >
-                  {needPlayers >
-                  0
+                  {!enoughPlayers
                     ? `${needPlayers}명 더 필요`
-                    : "게임 시작"}
+                    : !allReady
+                      ? "준비 대기 중"
+                      : "게임 시작"}
                 </button>
-              ) : (
-                <div
-                  className="
-                    rounded-xl
-
-                    border
-                    border-zinc-800
-
-                    bg-zinc-900
-
-                    px-3
-                    py-3
-
-                    text-center
-
-                    text-[8px]
-
-                    text-zinc-500
-
-                    max-[900px]:rounded-lg
-                    max-[900px]:px-2
-                    max-[900px]:py-2
-                    max-[900px]:text-[7px]
-                  "
-                >
-                  방장 대기 중...
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </footer>
       </div>

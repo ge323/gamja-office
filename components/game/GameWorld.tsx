@@ -258,6 +258,18 @@ export default function GameWorld({
       null
     );
 
+  /*
+   * 게임 화면으로 넘어가기 직전까지
+   * 가장 최신 캐릭터 꾸미기 상태를 보관한다.
+   *
+   * GameWorld가 언마운트되는 순간에도 서버에
+   * 최신 안경/모자/리본/넥타이/색상을 넘기기 위함.
+   */
+  const characterStyleRef =
+    useRef<CharacterStyle>(
+      characterStyle
+    );
+
   const moveTimerRef =
     useRef<number | null>(
       null
@@ -619,7 +631,8 @@ const [
             y:
               position.y,
 
-            characterStyle,
+            characterStyle:
+              characterStyleRef.current,
           }
         );
 
@@ -995,6 +1008,12 @@ const [
   ====================================================== */
 
   useEffect(() => {
+    /*
+     * ref는 Socket 연결 여부와 관계없이 항상 최신값으로 갱신한다.
+     */
+    characterStyleRef.current =
+      characterStyle;
+
     const socket =
       socketRef.current;
 
@@ -1007,7 +1026,7 @@ const [
 
     socket.emit(
       "player:style",
-      characterStyle
+      characterStyleRef.current
     );
   }, [
     characterStyle,
@@ -1700,6 +1719,82 @@ const [
       );
     };
 
+
+/* ======================================================
+   Devil Game
+   Ready Toggle
+====================================================== */
+
+const handleToggleDevilReady =
+  () => {
+    const socket =
+      socketRef.current;
+
+    if (
+      !socket ||
+      !socket.connected ||
+      !currentDevilRoom
+    ) {
+      return;
+    }
+
+    /*
+     * 게임 대기 상태에서만
+     * 준비 상태를 변경할 수 있다.
+     */
+    if (
+      currentDevilRoom.status !==
+      "waiting"
+    ) {
+      return;
+    }
+
+    /*
+     * 현재 내 플레이어 정보
+     */
+    const me =
+      currentDevilRoom.players.find(
+        player =>
+          player.id ===
+          mySocketId
+      );
+
+    /*
+     * 현재 준비 상태의 반대로 변경
+     *
+     * false → true
+     * true  → false
+     */
+    const nextReady =
+      !Boolean(
+        me?.ready
+      );
+
+    setGameError(
+      ""
+    );
+
+    socket.emit(
+      "devilRoom:ready",
+
+      nextReady,
+
+      (response: {
+        ok: boolean;
+        message?: string;
+      }) => {
+        if (
+          !response.ok
+        ) {
+          setGameError(
+            response.message ??
+              "준비 상태를 변경하지 못했습니다."
+          );
+        }
+      }
+    );
+  };
+
   /* ======================================================
      Devil Game
      Start
@@ -1719,6 +1814,16 @@ const [
 
       setGameError(
         ""
+      );
+
+      /*
+       * 역할 배정 직전에 서버에 최신 캐릭터 상태를 한 번 더 보낸다.
+       * Socket.IO는 같은 연결에서 보낸 이벤트 순서를 보장하므로
+       * player:style 처리 후 devilRoom:start가 처리된다.
+       */
+      socket.emit(
+        "player:style",
+        characterStyleRef.current
       );
 
       socket.emit(
@@ -2304,6 +2409,9 @@ const [
           }
           onSendMessage={
             handleSendDevilLobbyMessage
+          }
+          onToggleReady={
+            handleToggleDevilReady
           }
         />
       )}
