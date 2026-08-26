@@ -147,6 +147,54 @@ const POTATO_WAR_MAP_HEIGHT =
   1400;
 
 /* =========================================================
+   Game Spawn Points
+
+   참가자들이 게임 시작 시 서로 겹치지 않도록
+   맵의 서로 다른 방에서 시작한다.
+
+   좌표는 DevilOfficeMap의 WALKABLE_AREAS 안쪽에
+   들어오도록 잡아두었다.
+========================================================= */
+
+const POTATO_WAR_SPAWN_POINTS = [
+  {
+    id: "power",
+    x: 330,
+    y: 240,
+  },
+
+  {
+    id: "lounge",
+    x: 1100,
+    y: 220,
+  },
+
+  {
+    id: "cctv",
+    x: 1880,
+    y: 240,
+  },
+
+  {
+    id: "archive",
+    x: 300,
+    y: 680,
+  },
+
+  {
+    id: "pantry",
+    x: 1850,
+    y: 680,
+  },
+
+  {
+    id: "meeting",
+    x: 1100,
+    y: 1150,
+  },
+];
+
+/* =========================================================
    Room Code
 ========================================================= */
 
@@ -463,6 +511,18 @@ function createGameRuntime(
   room.corpses =
     [];
 
+  /*
+   * 매 게임마다 시작 위치 순서를 다시 섞는다.
+   *
+   * 역할과 시작 위치는 서로 무관하게 배정되므로
+   * 특정 장소에서 시작했다고 악마라는 힌트를
+   * 얻을 수 없도록 한다.
+   */
+  const spawnPoints =
+    shuffleArray(
+      POTATO_WAR_SPAWN_POINTS
+    );
+
   room.players.forEach(
     (
       socketId,
@@ -480,16 +540,17 @@ function createGameRuntime(
       }
 
       /*
-       * 시작 위치.
-       * 중앙 사무실 근처에 참가자를 나눠 배치.
+       * 최대 인원은 현재 6명이므로
+       * 참가자마다 서로 다른 스폰 포인트를 사용한다.
+       *
+       * 혹시 추후 최대 인원을 늘려도 서버가 깨지지 않도록
+       * modulo fallback은 유지한다.
        */
-      const row =
-        Math.floor(
-          index / 3
-        );
-
-      const column =
-        index % 3;
+      const spawnPoint =
+        spawnPoints[
+          index %
+            spawnPoints.length
+        ];
 
       room.gamePlayers[
         socketId
@@ -528,15 +589,20 @@ function createGameRuntime(
           "alive",
 
         /*
-         * 본 게임 시작 좌표
+         * 참가자마다 서로 다른 랜덤 시작 위치.
          */
         x:
-          1050 +
-          column * 55,
+          spawnPoint.x,
 
         y:
-          680 +
-          row * 55,
+          spawnPoint.y,
+
+        /*
+         * 디버깅할 때 시작 위치를 확인하기 위한 값.
+         * 클라이언트에는 공개하지 않아도 된다.
+         */
+        spawnId:
+          spawnPoint.id,
 
         lastKillAt:
           0,
