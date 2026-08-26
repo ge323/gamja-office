@@ -1,13 +1,18 @@
 "use client";
 
+import Potato from "@/components/character/Potato";
+
 import type {
   CharacterStyle,
 } from "@/components/character/CharacterCustomizer";
 
-import Potato from "@/components/character/Potato";
+/* =========================================================
+   Types
+========================================================= */
 
 export type DevilLobbyPlayer = {
   id: string;
+
   nickname: string;
 
   characterStyle?:
@@ -55,40 +60,33 @@ const MIN_PLAYERS =
   2;
 
 /*
- * 로비 캐릭터 자리.
- *
- * 최대 6명 정도를 기준으로
- * 사무실 안에 자연스럽게 배치.
+ * 창고형 로비에서
+ * 참가 감자들이 서 있을 자리.
  */
-const LOBBY_POSITIONS = [
+const PLAYER_POSITIONS = [
   {
-    left: "20%",
-    top: "37%",
+    left: "25%",
+    top: "43%",
   },
 
   {
-    left: "42%",
-    top: "34%",
+    left: "48%",
+    top: "39%",
   },
 
   {
-    left: "66%",
-    top: "38%",
+    left: "72%",
+    top: "44%",
   },
 
   {
-    left: "29%",
-    top: "67%",
+    left: "36%",
+    top: "68%",
   },
 
   {
-    left: "52%",
-    top: "65%",
-  },
-
-  {
-    left: "76%",
-    top: "66%",
+    left: "65%",
+    top: "69%",
   },
 ];
 
@@ -96,10 +94,10 @@ const LOBBY_POSITIONS = [
    Helpers
 ========================================================= */
 
-function displayName(
+function getDisplayName(
   nickname: string
 ) {
-  const clean =
+  const trimmed =
     nickname
       .replace(
         /\s*감자\s*$/g,
@@ -107,13 +105,13 @@ function displayName(
       )
       .trim();
 
-  return clean
-    ? `${clean} 감자`
+  return trimmed
+    ? `${trimmed} 감자`
     : "감자";
 }
 
 /* =========================================================
-   DevilLobby
+   Devil Lobby
 ========================================================= */
 
 export default function DevilLobby({
@@ -132,6 +130,13 @@ export default function DevilLobby({
   const playerCount =
     room.players.length;
 
+  const needPlayers =
+    Math.max(
+      0,
+      MIN_PLAYERS -
+        playerCount
+    );
+
   const canStart =
     isHost &&
     room.status ===
@@ -139,16 +144,10 @@ export default function DevilLobby({
     playerCount >=
       MIN_PLAYERS;
 
-  const needCount =
-    Math.max(
-      0,
-      MIN_PLAYERS -
-        playerCount
-    );
-
   return (
     <div
       data-no-move
+
       className="
         absolute
         inset-0
@@ -158,38 +157,37 @@ export default function DevilLobby({
         items-center
         justify-center
 
-        bg-black/50
+        bg-black/65
 
-        px-5
-        py-5
+        p-4
 
         backdrop-blur-[3px]
       "
     >
       {/* =====================================================
-          Lobby Window
+          Main lobby window
       ===================================================== */}
 
       <div
         className="
           flex
 
-          h-[min(760px,92vh)]
+          h-[min(780px,94vh)]
           w-full
-          max-w-[980px]
+          max-w-[1050px]
 
           flex-col
 
           overflow-hidden
 
-          rounded-[26px]
+          rounded-[24px]
 
           border
           border-zinc-700
 
-          bg-[#171717]
+          bg-[#161616]
 
-          shadow-[0_28px_90px_rgba(0,0,0,0.45)]
+          shadow-[0_30px_100px_rgba(0,0,0,0.55)]
         "
       >
         {/* =================================================
@@ -206,7 +204,7 @@ export default function DevilLobby({
             border-b
             border-zinc-800
 
-            bg-[#101010]
+            bg-[#111111]
 
             px-6
             py-4
@@ -216,9 +214,9 @@ export default function DevilLobby({
             <div
               className="
                 text-[9px]
-                font-bold
+                font-black
 
-                tracking-[0.22em]
+                tracking-[0.24em]
 
                 text-zinc-500
               "
@@ -237,21 +235,21 @@ export default function DevilLobby({
             >
               <span
                 className="
-                  text-[18px]
+                  text-[19px]
                 "
               >
-                🥔
+                😈
               </span>
 
               <h2
                 className="
-                  text-[18px]
+                  text-[19px]
                   font-black
 
                   text-white
                 "
               >
-                감자 전쟁 로비
+                감자 전쟁
               </h2>
             </div>
 
@@ -264,8 +262,7 @@ export default function DevilLobby({
                 text-zinc-500
               "
             >
-              게임이 시작되기 전,
-              사무실에서 다른 감자들을 기다려주세요.
+              창고 대기실에서 다른 참가자를 기다리고 있습니다.
             </p>
           </div>
 
@@ -291,9 +288,9 @@ export default function DevilLobby({
                 font-mono
 
                 text-[10px]
-                font-bold
+                font-black
 
-                tracking-[0.12em]
+                tracking-[0.14em]
 
                 text-zinc-300
               "
@@ -324,7 +321,7 @@ export default function DevilLobby({
         </header>
 
         {/* =================================================
-            Office Lobby
+            Warehouse lobby
         ================================================= */}
 
         <div
@@ -336,267 +333,70 @@ export default function DevilLobby({
 
             overflow-hidden
 
-            bg-[#373431]
+            bg-[#262626]
           "
         >
           {/* =============================================
-              바깥 벽
+              Outer warehouse room
           ============================================= */}
 
           <div
             className="
               absolute
-              inset-[22px]
-
-              rounded-[18px]
-
-              border-[6px]
-              border-[#262422]
-
-              bg-[#d9c7a8]
-
-              shadow-inner
-            "
-          />
-
-          {/* =============================================
-              바닥
-          ============================================= */}
-
-          <div
-            className="
-              absolute
-
-              left-[38px]
-              right-[38px]
-              top-[38px]
-              bottom-[38px]
+              inset-[24px]
 
               overflow-hidden
 
-              rounded-[12px]
+              rounded-[14px]
 
-              bg-[#d9c7a8]
+              border-[7px]
+              border-[#151515]
+
+              bg-[#77746d]
+
+              shadow-inner
             "
           >
-            {/* 바닥 줄 */}
+            {/* =========================================
+                Concrete floor
+            ========================================= */}
 
             <div
               className="
                 absolute
                 inset-0
 
-                opacity-[0.16]
+                bg-[#74716a]
 
-                [background-image:linear-gradient(to_right,#765f48_1px,transparent_1px),linear-gradient(to_bottom,#765f48_1px,transparent_1px)]
+                [background-image:linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)]
 
-                [background-size:44px_44px]
+                [background-size:56px_56px]
               "
             />
 
             {/* =========================================
-                상단 벽 / 안내판
+                Top wall
             ========================================= */}
 
             <div
               className="
                 absolute
 
-                left-[7%]
-                top-[5%]
+                left-0
+                right-0
+                top-0
 
-                h-[15%]
-                w-[30%]
+                h-[78px]
 
-                rounded-md
+                border-b-[6px]
+                border-[#30302e]
 
-                border-[5px]
-                border-[#6a513a]
-
-                bg-[#b98e61]
-
-                shadow-md
+                bg-[#55534f]
               "
-            >
-              <div
-                className="
-                  absolute
-                  inset-x-3
-                  top-3
-
-                  flex
-                  items-center
-                  justify-center
-
-                  rounded
-
-                  bg-[#f1e9da]
-
-                  py-2
-
-                  text-[9px]
-                  font-black
-
-                  text-zinc-600
-                "
-              >
-                GAMJA OFFICE
-              </div>
-            </div>
+            />
 
             {/* =========================================
-                시계
-            ========================================= */}
-
-            <div
-              className="
-                absolute
-
-                right-[10%]
-                top-[7%]
-
-                flex
-                h-11
-                w-11
-
-                items-center
-                justify-center
-
-                rounded-full
-
-                border-[4px]
-                border-zinc-700
-
-                bg-[#f8f4ea]
-
-                text-[13px]
-
-                shadow
-              "
-            >
-              🕒
-            </div>
-
-            {/* =========================================
-                책상 1
-            ========================================= */}
-
-            <div
-              className="
-                absolute
-
-                left-[11%]
-                top-[27%]
-
-                h-[17%]
-                w-[23%]
-
-                rounded-[4px]
-
-                border-[5px]
-                border-[#60462f]
-
-                bg-[#a9784e]
-
-                shadow-md
-              "
-            >
-              <div
-                className="
-                  absolute
-
-                  left-[15%]
-                  top-[18%]
-
-                  h-[42%]
-                  w-[30%]
-
-                  rounded-sm
-
-                  bg-zinc-800
-
-                  shadow
-                "
-              />
-
-              <div
-                className="
-                  absolute
-
-                  right-[15%]
-                  top-[22%]
-
-                  h-[13%]
-                  w-[24%]
-
-                  rounded-sm
-
-                  bg-[#d3c2a1]
-                "
-              />
-            </div>
-
-            {/* =========================================
-                책상 2
-            ========================================= */}
-
-            <div
-              className="
-                absolute
-
-                right-[11%]
-                top-[27%]
-
-                h-[17%]
-                w-[23%]
-
-                rounded-[4px]
-
-                border-[5px]
-                border-[#60462f]
-
-                bg-[#a9784e]
-
-                shadow-md
-              "
-            >
-              <div
-                className="
-                  absolute
-
-                  right-[15%]
-                  top-[18%]
-
-                  h-[42%]
-                  w-[30%]
-
-                  rounded-sm
-
-                  bg-zinc-800
-
-                  shadow
-                "
-              />
-
-              <div
-                className="
-                  absolute
-
-                  left-[15%]
-                  top-[22%]
-
-                  h-[13%]
-                  w-[24%]
-
-                  rounded-sm
-
-                  bg-[#d3c2a1]
-                "
-              />
-            </div>
-
-            {/* =========================================
-                중앙 회의 테이블
+                Fluorescent light
             ========================================= */}
 
             <div
@@ -604,21 +404,473 @@ export default function DevilLobby({
                 absolute
 
                 left-1/2
-                top-[49%]
+                top-[20px]
 
-                h-[18%]
-                w-[28%]
+                h-[12px]
+                w-[190px]
 
                 -translate-x-1/2
 
-                rounded-[40%]
+                rounded-sm
+
+                bg-[#e7e5ce]
+
+                shadow-[0_0_26px_rgba(255,250,210,0.45)]
+              "
+            />
+
+            {/* =========================================
+                Storage sign
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                left-1/2
+                top-[47px]
+
+                -translate-x-1/2
+
+                rounded
+
+                border
+                border-zinc-500
+
+                bg-[#292929]
+
+                px-5
+                py-1.5
+
+                font-mono
+
+                text-[8px]
+                font-black
+
+                tracking-[0.18em]
+
+                text-zinc-300
+              "
+            >
+              STORAGE B-02 · GAME WAITING AREA
+            </div>
+
+            {/* =========================================
+                Left shelving
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                left-[4%]
+                top-[17%]
+
+                h-[33%]
+                w-[16%]
 
                 border-[5px]
-                border-[#5e4631]
+                border-[#363330]
 
-                bg-[#9b704d]
+                bg-[#59534b]
 
-                shadow-lg
+                shadow-xl
+              "
+            >
+              <div
+                className="
+                  absolute
+                  inset-x-0
+                  top-[31%]
+
+                  h-[5px]
+
+                  bg-[#34312f]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+                  inset-x-0
+                  top-[64%]
+
+                  h-[5px]
+
+                  bg-[#34312f]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  left-[9%]
+                  top-[7%]
+
+                  h-[20%]
+                  w-[36%]
+
+                  bg-[#b08a5b]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  right-[8%]
+                  top-[8%]
+
+                  h-[18%]
+                  w-[39%]
+
+                  bg-[#8f714e]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  left-[7%]
+                  top-[39%]
+
+                  h-[17%]
+                  w-[58%]
+
+                  bg-[#9e7b52]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  right-[8%]
+                  bottom-[7%]
+
+                  h-[19%]
+                  w-[48%]
+
+                  bg-[#b88d5a]
+                "
+              />
+            </div>
+
+            {/* =========================================
+                Right shelving
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                right-[4%]
+                top-[17%]
+
+                h-[33%]
+                w-[16%]
+
+                border-[5px]
+                border-[#363330]
+
+                bg-[#59534b]
+
+                shadow-xl
+              "
+            >
+              <div
+                className="
+                  absolute
+                  inset-x-0
+                  top-[31%]
+
+                  h-[5px]
+
+                  bg-[#34312f]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+                  inset-x-0
+                  top-[64%]
+
+                  h-[5px]
+
+                  bg-[#34312f]
+                "
+              />
+
+              {/* Monitor */}
+
+              <div
+                className="
+                  absolute
+
+                  left-[13%]
+                  top-[7%]
+
+                  h-[21%]
+                  w-[49%]
+
+                  rounded-sm
+
+                  border-[4px]
+                  border-zinc-800
+
+                  bg-zinc-700
+                "
+              >
+                <div
+                  className="
+                    absolute
+                    inset-[4px]
+
+                    bg-[#20282b]
+                  "
+                />
+              </div>
+
+              {/* Boxes */}
+
+              <div
+                className="
+                  absolute
+
+                  right-[7%]
+                  top-[39%]
+
+                  h-[17%]
+                  w-[55%]
+
+                  bg-[#98734b]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  left-[8%]
+                  bottom-[7%]
+
+                  h-[19%]
+                  w-[45%]
+
+                  bg-[#ae8659]
+                "
+              />
+            </div>
+
+            {/* =========================================
+                Back boxes
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                left-[25%]
+                top-[15%]
+
+                h-[54px]
+                w-[78px]
+
+                border-[3px]
+                border-[#765938]
+
+                bg-[#a47a4d]
+
+                shadow
+              "
+            />
+
+            <div
+              className="
+                absolute
+
+                left-[32%]
+                top-[18%]
+
+                h-[42px]
+                w-[64px]
+
+                border-[3px]
+                border-[#735633]
+
+                bg-[#92704c]
+              "
+            />
+
+            <div
+              className="
+                absolute
+
+                right-[29%]
+                top-[17%]
+
+                h-[50px]
+                w-[76px]
+
+                border-[3px]
+                border-[#735633]
+
+                bg-[#a67c4c]
+              "
+            />
+
+            {/* =========================================
+                Equipment table
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                bottom-[11%]
+                left-[6%]
+
+                h-[16%]
+                w-[21%]
+
+                border-[5px]
+                border-[#3e3933]
+
+                bg-[#66594c]
+              "
+            >
+              <div
+                className="
+                  absolute
+
+                  left-[10%]
+                  top-[14%]
+
+                  h-[42%]
+                  w-[35%]
+
+                  border-[3px]
+                  border-zinc-900
+
+                  bg-[#34383b]
+                "
+              />
+
+              <div
+                className="
+                  absolute
+
+                  right-[10%]
+                  top-[18%]
+
+                  h-[18%]
+                  w-[32%]
+
+                  bg-zinc-400
+                "
+              />
+            </div>
+
+            {/* =========================================
+                Cleaning tools
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                bottom-[11%]
+                right-[7%]
+
+                flex
+                items-end
+                gap-2
+              "
+            >
+              <div
+                className="
+                  relative
+
+                  h-[92px]
+                  w-[18px]
+                "
+              >
+                <div
+                  className="
+                    absolute
+
+                    left-1/2
+                    top-0
+
+                    h-[72px]
+                    w-[4px]
+
+                    -translate-x-1/2
+
+                    rotate-[7deg]
+
+                    bg-[#6b4b2e]
+                  "
+                />
+
+                <div
+                  className="
+                    absolute
+
+                    bottom-0
+                    left-1/2
+
+                    h-[22px]
+                    w-[26px]
+
+                    -translate-x-1/2
+
+                    rounded-t-[50%]
+
+                    bg-[#a98d52]
+                  "
+                />
+              </div>
+
+              <div
+                className="
+                  h-[46px]
+                  w-[34px]
+
+                  rounded-b-lg
+
+                  border-[3px]
+                  border-[#54504a]
+
+                  bg-[#8b9396]
+                "
+              />
+            </div>
+
+            {/* =========================================
+                Exit door
+            ========================================= */}
+
+            <div
+              className="
+                absolute
+
+                bottom-0
+                left-1/2
+
+                h-[76px]
+                w-[125px]
+
+                -translate-x-1/2
+
+                border-x-[6px]
+                border-t-[6px]
+                border-[#33312f]
+
+                bg-[#4c4c49]
               "
             >
               <div
@@ -626,72 +878,54 @@ export default function DevilLobby({
                   absolute
 
                   left-1/2
-                  top-1/2
+                  top-[10px]
 
                   -translate-x-1/2
-                  -translate-y-1/2
 
-                  rounded-lg
+                  rounded
 
-                  bg-[#efe5d3]
+                  bg-red-800/80
 
                   px-3
                   py-1
 
                   text-[8px]
-                  font-bold
+                  font-black
 
-                  text-zinc-500
+                  tracking-wider
+
+                  text-red-100
                 "
               >
-                WAITING
+                EXIT
               </div>
             </div>
 
             {/* =========================================
-                하단 소파
+                Main floor marking
             ========================================= */}
 
             <div
               className="
+                pointer-events-none
+
                 absolute
 
-                bottom-[7%]
-                left-[8%]
+                left-[22%]
+                right-[22%]
+                top-[31%]
+                bottom-[17%]
 
-                h-[11%]
-                w-[28%]
+                rounded-[28px]
 
-                rounded-lg
-
-                border-[4px]
-                border-[#40503f]
-
-                bg-[#71886e]
-
-                shadow
+                border-2
+                border-dashed
+                border-yellow-300/15
               "
             />
 
             {/* =========================================
-                식물
-            ========================================= */}
-
-            <div
-              className="
-                absolute
-
-                bottom-[7%]
-                right-[10%]
-
-                text-[38px]
-              "
-            >
-              🪴
-            </div>
-
-            {/* =========================================
-                캐릭터
+                Players
             ========================================= */}
 
             {room.players.map(
@@ -699,6 +933,12 @@ export default function DevilLobby({
                 player,
                 index
               ) => {
+                const position =
+                  PLAYER_POSITIONS[
+                    index %
+                      PLAYER_POSITIONS.length
+                  ];
+
                 const host =
                   player.id ===
                   room.hostId;
@@ -707,29 +947,26 @@ export default function DevilLobby({
                   player.id ===
                   mySocketId;
 
-                const position =
-                  LOBBY_POSITIONS[
-                    index %
-                      LOBBY_POSITIONS.length
-                  ];
-
                 return (
                   <div
                     key={
                       player.id
                     }
+
                     className="
                       absolute
 
                       z-30
 
                       flex
+
                       -translate-x-1/2
                       -translate-y-1/2
 
                       flex-col
                       items-center
                     "
+
                     style={{
                       left:
                         position.left,
@@ -738,16 +975,14 @@ export default function DevilLobby({
                         position.top,
                     }}
                   >
-                    {/* =================================
-                        상태 배지
-                    ================================= */}
+                    {/* Role badges */}
 
                     <div
                       className="
                         mb-1
 
                         flex
-                        h-[18px]
+                        h-[19px]
 
                         items-center
                         gap-1
@@ -768,7 +1003,7 @@ export default function DevilLobby({
 
                             text-amber-700
 
-                            shadow-sm
+                            shadow
                           "
                         >
                           👑 방장
@@ -780,7 +1015,7 @@ export default function DevilLobby({
                           className="
                             rounded-full
 
-                            bg-zinc-900
+                            bg-zinc-950
 
                             px-2
                             py-0.5
@@ -790,7 +1025,7 @@ export default function DevilLobby({
 
                             text-white
 
-                            shadow-sm
+                            shadow
                           "
                         >
                           나
@@ -798,58 +1033,60 @@ export default function DevilLobby({
                       )}
                     </div>
 
-                    {/* =================================
-                        Potato
-                    ================================= */}
+                    {/* Potato */}
 
                     <Potato
                       name={
-                        displayName(
+                        getDisplayName(
                           player.nickname
                         )
                       }
+
                       glasses={
                         player
                           .characterStyle
                           ?.glasses ??
                         "none"
                       }
+
                       hat={
                         player
                           .characterStyle
                           ?.hat ??
                         "none"
                       }
+
                       ribbon={
                         player
                           .characterStyle
                           ?.ribbon ??
                         false
                       }
+
                       tie={
                         player
                           .characterStyle
                           ?.tie ??
                         false
                       }
+
                       color={
                         player
                           .characterStyle
                           ?.color ??
                         "default"
                       }
+
                       direction="down"
+
                       moving={
                         false
                       }
+
                       scale={
-                        0.9
+                        0.95
                       }
                     />
-
-                    {/* =================================
-                        접속 표시
-                    ================================= */}
 
                     <div
                       className="
@@ -857,9 +1094,12 @@ export default function DevilLobby({
 
                         flex
                         items-center
-                        gap-1
+                        gap-1.5
 
                         rounded-full
+
+                        border
+                        border-black/10
 
                         bg-white/90
 
@@ -867,11 +1107,11 @@ export default function DevilLobby({
                         py-1
 
                         text-[8px]
-                        font-semibold
+                        font-bold
 
-                        text-zinc-500
+                        text-zinc-600
 
-                        shadow-sm
+                        shadow
                       "
                     >
                       <span
@@ -885,7 +1125,7 @@ export default function DevilLobby({
                         "
                       />
 
-                      준비 완료
+                      대기 중
                     </div>
                   </div>
                 );
@@ -893,16 +1133,17 @@ export default function DevilLobby({
             )}
 
             {/* =========================================
-                빈 슬롯
+                Empty player positions
             ========================================= */}
 
             {Array.from({
               length:
                 Math.max(
                   0,
+
                   Math.min(
-                    LOBBY_POSITIONS.length,
-                    room.maxPlayers
+                    room.maxPlayers,
+                    PLAYER_POSITIONS.length
                   ) -
                     playerCount
                 ),
@@ -916,9 +1157,9 @@ export default function DevilLobby({
                   emptyIndex;
 
                 const position =
-                  LOBBY_POSITIONS[
+                  PLAYER_POSITIONS[
                     index %
-                      LOBBY_POSITIONS.length
+                      PLAYER_POSITIONS.length
                   ];
 
                 return (
@@ -926,10 +1167,11 @@ export default function DevilLobby({
                     key={
                       `empty-${emptyIndex}`
                     }
+
                     className="
                       absolute
 
-                      z-20
+                      z-10
 
                       flex
 
@@ -939,6 +1181,7 @@ export default function DevilLobby({
                       flex-col
                       items-center
                     "
+
                     style={{
                       left:
                         position.left,
@@ -951,8 +1194,8 @@ export default function DevilLobby({
                       className="
                         flex
 
-                        h-[74px]
-                        w-[58px]
+                        h-[76px]
+                        w-[60px]
 
                         items-center
                         justify-center
@@ -961,13 +1204,14 @@ export default function DevilLobby({
 
                         border-2
                         border-dashed
-                        border-zinc-500/25
+                        border-white/15
 
-                        bg-white/15
+                        bg-black/10
 
                         text-xl
+                        font-black
 
-                        text-zinc-500/30
+                        text-white/15
                       "
                     >
                       ?
@@ -979,17 +1223,17 @@ export default function DevilLobby({
 
                         rounded-full
 
-                        bg-black/15
+                        bg-black/20
 
                         px-2
                         py-1
 
                         text-[8px]
 
-                        text-zinc-600/70
+                        text-white/35
                       "
                     >
-                      기다리는 중
+                      참가자 기다리는 중
                     </div>
                   </div>
                 );
@@ -997,7 +1241,7 @@ export default function DevilLobby({
             )}
 
             {/* =========================================
-                로비 메시지
+                Bottom info
             ========================================= */}
 
             <div
@@ -1012,30 +1256,30 @@ export default function DevilLobby({
                 rounded-full
 
                 border
-                border-white/50
+                border-white/10
 
-                bg-white/80
+                bg-black/45
 
                 px-4
                 py-2
 
                 text-[9px]
-                font-semibold
+                font-medium
 
-                text-zinc-600
+                text-white/60
 
-                shadow
+                shadow-lg
 
-                backdrop-blur-sm
+                backdrop-blur
               "
             >
-              🥔 참가 감자들이 모두 모이면 게임을 시작할 수 있어요.
+              게임 시작 전까지 창고 대기실에서 다른 감자를 기다려주세요.
             </div>
           </div>
         </div>
 
         {/* =================================================
-            Footer Controls
+            Footer
         ================================================= */}
 
         <footer
@@ -1045,7 +1289,7 @@ export default function DevilLobby({
             border-t
             border-zinc-800
 
-            bg-[#101010]
+            bg-[#111111]
 
             px-6
             py-4
@@ -1055,12 +1299,10 @@ export default function DevilLobby({
             className="
               flex
               items-center
-              gap-3
+              gap-4
             "
           >
-            {/* =========================================
-                Leave
-            ========================================= */}
+            {/* Leave */}
 
             <button
               type="button"
@@ -1081,13 +1323,13 @@ export default function DevilLobby({
                 py-3
 
                 text-[10px]
-                font-bold
+                font-black
 
                 text-zinc-400
 
                 transition
 
-                hover:border-red-500/50
+                hover:border-red-500/40
                 hover:bg-red-500/10
                 hover:text-red-400
               "
@@ -1095,9 +1337,7 @@ export default function DevilLobby({
               나가기
             </button>
 
-            {/* =========================================
-                Status
-            ========================================= */}
+            {/* Middle info */}
 
             <div
               className="
@@ -1109,21 +1349,21 @@ export default function DevilLobby({
                 className="
                   text-center
 
-                  text-[9px]
+                  text-[10px]
+                  font-bold
 
-                  text-zinc-500
+                  text-zinc-400
                 "
               >
                 현재{" "}
                 <span
                   className="
-                    font-black
                     text-white
                   "
                 >
                   {playerCount}명
                 </span>
-                이 로비에 있습니다.
+                이 참가했습니다.
               </div>
 
               <div
@@ -1137,18 +1377,15 @@ export default function DevilLobby({
                   text-zinc-600
                 "
               >
-                게임이 시작되면
-                모든 참가자가 같은 사무실 맵으로 이동합니다.
+                게임이 시작되면 참가자 모두 같은 본 게임 맵으로 이동합니다.
               </div>
             </div>
 
-            {/* =========================================
-                Start
-            ========================================= */}
+            {/* Start */}
 
             <div
               className="
-                w-[180px]
+                w-[190px]
               "
             >
               {isHost ? (
@@ -1187,9 +1424,9 @@ export default function DevilLobby({
                     disabled:text-zinc-600
                   "
                 >
-                  {needCount >
+                  {needPlayers >
                   0
-                    ? `${needCount}명 더 필요`
+                    ? `${needPlayers}명 더 필요`
                     : "게임 시작"}
                 </button>
               ) : (
@@ -1212,8 +1449,7 @@ export default function DevilLobby({
                     text-zinc-500
                   "
                 >
-                  방장이 시작하기를
-                  기다리는 중...
+                  방장이 게임을 시작하기를 기다리는 중...
                 </div>
               )}
             </div>
