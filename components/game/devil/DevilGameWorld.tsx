@@ -105,12 +105,16 @@ type DevilGameWorldProps = {
     | "survivor";
 
   /*
-   * page.tsx에서 반드시 넘겨주기.
+   * 대기실에서 게임 시작 당시 사용하던 고정 플레이어 ID.
+   * 게임 화면에서 Socket ID가 새로 만들어져도 이 값으로
+   * 서버의 기존 gamePlayer에 정확히 다시 연결한다.
    */
-  roomId?: string;
-  nickname?: string;
+  playerId: string;
 
-  characterStyle?:
+  roomId: string;
+  nickname: string;
+
+  characterStyle:
     CharacterStyle;
 };
 
@@ -299,10 +303,9 @@ function getDisplayName(
 
 export default function DevilGameWorld({
   role,
-
-  roomId = "",
-  nickname = "테스트",
-
+  roomId,
+  playerId,
+  nickname,
   characterStyle,
 }: DevilGameWorldProps) {
   /* ======================================================
@@ -343,6 +346,13 @@ export default function DevilGameWorld({
       null
     );
 
+  /*
+   * Socket 이벤트 내부에서는 state 값이 오래된 값으로
+   * 캡처될 수 있으므로 내 플레이어 ID를 ref로도 보관한다.
+   */
+  const myPlayerIdRef =
+    useRef(playerId);
+
   /* ======================================================
      Game identity
   ====================================================== */
@@ -351,7 +361,7 @@ export default function DevilGameWorld({
     myPlayerId,
     setMyPlayerId,
   ] =
-    useState("");
+    useState(playerId);
 
   const [
     playerState,
@@ -359,6 +369,19 @@ export default function DevilGameWorld({
   ] =
     useState<PlayerState>(
       "alive"
+    );
+
+  /*
+   * 게임 시작 뒤에는 page.tsx의 캐릭터 정보가 아니라
+   * 서버가 돌려준 자기 자신의 GamePlayer를 기준으로 렌더링한다.
+   * 이렇게 해야 각 참가자의 색/안경/모자/리본/넥타이가 섞이지 않는다.
+   */
+  const [
+    selfPlayer,
+    setSelfPlayer,
+  ] =
+    useState<GamePlayer | null>(
+      null
     );
 
   const [
@@ -627,7 +650,7 @@ export default function DevilGameWorld({
   useEffect(() => {
     if (
       !roomId ||
-      !nickname
+      !playerId
     ) {
       return;
     }
@@ -672,7 +695,7 @@ export default function DevilGameWorld({
 
           {
             roomId,
-            nickname,
+            playerId,
           },
 
           (response: {
@@ -701,8 +724,15 @@ export default function DevilGameWorld({
               return;
             }
 
+            myPlayerIdRef.current =
+              response.self.id;
+
             setMyPlayerId(
               response.self.id
+            );
+
+            setSelfPlayer(
+              response.self
             );
 
             setPlayerState(
@@ -743,15 +773,41 @@ export default function DevilGameWorld({
         state:
           GameStatePayload
       ) => {
+        const selfId =
+          myPlayerIdRef.current;
+
         setCorpses(
           state.corpses ?? []
         );
+
+        /*
+         * 서버 상태에서 내 캐릭터와 다른 캐릭터를 명확히 분리한다.
+         * 참가자 전원이 같은 캐릭터처럼 보이는 문제를 방지한다.
+         */
+        if (selfId) {
+          const nextSelf =
+            state.players.find(
+              (player) =>
+                player.id ===
+                selfId
+            );
+
+          if (nextSelf) {
+            setSelfPlayer(
+              nextSelf
+            );
+
+            setPlayerState(
+              nextSelf.state
+            );
+          }
+        }
 
         setOtherPlayers(
           state.players.filter(
             (player) =>
               player.id !==
-              myPlayerId
+              selfId
           )
         );
       }
@@ -802,7 +858,7 @@ export default function DevilGameWorld({
 
         if (
           data.killerId ===
-          myPlayerId
+          myPlayerIdRef.current
         ) {
           setKillCooldownEndsAt(
             data.cooldownEndsAt
@@ -859,7 +915,7 @@ export default function DevilGameWorld({
          */
         if (
           data.victimId ===
-          myPlayerId
+          myPlayerIdRef.current
         ) {
           window.setTimeout(
             () => {
@@ -911,8 +967,25 @@ export default function DevilGameWorld({
     };
   }, [
     roomId,
-    nickname,
-    myPlayerId,
+    playerId,
+  ]);
+
+  /* ======================================================
+     Stable player identity sync
+
+     page.tsx에서 전달된 playerId가 바뀌는 경우에도
+     Socket 이벤트가 참조하는 ID를 즉시 최신값으로 맞춘다.
+  ====================================================== */
+
+  useEffect(() => {
+    myPlayerIdRef.current =
+      playerId;
+
+    setMyPlayerId(
+      playerId
+    );
+  }, [
+    playerId,
   ]);
 
   /* ======================================================
@@ -1364,6 +1437,86 @@ export default function DevilGameWorld({
     };
 
   /* ======================================================
+     Screen Actions
+
+     PC 단축키와 모바일 터치 버튼이 같은 함수를 사용한다.
+  ====================================================== */
+
+  const handleMissionAction =
+    () => {
+      if (
+        activeMission ||
+        mapOpen ||
+        deathOverlay ||
+        !nearbyMission
+      ) {
+        return;
+      }
+
+      startMission();
+    };
+
+  const handleMapAction =
+    () => {
+      if (
+        deathOverlay ||
+        activeMission
+      ) {
+        return;
+      }
+
+      setMapOpen(
+        (previous) =>
+          !previous
+      );
+    };
+
+  const handleBlackoutAction =
+    () => {
+      if (
+        role !== "devil" ||
+        playerState !==
+          "alive" ||
+        deathOverlay ||
+        activeMission
+      ) {
+        return;
+      }
+
+      setBlackout(
+        (previous) =>
+          !previous
+      );
+    };
+
+  const canUseMission =
+    Boolean(
+      nearbyMission
+    ) &&
+    !activeMission &&
+    !mapOpen &&
+    !deathOverlay;
+
+  const canKill =
+    role === "devil" &&
+    playerState ===
+      "alive" &&
+    Boolean(
+      nearbyKillTarget
+    ) &&
+    cooldownRemaining <= 0 &&
+    !activeMission &&
+    !mapOpen &&
+    !deathOverlay;
+
+  const canBlackout =
+    role === "devil" &&
+    playerState ===
+      "alive" &&
+    !activeMission &&
+    !deathOverlay;
+
+  /* ======================================================
      Keyboard
   ====================================================== */
 
@@ -1427,11 +1580,7 @@ export default function DevilGameWorld({
       ) {
         event.preventDefault();
 
-        if (
-          nearbyMission
-        ) {
-          startMission();
-        }
+        handleMissionAction();
 
         return;
       }
@@ -1444,10 +1593,7 @@ export default function DevilGameWorld({
       ) {
         event.preventDefault();
 
-        setMapOpen(
-          (previous) =>
-            !previous
-        );
+        handleMapAction();
 
         return;
       }
@@ -1469,10 +1615,9 @@ export default function DevilGameWorld({
         event.code ===
         "KeyB"
       ) {
-        setBlackout(
-          (previous) =>
-            !previous
-        );
+        event.preventDefault();
+
+        handleBlackoutAction();
 
         return;
       }
@@ -1498,6 +1643,7 @@ export default function DevilGameWorld({
     };
   }, [
     activeMission,
+    mapOpen,
     deathOverlay,
     nearbyMission,
     nearbyKillTarget,
@@ -1932,30 +2078,47 @@ export default function DevilGameWorld({
           <Potato
             name={
               getDisplayName(
-                nickname
+                selfPlayer
+                  ?.nickname ??
+                  nickname
               )
             }
             glasses={
+              selfPlayer
+                ?.characterStyle
+                ?.glasses ??
               characterStyle
                 ?.glasses ??
               "none"
             }
             hat={
+              selfPlayer
+                ?.characterStyle
+                ?.hat ??
               characterStyle
                 ?.hat ??
               "none"
             }
             ribbon={
+              selfPlayer
+                ?.characterStyle
+                ?.ribbon ??
               characterStyle
                 ?.ribbon ??
               false
             }
             tie={
+              selfPlayer
+                ?.characterStyle
+                ?.tie ??
               characterStyle
                 ?.tie ??
               false
             }
             color={
+              selfPlayer
+                ?.characterStyle
+                ?.color ??
               characterStyle
                 ?.color ??
               "default"
@@ -2362,6 +2525,160 @@ export default function DevilGameWorld({
         )}
 
         {/* =================================================
+            Screen Action Buttons
+
+            모바일에서는 키보드가 없으므로 화면 버튼으로
+            업무 / 지도 / 처치 / 정전을 실행할 수 있다.
+            PC에서도 동일하게 클릭할 수 있다.
+        ================================================= */}
+
+        {!deathOverlay && (
+          <div
+            data-no-move
+            className="
+              absolute
+              bottom-4
+              right-4
+              z-[9000]
+              flex
+              flex-col
+              items-end
+              gap-2
+
+              max-[700px]:bottom-3
+              max-[700px]:right-3
+              max-[700px]:gap-1.5
+            "
+          >
+            {/* 지도 */}
+
+            <ActionButton
+              label={
+                mapOpen
+                  ? "지도 닫기"
+                  : "지도"
+              }
+              icon="🗺️"
+              shortcut="M"
+              onClick={
+                handleMapAction
+              }
+              disabled={
+                Boolean(
+                  activeMission
+                )
+              }
+            />
+
+            {/* 업무 */}
+
+            {role ===
+              "survivor" &&
+              playerState ===
+                "alive" && (
+                <ActionButton
+                  label={
+                    nearbyMission
+                      ? nearbyMission.title
+                      : "업무"
+                  }
+                  icon="📋"
+                  shortcut="E"
+                  onClick={
+                    handleMissionAction
+                  }
+                  disabled={
+                    !canUseMission
+                  }
+                  active={
+                    canUseMission
+                  }
+                />
+              )}
+
+            {/* 유령도 미션은 계속 수행 가능 */}
+
+            {playerState ===
+              "ghost" && (
+              <ActionButton
+                label={
+                  nearbyMission
+                    ? nearbyMission.title
+                    : "업무"
+                }
+                icon="📋"
+                shortcut="E"
+                onClick={
+                  handleMissionAction
+                }
+                disabled={
+                  !canUseMission
+                }
+                active={
+                  canUseMission
+                }
+              />
+            )}
+
+            {/* 악마 전용 */}
+
+            {role === "devil" &&
+              playerState ===
+                "alive" && (
+                <>
+                  <ActionButton
+                    label={
+                      cooldownRemaining >
+                      0
+                        ? `처치 ${
+                            Math.ceil(
+                              cooldownRemaining /
+                                100
+                            ) / 10
+                          }s`
+                        : nearbyKillTarget
+                          ? "처치"
+                          : "대상 없음"
+                    }
+                    icon="🔪"
+                    shortcut="Q"
+                    variant="danger"
+                    onClick={
+                      tryKill
+                    }
+                    disabled={
+                      !canKill
+                    }
+                    active={
+                      canKill
+                    }
+                  />
+
+                  <ActionButton
+                    label={
+                      blackout
+                        ? "정전 해제"
+                        : "정전"
+                    }
+                    icon="🌑"
+                    shortcut="B"
+                    variant="dark"
+                    onClick={
+                      handleBlackoutAction
+                    }
+                    disabled={
+                      !canBlackout
+                    }
+                    active={
+                      blackout
+                    }
+                  />
+                </>
+              )}
+          </div>
+        )}
+
+        {/* =================================================
             Controls
         ================================================= */}
 
@@ -2372,7 +2689,8 @@ export default function DevilGameWorld({
             bottom-3
             left-1/2
             z-[8000]
-            flex
+            hidden
+            md:flex
             max-w-[calc(100%-24px)]
             -translate-x-1/2
             flex-wrap
@@ -2521,6 +2839,131 @@ export default function DevilGameWorld({
         }
       />
     </div>
+  );
+}
+
+/* =========================================================
+   Action Button
+========================================================= */
+
+function ActionButton({
+  label,
+  icon,
+  shortcut,
+  onClick,
+  disabled = false,
+  active = false,
+  variant = "default",
+}: {
+  label: string;
+  icon: string;
+  shortcut?: string;
+  onClick: () => void;
+  disabled?: boolean;
+  active?: boolean;
+  variant?:
+    | "default"
+    | "danger"
+    | "dark";
+}) {
+  const variantClass =
+    variant === "danger"
+      ? active
+        ? "border-red-300 bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.35)]"
+        : "border-red-900/50 bg-red-950/80 text-red-200"
+      : variant === "dark"
+        ? active
+          ? "border-violet-300 bg-violet-700 text-white shadow-[0_0_20px_rgba(124,58,237,0.35)]"
+          : "border-violet-900/50 bg-zinc-950/90 text-violet-200"
+        : active
+          ? "border-amber-200 bg-amber-400 text-zinc-950 shadow-[0_0_18px_rgba(251,191,36,0.3)]"
+          : "border-white/15 bg-black/85 text-white";
+
+  return (
+    <button
+      type="button"
+      data-no-move
+      disabled={
+        disabled
+      }
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      className={`
+        flex
+        min-w-[112px]
+        items-center
+        justify-between
+        gap-2
+        rounded-2xl
+        border
+        px-3
+        py-2.5
+        text-[10px]
+        font-black
+        shadow-xl
+        backdrop-blur-sm
+        transition
+        active:scale-95
+
+        max-[700px]:min-w-[94px]
+        max-[700px]:rounded-xl
+        max-[700px]:px-2.5
+        max-[700px]:py-2
+        max-[700px]:text-[9px]
+
+        disabled:cursor-not-allowed
+        disabled:opacity-35
+
+        ${variantClass}
+      `}
+    >
+      <span
+        className="
+          flex
+          items-center
+          gap-1.5
+        "
+      >
+        <span
+          className="
+            text-[14px]
+            max-[700px]:text-[12px]
+          "
+        >
+          {icon}
+        </span>
+
+        <span
+          className="
+            max-w-[82px]
+            truncate
+          "
+        >
+          {label}
+        </span>
+      </span>
+
+      {shortcut && (
+        <span
+          className="
+            rounded-md
+            border
+            border-current/20
+            bg-white/10
+            px-1.5
+            py-0.5
+            text-[7px]
+            opacity-60
+
+            max-[700px]:hidden
+          "
+        >
+          {shortcut}
+        </span>
+      )}
+    </button>
   );
 }
 

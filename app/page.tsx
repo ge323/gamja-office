@@ -140,6 +140,12 @@ export default function Home() {
       string | null
     >(null);
 
+  const [
+    devilPlayerId,
+    setDevilPlayerId,
+  ] =
+    useState("");
+
   /* ======================================================
      Load
   ====================================================== */
@@ -305,6 +311,8 @@ export default function Home() {
         role:
           DevilRole,
         roomId:
+          string,
+        playerId:
           string
       ) => {
         setDevilRole(
@@ -313,6 +321,10 @@ export default function Home() {
 
         setDevilRoomId(
           roomId
+        );
+
+        setDevilPlayerId(
+          playerId
         );
 
         setScreen(
@@ -377,6 +389,10 @@ export default function Home() {
         null
       );
 
+      setDevilPlayerId(
+        ""
+      );
+
       setOnlinePlayers(
         []
       );
@@ -402,6 +418,10 @@ export default function Home() {
 
       setDevilRoomId(
         null
+      );
+
+      setDevilPlayerId(
+        ""
       );
 
       setOnlinePlayers(
@@ -450,6 +470,10 @@ export default function Home() {
 
       setDevilRoomId(
         null
+      );
+
+      setDevilPlayerId(
+        ""
       );
 
       setOnlinePlayers(
@@ -673,6 +697,18 @@ export default function Home() {
         <DevilGameWorld
           role={
             devilRole
+          }
+          roomId={
+            devilRoomId ?? ""
+          }
+          playerId={
+            devilPlayerId
+          }
+          nickname={
+            nickname
+          }
+          characterStyle={
+            characterStyle
           }
         />
       </main>

@@ -73,10 +73,11 @@ type GameWorldProps = {
    * 악마 게임 역할을 받으면
    * page.tsx에 전달
    */
-  onDevilRole?: (
-    role: DevilRole,
-    roomId: string
-  ) => void;
+onDevilRole?: (
+  role: DevilRole,
+  roomId: string,
+  playerId: string
+) => void;
 };
 
 type RemotePlayer = {
@@ -315,7 +316,8 @@ export default function GameWorld({
     setMySocketId,
   ] =
     useState("");
-
+const mySocketIdRef =
+  useRef("");
   /* ======================================================
      Players
   ====================================================== */
@@ -614,11 +616,14 @@ const [
       "connect",
       () => {
         const socketId =
-          socket.id ?? "";
+        socket.id ?? "";
 
-        setMySocketId(
-          socketId
-        );
+      setMySocketId(
+        socketId
+      );
+
+      mySocketIdRef.current =
+        socketId;
 
         socket.emit(
           "player:join",
@@ -953,41 +958,38 @@ const [
     ===================================== */
 
     socket.on(
-      "devilGame:role",
-      (data: {
-        roomId: string;
-
-        role:
-          DevilRole;
-      }) => {
-        console.log(
-          "🎭 내 역할:",
-          data.role
-        );
-
-        /*
-         * 게임 메뉴 닫기
-         */
-        setGameMenuOpen(
-          false
-        );
-
-        setDevilLobbyMessages(
-          []
-        );
-
-        /*
-         * page.tsx로 전달
-         *
-         * page.tsx에서
-         * RoleReveal → DevilGameWorld로 전환
-         */
-        onDevilRole?.(
-          data.role,
-          data.roomId
-        );
-      }
+  "devilGame:role",
+  (data: {
+    roomId: string;
+    role: DevilRole;
+  }) => {
+    console.log(
+      "🎭 내 역할:",
+      data.role
     );
+
+    setGameMenuOpen(
+      false
+    );
+
+    setDevilLobbyMessages(
+      []
+    );
+
+    /*
+     * role
+     * roomId
+     * 게임 시작 당시 playerId
+     *
+     * 세 가지를 page.tsx로 전달
+     */
+    onDevilRole?.(
+      data.role,
+      data.roomId,
+      mySocketIdRef.current
+    );
+  }
+);
 
     /* =====================================
        Cleanup
