@@ -335,20 +335,20 @@ export default function Potato({
             )}
 
           {/* =================================================
-              Left Arm
+                Left Arm
           ================================================= */}
 
           <div
             className={`
               absolute
 
-              left-[10px]
+              left-[-1px]
               top-[48px]
 
-              z-0
+              z-[5]
 
               h-[4px]
-              w-[18px]
+              w-[23px]
 
               origin-right
 
@@ -382,13 +382,13 @@ export default function Potato({
             className={`
               absolute
 
-              right-[10px]
+              right-[-1px]
               top-[48px]
 
-              z-0
+              z-[5]
 
               h-[4px]
-              w-[18px]
+              w-[23px]
 
               origin-left
 
