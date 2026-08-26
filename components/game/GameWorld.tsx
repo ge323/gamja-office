@@ -32,6 +32,7 @@ import ChatPanel, {
 
 import DevilLobby, {
   type DevilLobbyRoom,
+  type DevilLobbyChatMessage,
 } from "@/components/game/devil/DevilLobby";
 
 import type {
@@ -126,7 +127,6 @@ const MAX_MOVE_TIME =
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL ||
   "http://localhost:4000";
-
 /* =========================================================
    Name
 ========================================================= */
@@ -419,6 +419,18 @@ export default function GameWorld({
     useState<
       DevilLobbyRoom | null
     >(null);
+
+/* ======================================================
+   Devil Lobby Chat
+====================================================== */
+
+const [
+  devilLobbyMessages,
+  setDevilLobbyMessages,
+] =
+  useState<
+    DevilLobbyChatMessage[]
+  >([]);
 
   /*
    * 게임 시작 카운트다운
@@ -888,6 +900,38 @@ export default function GameWorld({
     );
 
     /* =====================================
+       Devil Lobby Chat
+    ===================================== */
+
+    socket.on(
+      "devilLobby:chat",
+      (
+        message:
+          DevilLobbyChatMessage
+      ) => {
+        setDevilLobbyMessages(
+          previous => {
+            const exists =
+              previous.some(
+                item =>
+                  item.id ===
+                  message.id
+              );
+
+            if (exists) {
+              return previous;
+            }
+
+            return [
+              ...previous,
+              message,
+            ].slice(-50);
+          }
+        );
+      }
+    );
+
+    /* =====================================
        Devil Game
        개인 역할 수신
 
@@ -913,6 +957,10 @@ export default function GameWorld({
          */
         setGameMenuOpen(
           false
+        );
+
+        setDevilLobbyMessages(
+          []
         );
 
         /*
@@ -979,12 +1027,33 @@ export default function GameWorld({
           return;
         }
 
+        const availableWidth =
+          Math.max(
+            1,
+            container.clientWidth -
+              8
+          );
+
+        const availableHeight =
+          Math.max(
+            1,
+            container.clientHeight -
+              8
+          );
+
+        const widthScale =
+          availableWidth /
+          WORLD_WIDTH;
+
+        const heightScale =
+          availableHeight /
+          WORLD_HEIGHT;
+
         setScale(
           Math.min(
             1,
-
-            container.clientWidth /
-              WORLD_WIDTH
+            widthScale,
+            heightScale
           )
         );
       };
@@ -996,11 +1065,33 @@ export default function GameWorld({
       updateScale
     );
 
+    window.addEventListener(
+      "orientationchange",
+      updateScale
+    );
+
+    window.visualViewport
+      ?.addEventListener(
+        "resize",
+        updateScale
+      );
+
     return () => {
       window.removeEventListener(
         "resize",
         updateScale
       );
+
+      window.removeEventListener(
+        "orientationchange",
+        updateScale
+      );
+
+      window.visualViewport
+        ?.removeEventListener(
+          "resize",
+          updateScale
+        );
     };
   }, []);
 
@@ -1449,6 +1540,10 @@ export default function GameWorld({
             response.room
           );
 
+          setDevilLobbyMessages(
+            []
+          );
+
           setGameMenuOpen(
             false
           );
@@ -1509,6 +1604,10 @@ export default function GameWorld({
             response.room
           );
 
+          setDevilLobbyMessages(
+            []
+          );
+
           setGameMenuOpen(
             false
           );
@@ -1546,9 +1645,57 @@ export default function GameWorld({
             null
           );
 
+          setDevilLobbyMessages(
+            []
+          );
+
           setGameError(
             ""
           );
+        }
+      );
+    };
+
+  /* ======================================================
+     Devil Game
+     Lobby Chat Send
+  ====================================================== */
+
+  const handleSendDevilLobbyMessage =
+    (
+      message: string
+    ) => {
+      const socket =
+        socketRef.current;
+
+      if (
+        !socket ||
+        !socket.connected ||
+        !currentDevilRoom
+      ) {
+        return;
+      }
+
+      const text =
+        message
+          .trim()
+          .slice(
+            0,
+            100
+          );
+
+      if (!text) {
+        return;
+      }
+
+      socket.emit(
+        "devilLobby:chat",
+        {
+          roomId:
+            currentDevilRoom.id,
+
+          message:
+            text,
         }
       );
     };
@@ -1663,12 +1810,18 @@ export default function GameWorld({
       className="
         relative
         flex
+        h-[calc(100dvh-80px)]
+        min-h-[420px]
         w-full
+        items-center
         justify-center
         overflow-hidden
         bg-[#ece7dd]
-        px-4
-        py-4
+        p-2
+
+        max-[900px]:h-[100dvh]
+        max-[900px]:min-h-0
+        max-[900px]:p-0
       "
     >
       {/* =================================================
@@ -2145,6 +2298,12 @@ export default function GameWorld({
           }
           onStart={
             handleStartDevilGame
+          }
+          messages={
+            devilLobbyMessages
+          }
+          onSendMessage={
+            handleSendDevilLobbyMessage
           }
         />
       )}
