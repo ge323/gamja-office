@@ -14,8 +14,8 @@ export type ChatMessage = {
   id: string;
 
   type:
-    | "chat"
-    | "system";
+  | "chat"
+  | "system";
 
   playerId?: string;
 
@@ -45,12 +45,14 @@ export default function ChatPanel({
   const [
     input,
     setInput,
-  ] = useState("");
+  ] =
+    useState("");
 
   const [
     isAtBottom,
     setIsAtBottom,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const scrollRef =
     useRef<HTMLDivElement | null>(
@@ -76,7 +78,8 @@ export default function ChatPanel({
         element.clientHeight;
 
       setIsAtBottom(
-        distanceFromBottom < 20
+        distanceFromBottom <
+        20
       );
     };
 
@@ -134,17 +137,26 @@ export default function ChatPanel({
   const handleSend =
     () => {
       const message =
-        input.trim();
+        input
+          .trim()
+          .slice(
+            0,
+            100
+          );
 
       if (!message) {
         return;
       }
 
-      onSend(message);
+      onSend(
+        message
+      );
 
       setInput("");
 
-      setIsAtBottom(true);
+      setIsAtBottom(
+        true
+      );
 
       window.setTimeout(
         () => {
@@ -182,6 +194,9 @@ export default function ChatPanel({
       return;
     }
 
+    /*
+     * 게임 화면까지 휠 이벤트가 전달되지 않게 차단
+     */
     event.stopPropagation();
 
     element.scrollTop +=
@@ -213,7 +228,9 @@ export default function ChatPanel({
           "smooth",
       });
 
-      setIsAtBottom(true);
+      setIsAtBottom(
+        true
+      );
     };
 
   /* ======================================================
@@ -229,7 +246,25 @@ export default function ChatPanel({
         left-[18px]
         z-[5000]
         w-[340px]
+        max-w-[calc(100vw-36px)]
       "
+
+      /*
+       * 이 영역을 클릭했을 때
+       * GameWorld의 이동 클릭으로 전달되지 않게 차단
+       */
+      onPointerDown={(
+        event
+      ) => {
+        event.stopPropagation();
+      }}
+
+      onMouseDown={(
+        event
+      ) => {
+        event.stopPropagation();
+      }}
+
       onClick={(
         event
       ) => {
@@ -249,6 +284,7 @@ export default function ChatPanel({
           rounded-lg
           bg-black/35
           shadow-md
+          backdrop-blur-[2px]
         "
       >
         {/* =====================================
@@ -256,13 +292,36 @@ export default function ChatPanel({
         ===================================== */}
 
         <div
-          ref={scrollRef}
+          ref={
+            scrollRef
+          }
+
           onScroll={
             checkScrollPosition
           }
+
           onWheel={
             handleWheel
           }
+
+          onPointerDown={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onMouseDown={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onClick={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
           className="
             h-full
             overflow-y-auto
@@ -278,7 +337,7 @@ export default function ChatPanel({
           "
         >
           {messages.length ===
-          0 ? (
+            0 ? (
             <div
               className="
                 text-white/40
@@ -367,26 +426,52 @@ export default function ChatPanel({
         {!isAtBottom && (
           <button
             type="button"
-            onClick={
-              moveToLatest
-            }
+
+            onPointerDown={(
+              event
+            ) => {
+              event.stopPropagation();
+            }}
+
+            onMouseDown={(
+              event
+            ) => {
+              event.stopPropagation();
+            }}
+
+            onClick={(
+              event
+            ) => {
+              event.stopPropagation();
+
+              moveToLatest();
+            }}
+
             className="
               absolute
               bottom-[7px]
               left-1/2
               z-20
               -translate-x-1/2
+
               rounded-full
+
               border
               border-white/10
+
               bg-black/80
+
               px-3
               py-1
+
               text-[9px]
               font-medium
               text-white/80
+
               shadow
+
               transition
+
               hover:bg-black
               hover:text-white
             "
@@ -400,19 +485,57 @@ export default function ChatPanel({
           채팅 입력창
       ========================================= */}
 
-      <div
+      <form
+        data-no-move
+
+        onSubmit={(
+          event
+        ) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          handleSend();
+        }}
+
+        onPointerDown={(
+          event
+        ) => {
+          event.stopPropagation();
+        }}
+
+        onMouseDown={(
+          event
+        ) => {
+          event.stopPropagation();
+        }}
+
+        onClick={(
+          event
+        ) => {
+          event.stopPropagation();
+        }}
+
         className="
           flex
           overflow-hidden
+
           rounded-lg
+
           border
           border-white/10
+
           bg-black/60
+
           shadow-md
+
+          backdrop-blur-[2px]
         "
       >
         <input
-          value={input}
+          value={
+            input
+          }
+
           onChange={(
             event
           ) => {
@@ -420,12 +543,21 @@ export default function ChatPanel({
               event.target.value
             );
           }}
+
+          /* =====================================
+             중요:
+             키보드 이벤트가 GameWorld로 전달되면
+             WASD / E / Q 등의 게임 단축키와 충돌할 수 있음
+          ===================================== */
+
           onKeyDown={(
             event
           ) => {
+            event.stopPropagation();
+
             if (
               event.key ===
-                "Enter" &&
+              "Enter" &&
               !event.nativeEvent
                 .isComposing
             ) {
@@ -434,41 +566,122 @@ export default function ChatPanel({
               handleSend();
             }
           }}
-          maxLength={100}
+
+          onKeyUp={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onKeyPress={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onPointerDown={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onPointerUp={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onMouseDown={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onMouseUp={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onClick={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          maxLength={
+            100
+          }
+
+          autoComplete="off"
+
           placeholder="대화를 입력하세요..."
+
           className="
             min-w-0
             flex-1
+
             bg-transparent
+
             px-3
             py-2
+
             text-[11px]
             text-white
+
             outline-none
+
             placeholder:text-white/35
           "
         />
 
         <button
-          type="button"
-          onClick={
-            handleSend
+          type="submit"
+
+          disabled={
+            !input.trim()
           }
+
+          onPointerDown={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onMouseDown={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
+          onClick={(
+            event
+          ) => {
+            event.stopPropagation();
+          }}
+
           className="
             border-l
             border-white/10
+
             px-3
+
             text-[9px]
             font-medium
             text-white/60
+
             transition
+
             hover:bg-white/10
             hover:text-white
+
+            disabled:cursor-not-allowed
+            disabled:opacity-30
           "
         >
           Enter
         </button>
-      </div>
+      </form>
     </div>
   );
 }

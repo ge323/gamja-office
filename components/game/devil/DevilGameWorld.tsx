@@ -489,6 +489,15 @@ export default function DevilGameWorld({
       null
     );
 
+  /*
+   * 긴급회의 채팅이 새 메시지를 받을 때
+   * 가장 아래 메시지로 자동 스크롤한다.
+   */
+  const meetingChatScrollRef =
+    useRef<HTMLDivElement | null>(
+      null
+    );
+
   const socketRef =
     useRef<Socket | null>(
       null
@@ -2113,6 +2122,25 @@ export default function DevilGameWorld({
         )
       )
       : 0;
+
+  /* ======================================================
+     Meeting Chat Auto Scroll
+  ====================================================== */
+
+  useEffect(() => {
+    const element =
+      meetingChatScrollRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    element.scrollTop =
+      element.scrollHeight;
+  }, [
+    meetingMessages,
+    meeting?.phase,
+  ]);
 
   /* ======================================================
      Cooldown timer
@@ -5059,13 +5087,32 @@ export default function DevilGameWorld({
                 {/* Chat */}
 
                 <div className="flex min-h-0 flex-col">
-                  <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                  <div className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3 sm:px-5">
+                    <div>
+                      <div className="text-[10px] font-black text-black/70">
+                        회의 채팅
+                      </div>
+
+                      <div className="mt-0.5 text-[8px] font-semibold text-black/30">
+                        실시간으로 모든 생존 참가자에게 표시됩니다.
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[8px] font-bold text-emerald-600">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      LIVE
+                    </div>
+                  </div>
+                  <div
+                    ref={meetingChatScrollRef}
+                    className="min-h-0 flex-1 overflow-y-auto bg-[#f8f6f1] p-4 sm:p-5"
+                  >
                     {meetingMessages.length ===
                       0 ? (
                       <div className="flex h-full min-h-[160px] items-center justify-center text-center text-[11px] font-semibold text-black/30">
-                        누가 악마인지 이야기해보세요.
+                        💬 회의 채팅
                         <br />
-                        어디에서 누구를 봤는지 공유해보세요.
+                        발견 위치, 마지막으로 본 사람, 이동 경로를 이야기해보세요.
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -5087,8 +5134,8 @@ export default function DevilGameWorld({
                                 <div
                                   className={
                                     mine
-                                      ? "max-w-[78%] rounded-2xl rounded-br-sm bg-zinc-900 px-4 py-3 text-white"
-                                      : "max-w-[78%] rounded-2xl rounded-bl-sm border border-black/10 bg-white px-4 py-3 text-black/70"
+                                      ? "max-w-[78%] rounded-[18px] rounded-br-[5px] bg-zinc-900 px-4 py-2.5 text-white shadow-sm"
+                                      : "max-w-[78%] rounded-[18px] rounded-bl-[5px] border border-black/10 bg-white px-4 py-2.5 text-black/70 shadow-sm"
                                   }
                                 >
                                   <div className="mb-1 text-[8px] font-black opacity-45">
@@ -5174,10 +5221,21 @@ export default function DevilGameWorld({
                         {playerState ===
                           "alive" ? (
                           <form
+                            data-no-move
                             onSubmit={(event) => {
                               event.preventDefault();
+                              event.stopPropagation();
                               sendMeetingMessage();
                             }}
+                            onPointerDown={(event) =>
+                              event.stopPropagation()
+                            }
+                            onMouseDown={(event) =>
+                              event.stopPropagation()
+                            }
+                            onClick={(event) =>
+                              event.stopPropagation()
+                            }
                             className="flex gap-2"
                           >
                             <input
@@ -5196,7 +5254,14 @@ export default function DevilGameWorld({
                               onClick={(event) =>
                                 event.stopPropagation()
                               }
-                              placeholder="의심되는 점을 이야기하세요..."
+                              onPointerDown={(event) =>
+                                event.stopPropagation()
+                              }
+                              onMouseDown={(event) =>
+                                event.stopPropagation()
+                              }
+                              autoComplete="off"
+                              placeholder="메시지를 입력하세요..."
                               maxLength={160}
                               className="min-w-0 flex-1 rounded-xl border border-black/10 bg-[#f5f5f5] px-4 py-3 text-[11px] text-black outline-none focus:border-black/30"
                             />
