@@ -704,7 +704,7 @@ const [
         id: string;
         x: number;
         y: number;
-        duration: number;
+        duration?: number;
       }) => {
         setRemotePlayers(
           previous =>
@@ -739,7 +739,7 @@ const [
                     data.y,
 
                   moveDuration:
-                    data.duration,
+                    data.duration ?? 300,
 
                   moving:
                     true,
@@ -769,7 +769,7 @@ const [
                 )
             );
           },
-          data.duration
+          data.duration ?? 300
         );
       }
     );
@@ -951,45 +951,92 @@ const [
 
     /* =====================================
        Devil Game
-       개인 역할 수신
+       게임 시작 수신
 
-       서버가 나에게만
-       내 역할을 보내준다.
+       최신 server.js는 devilGame:started를 사용한다.
+       여기서 게임 시작 당시의 고정 playerId도 같이 받는다.
     ===================================== */
 
     socket.on(
-  "devilGame:role",
-  (data: {
-    roomId: string;
-    role: DevilRole;
-  }) => {
-    console.log(
-      "🎭 내 역할:",
-      data.role
+      "devilGame:started",
+      (data: {
+        roomId: string;
+
+        playerId: string;
+
+        role:
+          DevilRole;
+
+        missionIds?: string[];
+
+        x?: number;
+        y?: number;
+      }) => {
+        console.log(
+          "🎮 감자 전쟁 시작:",
+          {
+            role:
+              data.role,
+
+            roomId:
+              data.roomId,
+
+            playerId:
+              data.playerId,
+
+            missionIds:
+              data.missionIds,
+          }
+        );
+
+        setGameMenuOpen(
+          false
+        );
+
+        setDevilLobbyMessages(
+          []
+        );
+
+        onDevilRole?.(
+          data.role,
+          data.roomId,
+          data.playerId
+        );
+      }
     );
 
-    setGameMenuOpen(
-      false
-    );
+    /* =====================================
+       이전 server.js 호환용 역할 이벤트
+    ===================================== */
 
-    setDevilLobbyMessages(
-      []
-    );
+    socket.on(
+      "devilGame:role",
+      (data: {
+        roomId: string;
 
-    /*
-     * role
-     * roomId
-     * 게임 시작 당시 playerId
-     *
-     * 세 가지를 page.tsx로 전달
-     */
-    onDevilRole?.(
-      data.role,
-      data.roomId,
-      mySocketIdRef.current
+        role:
+          DevilRole;
+      }) => {
+        console.log(
+          "🎭 내 역할:",
+          data.role
+        );
+
+        setGameMenuOpen(
+          false
+        );
+
+        setDevilLobbyMessages(
+          []
+        );
+
+        onDevilRole?.(
+          data.role,
+          data.roomId,
+          mySocketIdRef.current
+        );
+      }
     );
-  }
-);
 
     /* =====================================
        Cleanup
@@ -1495,7 +1542,9 @@ const [
   ) => {
     socketRef.current?.emit(
       "chat:send",
-      message
+      {
+        message,
+      }
     );
   };
 
@@ -1598,7 +1647,9 @@ const [
       socket.emit(
         "devilRoom:join",
 
-        roomId,
+        {
+          roomId,
+        },
 
         (response: {
           ok: boolean;
@@ -1779,7 +1830,13 @@ const handleToggleDevilReady =
     socket.emit(
       "devilRoom:ready",
 
-      nextReady,
+      {
+        roomId:
+          currentDevilRoom.id,
+
+        ready:
+          nextReady,
+      },
 
       (response: {
         ok: boolean;

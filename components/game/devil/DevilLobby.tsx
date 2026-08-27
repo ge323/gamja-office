@@ -91,7 +91,7 @@ type DevilLobbyProps = {
 ========================================================= */
 
 const MIN_PLAYERS =
-  2;
+  3;
 
 const PLAYER_POSITIONS = [
   {
@@ -117,6 +117,11 @@ const PLAYER_POSITIONS = [
   {
     left: "64%",
     top: "68%",
+  },
+
+  {
+    left: "50%",
+    top: "56%",
   },
 ];
 
