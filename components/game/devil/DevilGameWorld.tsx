@@ -118,6 +118,30 @@ type KillConfirmedPayload = {
     number;
 };
 
+type GameResultWinner = {
+  id: string;
+
+  nickname: string;
+
+  characterStyle?:
+    CharacterStyle;
+};
+
+type GameResultPayload = {
+  roomId: string;
+
+  winningTeam:
+    | "devil"
+    | "survivor";
+
+  reason: string;
+
+  winners:
+    GameResultWinner[];
+
+  finishedAt: number;
+};
+
 type DevilGameWorldProps = {
   role:
     | "devil"
@@ -135,6 +159,9 @@ type DevilGameWorldProps = {
 
   characterStyle:
     CharacterStyle;
+
+  onReturnToOffice:
+    () => void;
 };
 
 /* =========================================================
@@ -343,6 +370,7 @@ export default function DevilGameWorld({
   playerId,
   nickname,
   characterStyle,
+  onReturnToOffice,
 }: DevilGameWorldProps) {
   /* ======================================================
      Refs
@@ -486,6 +514,26 @@ export default function DevilGameWorld({
     setCombatMessage,
   ] =
     useState("");
+
+  const [
+    gameResult,
+    setGameResult,
+  ] =
+    useState<GameResultPayload | null>(
+      null
+    );
+
+  const [
+    leaveConfirmOpen,
+    setLeaveConfirmOpen,
+  ] =
+    useState(false);
+
+  const [
+    leavingGame,
+    setLeavingGame,
+  ] =
+    useState(false);
 
   /* ======================================================
      Position
@@ -1004,6 +1052,48 @@ export default function DevilGameWorld({
                 };
               }
             )
+        );
+      }
+    );
+
+    socket.on(
+      "devilGame:end",
+      (result:
+        GameResultPayload
+      ) => {
+        targetPositionRef.current =
+          null;
+
+        if (
+          animationFrameRef.current !==
+          null
+        ) {
+          cancelAnimationFrame(
+            animationFrameRef.current
+          );
+
+          animationFrameRef.current =
+            null;
+        }
+
+        setMoving(
+          false
+        );
+
+        setMapOpen(
+          false
+        );
+
+        setActiveMission(
+          null
+        );
+
+        setLeaveConfirmOpen(
+          false
+        );
+
+        setGameResult(
+          result
         );
       }
     );
@@ -1754,6 +1844,64 @@ export default function DevilGameWorld({
               response.cooldownEndsAt
             );
           }
+        }
+      );
+    };
+
+  /* ======================================================
+     Leave Game
+  ====================================================== */
+
+  const handleLeaveGame =
+    () => {
+      if (
+        leavingGame ||
+        gameResult
+      ) {
+        return;
+      }
+
+      const socket =
+        socketRef.current;
+
+      if (
+        !socket ||
+        !socket.connected
+      ) {
+        onReturnToOffice();
+        return;
+      }
+
+      setLeavingGame(
+        true
+      );
+
+      socket.emit(
+        "devilGame:leave",
+        (response: {
+          ok: boolean;
+          message?: string;
+        }) => {
+          setLeavingGame(
+            false
+          );
+
+          if (
+            !response.ok
+          ) {
+            setCombatMessage(
+              response.message ??
+                "게임에서 나가지 못했습니다."
+            );
+
+            return;
+          }
+
+          setLeaveConfirmOpen(
+            false
+          );
+
+          onReturnToOffice();
         }
       );
     };
@@ -2823,6 +2971,45 @@ export default function DevilGameWorld({
           )}
 
         {/* =================================================
+            Leave Game
+        ================================================= */}
+
+        {!gameResult && (
+          <button
+            type="button"
+            data-no-move
+            onClick={(event) => {
+              event.stopPropagation();
+
+              setLeaveConfirmOpen(
+                true
+              );
+            }}
+            className="
+              absolute
+              right-4
+              top-4
+              z-[9200]
+              rounded-xl
+              border
+              border-red-400/20
+              bg-black/80
+              px-3
+              py-2
+              text-[9px]
+              font-black
+              text-red-300
+              shadow-lg
+              backdrop-blur-sm
+              transition
+              hover:bg-red-950/80
+            "
+          >
+            게임 퇴장
+          </button>
+        )}
+
+        {/* =================================================
             Combat message
         ================================================= */}
 
@@ -3144,6 +3331,219 @@ export default function DevilGameWorld({
           </div>
         )}
       </div>
+
+      {/* =================================================
+          Leave Confirm
+      ================================================= */}
+
+      {leaveConfirmOpen &&
+        !gameResult && (
+          <div
+            data-no-move
+            className="
+              fixed
+              inset-0
+              z-[60000]
+              flex
+              items-center
+              justify-center
+              bg-black/70
+              p-4
+              backdrop-blur-sm
+            "
+          >
+            <div
+              className="
+                w-full
+                max-w-[360px]
+                rounded-3xl
+                border
+                border-white/10
+                bg-zinc-950
+                p-6
+                text-center
+                text-white
+                shadow-2xl
+              "
+            >
+              <div className="text-4xl">🚪</div>
+
+              <div className="mt-4 text-lg font-black">
+                게임에서 나가시겠습니까?
+              </div>
+
+              <div className="mt-2 text-[10px] leading-5 text-white/45">
+                퇴장하면 현재 게임으로 다시 돌아올 수 없습니다.
+                <br />
+                남은 인원이 3명 미만이 되면 게임이 즉시 종료됩니다.
+              </div>
+
+              <div className="mt-6 flex gap-2">
+                <button
+                  type="button"
+                  disabled={
+                    leavingGame
+                  }
+                  onClick={() => {
+                    setLeaveConfirmOpen(
+                      false
+                    );
+                  }}
+                  className="
+                    flex-1
+                    rounded-xl
+                    border
+                    border-white/10
+                    bg-white/5
+                    px-4
+                    py-3
+                    text-[10px]
+                    font-black
+                    text-white/65
+                    disabled:opacity-40
+                  "
+                >
+                  취소
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    leavingGame
+                  }
+                  onClick={
+                    handleLeaveGame
+                  }
+                  className="
+                    flex-1
+                    rounded-xl
+                    bg-red-500
+                    px-4
+                    py-3
+                    text-[10px]
+                    font-black
+                    text-white
+                    disabled:opacity-40
+                  "
+                >
+                  {leavingGame
+                    ? "퇴장 중..."
+                    : "퇴장하기"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* =================================================
+          Game Result
+      ================================================= */}
+
+      {gameResult && (
+        <div
+          data-no-move
+          className="
+            fixed
+            inset-0
+            z-[70000]
+            flex
+            items-center
+            justify-center
+            bg-black/80
+            p-4
+            backdrop-blur-md
+          "
+        >
+          <div
+            className="
+              w-full
+              max-w-[520px]
+              overflow-hidden
+              rounded-[30px]
+              border
+              border-white/10
+              bg-zinc-950
+              text-center
+              text-white
+              shadow-[0_30px_100px_rgba(0,0,0,0.7)]
+            "
+          >
+            <div
+              className={
+                gameResult.winningTeam ===
+                "devil"
+                  ? "bg-red-500/10 px-6 py-8"
+                  : "bg-emerald-500/10 px-6 py-8"
+              }
+            >
+              <div className="text-5xl">
+                {gameResult.winningTeam ===
+                "devil"
+                  ? "😈"
+                  : "🎉"}
+              </div>
+
+              <div className="mt-4 text-[9px] font-black tracking-[0.28em] text-white/35">
+                GAME OVER
+              </div>
+
+              <div
+                className={
+                  gameResult.winningTeam ===
+                  "devil"
+                    ? "mt-3 text-sm font-black text-red-300"
+                    : "mt-3 text-sm font-black text-emerald-300"
+                }
+              >
+                {gameResult.winningTeam ===
+                "devil"
+                  ? "- 악마팀 -"
+                  : "- 생존팀 -"}
+              </div>
+
+              <div className="mt-5 text-2xl font-black leading-tight">
+                {gameResult.winners.length >
+                0
+                  ? `${gameResult.winners
+                      .map((winner) =>
+                        getDisplayName(
+                          winner.nickname
+                        )
+                      )
+                      .join(" · ")} 승리!`
+                  : "승리!"}
+              </div>
+
+              <div className="mt-3 text-[10px] leading-5 text-white/45">
+                {gameResult.reason}
+              </div>
+            </div>
+
+            <div className="p-6">
+              <button
+                type="button"
+                onClick={
+                  onReturnToOffice
+                }
+                className="
+                  w-full
+                  rounded-2xl
+                  bg-white
+                  px-5
+                  py-4
+                  text-[11px]
+                  font-black
+                  text-zinc-950
+                  transition
+                  hover:bg-amber-100
+                "
+              >
+                🏢 사무실로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* =================================================
           Mission Modal

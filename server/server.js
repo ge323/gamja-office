@@ -99,7 +99,7 @@ const devilRooms =
 ========================================================= */
 
 const DEVIL_GAME_MIN_PLAYERS =
-  2;
+  3;
 
 const DEVIL_GAME_DEFAULT_MAX_PLAYERS =
   6;
@@ -454,15 +454,12 @@ function assignRoles(
   room
 ) {
   /*
-   * 현재 최대 인원이 5명이므로
-   * 악마는 기본 1명.
-   *
-   * 추후 최대 인원을 늘린다면
-   * 7명 이상부터 악마 2명.
+   * 3~4명: 악마 1명
+   * 5~6명: 악마 2명
    */
   const devilCount =
     room.players.length >=
-    7
+    5
       ? 2
       : 1;
 
@@ -714,6 +711,220 @@ function broadcastGameState(
         room
       )
     );
+}
+
+/* =========================================================
+   Finish Potato War
+========================================================= */
+
+function finishPotatoWar(
+  room,
+  winningTeam,
+  reason = ""
+) {
+  if (
+    !room ||
+    room.status !==
+      "playing"
+  ) {
+    return;
+  }
+
+  room.status =
+    "finished";
+
+  room.finishedAt =
+    Date.now();
+
+  const winners =
+    Object.values(
+      room.gamePlayers ??
+        {}
+    )
+      .filter(
+        gamePlayer =>
+          gamePlayer.role ===
+          winningTeam
+      )
+      .map(
+        gamePlayer => ({
+          id:
+            gamePlayer.id,
+
+          nickname:
+            gamePlayer.nickname,
+
+          characterStyle:
+            gamePlayer.characterStyle,
+        })
+      );
+
+  const result = {
+    roomId:
+      room.id,
+
+    winningTeam,
+
+    reason,
+
+    winners,
+
+    finishedAt:
+      room.finishedAt,
+  };
+
+  room.result =
+    result;
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:end",
+      result
+    );
+
+  broadcastRoomList();
+
+  /*
+   * 결과 화면을 볼 시간을 준 뒤
+   * 종료된 게임방을 정리한다.
+   */
+  setTimeout(
+    () => {
+      const currentRoom =
+        devilRooms[
+          room.id
+        ];
+
+      if (
+        currentRoom &&
+        currentRoom.status ===
+          "finished"
+      ) {
+        delete devilRooms[
+          room.id
+        ];
+
+        broadcastRoomList();
+      }
+    },
+    60_000
+  );
+}
+
+/* =========================================================
+   Check Potato War Winner
+========================================================= */
+
+function checkPotatoWarWinner(
+  room
+) {
+  if (
+    !room ||
+    room.status !==
+      "playing"
+  ) {
+    return;
+  }
+
+  const remainingPlayers =
+    Object.values(
+      room.gamePlayers ??
+        {}
+    );
+
+  if (
+    remainingPlayers.length ===
+    0
+  ) {
+    delete devilRooms[
+      room.id
+    ];
+
+    broadcastRoomList();
+
+    return;
+  }
+
+  const remainingDevils =
+    remainingPlayers.filter(
+      gamePlayer =>
+        gamePlayer.role ===
+        "devil"
+    );
+
+  const aliveSurvivors =
+    remainingPlayers.filter(
+      gamePlayer =>
+        gamePlayer.role ===
+          "survivor" &&
+        gamePlayer.state ===
+          "alive"
+    );
+
+  /*
+   * 악마가 모두 퇴장/제거되면
+   * 생존팀 승리.
+   */
+  if (
+    remainingDevils.length ===
+    0
+  ) {
+    finishPotatoWar(
+      room,
+      "survivor",
+      "악마가 모두 사라졌습니다."
+    );
+
+    return;
+  }
+
+  /*
+   * 퇴장으로 남은 참가자가 3명 미만이면
+   * 즉시 게임 종료.
+   */
+  if (
+    remainingPlayers.length <
+    3
+  ) {
+    if (
+      remainingDevils.length >=
+      aliveSurvivors.length
+    ) {
+      finishPotatoWar(
+        room,
+        "devil",
+        "남은 참가자가 3명 미만이 되어 게임이 종료되었습니다."
+      );
+    } else {
+      finishPotatoWar(
+        room,
+        "survivor",
+        "남은 참가자가 3명 미만이 되어 게임이 종료되었습니다."
+      );
+    }
+
+    return;
+  }
+
+  /*
+   * 살아있는 생존자 수가 악마 수 이하가 되면
+   * 악마팀 승리.
+   */
+  if (
+    aliveSurvivors.length <=
+    remainingDevils.length
+  ) {
+    finishPotatoWar(
+      room,
+      "devil",
+      "악마가 생존자들을 장악했습니다."
+    );
+  }
 }
 
 /* =========================================================
@@ -1114,6 +1325,10 @@ function handlePlayingDisconnect(
       }
 
       broadcastGameState(
+        currentRoom
+      );
+
+      checkPotatoWarWinner(
         currentRoom
       );
     },
@@ -2363,6 +2578,118 @@ io.on(
     );
 
     /* =====================================================
+       Devil Game Leave
+    ===================================================== */
+
+    socket.on(
+      "devilGame:leave",
+      callback => {
+        const room =
+          findGameRoomBySocket(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "진행 중인 게임을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const gamePlayer =
+          findGamePlayerBySocket(
+            room,
+            socket.id
+          );
+
+        if (!gamePlayer) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "플레이어 정보를 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const stablePlayerId =
+          gamePlayer.id;
+
+        delete room
+          .gamePlayers[
+            stablePlayerId
+          ];
+
+        room.players =
+          room.players.filter(
+            id =>
+              id !==
+              stablePlayerId
+          );
+
+        if (
+          room.roles
+        ) {
+          delete room.roles[
+            stablePlayerId
+          ];
+        }
+
+        if (
+          room.ready
+        ) {
+          delete room.ready[
+            stablePlayerId
+          ];
+        }
+
+        socket.leave(
+          getSocketRoomName(
+            room.id
+          )
+        );
+
+        callback?.({
+          ok:
+            true,
+        });
+
+        const remainingCount =
+          Object.keys(
+            room.gamePlayers
+          ).length;
+
+        if (
+          remainingCount ===
+          0
+        ) {
+          delete devilRooms[
+            room.id
+          ];
+
+          broadcastRoomList();
+
+          return;
+        }
+
+        broadcastGameState(
+          room
+        );
+
+        checkPotatoWarWinner(
+          room
+        );
+      }
+    );
+
+    /* =====================================================
        Devil Game Move
     ===================================================== */
 
@@ -2699,6 +3026,10 @@ io.on(
          * 상태도 갱신.
          */
         broadcastGameState(
+          room
+        );
+
+        checkPotatoWarWinner(
           room
         );
 

@@ -335,6 +335,32 @@ export default function Home() {
     );
 
   /* ======================================================
+     Return To Office
+  ====================================================== */
+
+  const handleReturnToOffice =
+    useCallback(
+      () => {
+        setDevilRole(
+          null
+        );
+
+        setDevilRoomId(
+          null
+        );
+
+        setDevilPlayerId(
+          ""
+        );
+
+        setScreen(
+          "office"
+        );
+      },
+      []
+    );
+
+  /* ======================================================
      Role Reveal Timer
   ====================================================== */
 
@@ -709,6 +735,9 @@ export default function Home() {
           }
           characterStyle={
             characterStyle
+          }
+          onReturnToOffice={
+            handleReturnToOffice
           }
         />
       </main>
