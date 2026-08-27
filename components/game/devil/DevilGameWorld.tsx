@@ -55,10 +55,10 @@ type GamePlayer = {
   nickname: string;
 
   characterStyle?:
-    CharacterStyle;
+  CharacterStyle;
 
   state:
-    PlayerState;
+  PlayerState;
 
   x: number;
   y: number;
@@ -93,20 +93,109 @@ type Corpse = {
   victimId: string;
   nickname: string;
 
+  /*
+   * 죽은 순간의 실제 감자 외형.
+   * 서버의 corpse.characterStyle을 받아
+   * 시체도 🥔 이모지가 아니라 실제 캐릭터로 표시한다.
+   */
+  characterStyle?:
+  CharacterStyle;
+
   x: number;
   y: number;
 
   createdAt: number;
 };
 
+type MeetingPhase =
+  | "discussion"
+  | "voting"
+  | "result";
+
+type MeetingChatMessage = {
+  id: string;
+
+  playerId: string;
+  nickname: string;
+
+  message: string;
+
+  createdAt: number;
+};
+
+type MeetingState = {
+  id: string;
+
+  active: boolean;
+
+  phase:
+  MeetingPhase;
+
+  reporterId:
+  string;
+
+  reporterNickname?:
+  string;
+
+  corpseId:
+  string;
+
+  victimId:
+  string;
+
+  victimNickname:
+  string;
+
+  startedAt:
+  number;
+
+  phaseEndsAt:
+  number;
+
+  messages:
+  MeetingChatMessage[];
+
+  votedPlayerIds:
+  string[];
+};
+
+type MeetingResult = {
+  roomId?: string;
+
+  skipped:
+  boolean;
+
+  expelledPlayer:
+  | {
+    id: string;
+    nickname: string;
+    role:
+    | "devil"
+    | "survivor";
+  }
+  | null;
+
+  voteCounts:
+  Record<
+    string,
+    number
+  >;
+
+  resultEndsAt:
+  number;
+};
+
 type GameStatePayload = {
   roomId: string;
 
   players:
-    GamePlayer[];
+  GamePlayer[];
 
   corpses:
-    Corpse[];
+  Corpse[];
+
+  meeting?:
+  MeetingState | null;
 };
 
 type KillConfirmedPayload = {
@@ -116,10 +205,10 @@ type KillConfirmedPayload = {
   victimId: string;
 
   corpse:
-    Corpse;
+  Corpse;
 
   cooldownEndsAt:
-    number;
+  number;
 };
 
 type GameResultWinner = {
@@ -128,28 +217,28 @@ type GameResultWinner = {
   nickname: string;
 
   characterStyle?:
-    CharacterStyle;
+  CharacterStyle;
 };
 
 type GameResultPayload = {
   roomId: string;
 
   winningTeam:
-    | "devil"
-    | "survivor";
+  | "devil"
+  | "survivor";
 
   reason: string;
 
   winners:
-    GameResultWinner[];
+  GameResultWinner[];
 
   finishedAt: number;
 };
 
 type DevilGameWorldProps = {
   role:
-    | "devil"
-    | "survivor";
+  | "devil"
+  | "survivor";
 
   /*
    * 대기실에서 게임 시작 당시 사용하던 고정 플레이어 ID.
@@ -162,10 +251,10 @@ type DevilGameWorldProps = {
   nickname: string;
 
   characterStyle:
-    CharacterStyle;
+  CharacterStyle;
 
   onReturnToOffice:
-    () => void;
+  () => void;
 };
 
 /* =========================================================
@@ -196,6 +285,13 @@ const INTERACTION_DISTANCE =
 
 const KILL_UI_DISTANCE =
   135;
+
+/*
+ * 시체에 이 거리 안으로 접근하면
+ * 긴급회의 신고 버튼을 표시한다.
+ */
+const REPORT_DISTANCE =
+  150;
 
 const MOVE_EMIT_INTERVAL =
   50;
@@ -238,12 +334,12 @@ function isInsideRect(
   return (
     x >= rect.x &&
     x <=
-      rect.x +
-        rect.width &&
+    rect.x +
+    rect.width &&
     y >= rect.y &&
     y <=
-      rect.y +
-        rect.height
+    rect.y +
+    rect.height
   );
 }
 
@@ -283,7 +379,7 @@ function isPathWalkable(
   const distance =
     Math.sqrt(
       dx * dx +
-        dy * dy
+      dy * dy
     );
 
   const steps =
@@ -292,7 +388,7 @@ function isPathWalkable(
 
       Math.ceil(
         distance /
-          COLLISION_STEP
+        COLLISION_STEP
       )
     );
 
@@ -308,12 +404,12 @@ function isPathWalkable(
     const x =
       fromX +
       dx *
-        ratio;
+      ratio;
 
     const y =
       fromY +
       dy *
-        ratio;
+      ratio;
 
     if (
       !isWalkable(
@@ -356,7 +452,7 @@ function getDistance(
 
   return Math.sqrt(
     dx * dx +
-      dy * dy
+    dy * dy
   );
 }
 
@@ -578,6 +674,54 @@ export default function DevilGameWorld({
     useState(false);
 
   /* ======================================================
+     Emergency Meeting
+  ====================================================== */
+
+  const [
+    meeting,
+    setMeeting,
+  ] =
+    useState<MeetingState | null>(
+      null
+    );
+
+  const [
+    meetingMessages,
+    setMeetingMessages,
+  ] =
+    useState<MeetingChatMessage[]>(
+      []
+    );
+
+  const [
+    meetingInput,
+    setMeetingInput,
+  ] =
+    useState("");
+
+  const [
+    meetingResult,
+    setMeetingResult,
+  ] =
+    useState<MeetingResult | null>(
+      null
+    );
+
+  const [
+    voted,
+    setVoted,
+  ] =
+    useState(false);
+
+  const [
+    meetingNow,
+    setMeetingNow,
+  ] =
+    useState(
+      Date.now()
+    );
+
+  /* ======================================================
      Position
   ====================================================== */
 
@@ -648,19 +792,19 @@ export default function DevilGameWorld({
       0,
 
       totalMissionCount -
-        completedMissionCount
+      completedMissionCount
     );
 
   const missionProgress =
     totalMissionCount === 0
       ? 0
       : Math.round(
-          (
-            completedMissionCount /
-            totalMissionCount
-          ) *
-            100
-        );
+        (
+          completedMissionCount /
+          totalMissionCount
+        ) *
+        100
+      );
 
   /* ======================================================
      Nearby mission
@@ -713,6 +857,46 @@ export default function DevilGameWorld({
     );
 
   /* ======================================================
+     Nearby corpse
+  ====================================================== */
+
+  const nearbyCorpse =
+    playerState ===
+      "alive" &&
+      !meeting
+      ? corpses
+        .map(
+          (corpse) => ({
+            corpse,
+
+            distance:
+              getDistance(
+                position,
+                {
+                  x:
+                    corpse.x,
+
+                  y:
+                    corpse.y,
+                }
+              ),
+          })
+        )
+        .filter(
+          (entry) =>
+            entry.distance <=
+            REPORT_DISTANCE
+        )
+        .sort(
+          (a, b) =>
+            a.distance -
+            b.distance
+        )[0]
+        ?.corpse ??
+      null
+      : null;
+
+  /* ======================================================
      Nearby kill target
 
      다른 플레이어의 role은 클라이언트에 공개되지 않는다.
@@ -721,42 +905,42 @@ export default function DevilGameWorld({
 
   const nearbyKillTarget =
     role === "devil" &&
-    playerState === "alive"
+      playerState === "alive"
       ? otherPlayers
-          .filter(
-            (player) =>
-              player.state ===
-              "alive"
-          )
-          .map(
-            (player) => ({
-              player,
+        .filter(
+          (player) =>
+            player.state ===
+            "alive"
+        )
+        .map(
+          (player) => ({
+            player,
 
-              distance:
-                getDistance(
-                  position,
-                  {
-                    x:
-                      player.x,
+            distance:
+              getDistance(
+                position,
+                {
+                  x:
+                    player.x,
 
-                    y:
-                      player.y,
-                  }
-                ),
-            })
-          )
-          .filter(
-            (entry) =>
-              entry.distance <=
-              KILL_UI_DISTANCE
-          )
-          .sort(
-            (a, b) =>
-              a.distance -
-              b.distance
-          )[0]
-          ?.player ??
-        null
+                  y:
+                    player.y,
+                }
+              ),
+          })
+        )
+        .filter(
+          (entry) =>
+            entry.distance <=
+            KILL_UI_DISTANCE
+        )
+        .sort(
+          (a, b) =>
+            a.distance -
+            b.distance
+        )[0]
+        ?.player ??
+      null
       : null;
 
   const cooldownRemaining =
@@ -768,7 +952,7 @@ export default function DevilGameWorld({
           killCooldownEndsAt -
           cooldownNow
         ) /
-          1000
+        1000
       )
     );
 
@@ -888,6 +1072,23 @@ export default function DevilGameWorld({
       setCorpses(
         state.corpses ?? []
       );
+
+      if (
+        state.meeting?.active
+      ) {
+        setMeeting(
+          state.meeting
+        );
+
+        setMeetingMessages(
+          state.meeting.messages ??
+          []
+        );
+      } else {
+        setMeeting(
+          null
+        );
+      }
     };
 
     socket.on(
@@ -908,8 +1109,8 @@ export default function DevilGameWorld({
 
             self?: GamePlayer & {
               role:
-                "devil" |
-                "survivor";
+              "devil" |
+              "survivor";
 
               missionIds?: string[];
 
@@ -917,7 +1118,7 @@ export default function DevilGameWorld({
             };
 
             state?:
-              GameStatePayload;
+            GameStatePayload;
           }) => {
             if (
               !response.ok ||
@@ -925,7 +1126,7 @@ export default function DevilGameWorld({
             ) {
               setCombatMessage(
                 response.message ??
-                  "게임에 다시 연결하지 못했습니다."
+                "게임에 다시 연결하지 못했습니다."
               );
 
               return;
@@ -1018,6 +1219,26 @@ export default function DevilGameWorld({
         setCorpses(
           state.corpses ?? []
         );
+
+        if (
+          state.meeting?.active
+        ) {
+          setMeeting(
+            state.meeting
+          );
+
+          setMeetingMessages(
+            state.meeting.messages ??
+            []
+          );
+        } else if (
+          meetingResult ===
+          null
+        ) {
+          setMeeting(
+            null
+          );
+        }
 
         /*
          * 서버 상태에서 내 캐릭터와 다른 캐릭터를 명확히 분리한다.
@@ -1133,6 +1354,228 @@ export default function DevilGameWorld({
       }
     );
 
+    /* =====================================
+       Emergency Meeting
+    ===================================== */
+
+    socket.on(
+      "devilGame:meeting-started",
+      (
+        data:
+          MeetingState
+      ) => {
+        targetPositionRef.current =
+          null;
+
+        if (
+          animationFrameRef.current !==
+          null
+        ) {
+          cancelAnimationFrame(
+            animationFrameRef.current
+          );
+
+          animationFrameRef.current =
+            null;
+        }
+
+        setMoving(
+          false
+        );
+
+        setMapOpen(
+          false
+        );
+
+        setActiveMission(
+          null
+        );
+
+        setAttackEffect(
+          null
+        );
+
+        setKillSequence(
+          null
+        );
+
+        setDeathOverlay(
+          false
+        );
+
+        setMeeting(
+          data
+        );
+
+        setMeetingMessages(
+          data.messages ??
+          []
+        );
+
+        setMeetingResult(
+          null
+        );
+
+        setVoted(
+          false
+        );
+
+        setMeetingInput(
+          ""
+        );
+
+        setMeetingNow(
+          Date.now()
+        );
+      }
+    );
+
+    socket.on(
+      "devilGame:meeting-message",
+      (
+        message:
+          MeetingChatMessage
+      ) => {
+        setMeetingMessages(
+          (previous) => {
+            if (
+              previous.some(
+                (item) =>
+                  item.id ===
+                  message.id
+              )
+            ) {
+              return previous;
+            }
+
+            return [
+              ...previous,
+              message,
+            ];
+          }
+        );
+      }
+    );
+
+    socket.on(
+      "devilGame:meeting-phase",
+      (data: {
+        phase:
+        MeetingPhase;
+
+        phaseEndsAt:
+        number;
+      }) => {
+        setMeeting(
+          (previous) =>
+            previous
+              ? {
+                ...previous,
+
+                phase:
+                  data.phase,
+
+                phaseEndsAt:
+                  data.phaseEndsAt,
+              }
+              : previous
+        );
+
+        if (
+          data.phase ===
+          "voting"
+        ) {
+          setVoted(
+            false
+          );
+        }
+      }
+    );
+
+    socket.on(
+      "devilGame:meeting-voted",
+      (data: {
+        playerId: string;
+      }) => {
+        setMeeting(
+          (previous) => {
+            if (!previous) {
+              return previous;
+            }
+
+            if (
+              previous.votedPlayerIds.includes(
+                data.playerId
+              )
+            ) {
+              return previous;
+            }
+
+            return {
+              ...previous,
+
+              votedPlayerIds: [
+                ...previous.votedPlayerIds,
+                data.playerId,
+              ],
+            };
+          }
+        );
+      }
+    );
+
+    socket.on(
+      "devilGame:meeting-result",
+      (
+        data:
+          MeetingResult
+      ) => {
+        setMeetingResult(
+          data
+        );
+
+        setMeeting(
+          (previous) =>
+            previous
+              ? {
+                ...previous,
+
+                phase:
+                  "result",
+
+                phaseEndsAt:
+                  data.resultEndsAt,
+              }
+              : previous
+        );
+      }
+    );
+
+    socket.on(
+      "devilGame:meeting-ended",
+      () => {
+        setMeeting(
+          null
+        );
+
+        setMeetingMessages(
+          []
+        );
+
+        setMeetingResult(
+          null
+        );
+
+        setMeetingInput(
+          ""
+        );
+
+        setVoted(
+          false
+        );
+      }
+    );
+
     const handleGameFinished = (
       rawResult:
         GameResultPayload |
@@ -1148,18 +1591,18 @@ export default function DevilGameWorld({
         "winningTeam" in rawResult
           ? rawResult
           : {
-              roomId:
-                rawResult.roomId,
-              winningTeam:
-                rawResult.winner,
-              reason:
-                rawResult.reason,
-              winners:
-                rawResult.winnerPlayers ??
-                [],
-              finishedAt:
-                rawResult.finishedAt,
-            };
+            roomId:
+              rawResult.roomId,
+            winningTeam:
+              rawResult.winner,
+            reason:
+              rawResult.reason,
+            winners:
+              rawResult.winnerPlayers ??
+              [],
+            finishedAt:
+              rawResult.finishedAt,
+          };
 
       targetPositionRef.current =
         null;
@@ -1192,6 +1635,18 @@ export default function DevilGameWorld({
         false
       );
 
+      setMeeting(
+        null
+      );
+
+      setMeetingMessages(
+        []
+      );
+
+      setMeetingResult(
+        null
+      );
+
       /*
        * 마지막 처치 직후 승리 조건이 만족되면
        * 서버의 게임 종료 이벤트가 처치 애니메이션보다 먼저 도착할 수 있다.
@@ -1207,17 +1662,17 @@ export default function DevilGameWorld({
 
       const shouldWaitForKillSequence =
         lastKillAnimationAtRef.current >
-          0 &&
+        0 &&
         elapsedSinceKill <
-          KILL_SEQUENCE_DURATION;
+        KILL_SEQUENCE_DURATION;
 
       const resultDelay =
         shouldWaitForKillSequence
           ? Math.max(
-              0,
-              KILL_SEQUENCE_DURATION -
-                elapsedSinceKill
-            )
+            0,
+            KILL_SEQUENCE_DURATION -
+            elapsedSinceKill
+          )
           : 0;
 
       if (
@@ -1286,9 +1741,9 @@ export default function DevilGameWorld({
 
         const isKillParticipant =
           data.killerId ===
-            myPlayerIdRef.current ||
+          myPlayerIdRef.current ||
           data.victimId ===
-            myPlayerIdRef.current;
+          myPlayerIdRef.current;
 
         /*
          * 처치 시네마틱은 악마와 피해자에게만 보여준다.
@@ -1375,13 +1830,13 @@ export default function DevilGameWorld({
                 previous.map(
                   (player) =>
                     player.id ===
-                    data.victimId
+                      data.victimId
                       ? {
-                          ...player,
+                        ...player,
 
-                          state:
-                            "ghost",
-                        }
+                        state:
+                          "ghost",
+                      }
                       : player
                 )
             );
@@ -1485,7 +1940,7 @@ export default function DevilGameWorld({
         Math.min(
           50,
           timestamp -
-            previousTimestamp
+          previousTimestamp
         ) / 1000;
 
       remoteLastFrameTimeRef.current =
@@ -1495,7 +1950,7 @@ export default function DevilGameWorld({
         1 -
         Math.exp(
           -REMOTE_SMOOTHING *
-            deltaTime
+          deltaTime
         );
 
       setOtherPlayers(
@@ -1522,9 +1977,9 @@ export default function DevilGameWorld({
               ) {
                 if (
                   player.renderX ===
-                    player.targetX &&
+                  player.targetX &&
                   player.renderY ===
-                    player.targetY
+                  player.targetY
                 ) {
                   return player;
                 }
@@ -1610,6 +2065,54 @@ export default function DevilGameWorld({
   }, [
     playerId,
   ]);
+
+  /* ======================================================
+     Meeting timer
+  ====================================================== */
+
+  useEffect(() => {
+    if (!meeting) {
+      return;
+    }
+
+    setMeetingNow(
+      Date.now()
+    );
+
+    const timer =
+      window.setInterval(
+        () => {
+          setMeetingNow(
+            Date.now()
+          );
+        },
+        250
+      );
+
+    return () => {
+      window.clearInterval(
+        timer
+      );
+    };
+  }, [
+    meeting?.id,
+    meeting?.phase,
+    meeting?.phaseEndsAt,
+  ]);
+
+  const meetingSeconds =
+    meeting
+      ? Math.max(
+        0,
+        Math.ceil(
+          (
+            meeting.phaseEndsAt -
+            meetingNow
+          ) /
+          1000
+        )
+      )
+      : 0;
 
   /* ======================================================
      Cooldown timer
@@ -1724,7 +2227,7 @@ export default function DevilGameWorld({
         40,
 
         timestamp -
-          lastFrameTimeRef.current
+        lastFrameTimeRef.current
       ) /
       1000;
 
@@ -1742,7 +2245,7 @@ export default function DevilGameWorld({
     const distance =
       Math.sqrt(
         dx * dx +
-          dy * dy
+        dy * dy
       );
 
     if (
@@ -1783,7 +2286,7 @@ export default function DevilGameWorld({
     const moveDistance =
       Math.min(
         PLAYER_SPEED *
-          deltaTime,
+        deltaTime,
 
         distance
       );
@@ -1799,12 +2302,12 @@ export default function DevilGameWorld({
     const nextX =
       current.x +
       directionX *
-        moveDistance;
+      moveDistance;
 
     const nextY =
       current.y +
       directionY *
-        moveDistance;
+      moveDistance;
 
     /*
      * 살아있는 감자는 기존 충돌 판정.
@@ -1812,7 +2315,7 @@ export default function DevilGameWorld({
      */
     if (
       playerState !==
-        "ghost" &&
+      "ghost" &&
       !isWalkable(
         nextX,
         nextY
@@ -1850,7 +2353,7 @@ export default function DevilGameWorld({
 
     if (
       now -
-        lastMoveEmitRef.current >=
+      lastMoveEmitRef.current >=
       MOVE_EMIT_INTERVAL
     ) {
       lastMoveEmitRef.current =
@@ -1883,7 +2386,8 @@ export default function DevilGameWorld({
     if (
       activeMission ||
       mapOpen ||
-      deathOverlay
+      deathOverlay ||
+      meeting
     ) {
       return;
     }
@@ -2008,7 +2512,7 @@ export default function DevilGameWorld({
         ) {
           setCombatMessage(
             response.message ??
-              "미션 완료 처리에 실패했습니다."
+            "미션 완료 처리에 실패했습니다."
           );
 
           return;
@@ -2019,13 +2523,13 @@ export default function DevilGameWorld({
             previous.map(
               (mission) =>
                 mission.id ===
-                missionId
+                  missionId
                   ? {
-                      ...mission,
+                    ...mission,
 
-                      completed:
-                        true,
-                    }
+                    completed:
+                      true,
+                  }
                   : mission
             )
         );
@@ -2074,7 +2578,8 @@ export default function DevilGameWorld({
   const startMission =
     () => {
       if (
-        !nearbyMission
+        !nearbyMission ||
+        meeting
       ) {
         return;
       }
@@ -2087,6 +2592,147 @@ export default function DevilGameWorld({
     };
 
   /* ======================================================
+     Emergency Meeting Actions
+  ====================================================== */
+
+  const reportCorpse =
+    () => {
+      if (
+        !nearbyCorpse ||
+        meeting ||
+        playerState !==
+        "alive"
+      ) {
+        return;
+      }
+
+      stopMovement();
+
+      setCombatMessage(
+        ""
+      );
+
+      socketRef.current?.emit(
+        "devilGame:report-corpse",
+        {
+          roomId,
+
+          corpseId:
+            nearbyCorpse.id,
+        },
+        (response: {
+          ok: boolean;
+          message?: string;
+        }) => {
+          if (
+            !response.ok
+          ) {
+            setCombatMessage(
+              response.message ??
+              "긴급회의를 소집하지 못했습니다."
+            );
+          }
+        }
+      );
+    };
+
+  const sendMeetingMessage =
+    () => {
+      if (
+        !meeting ||
+        meeting.phase ===
+        "result" ||
+        playerState !==
+        "alive"
+      ) {
+        return;
+      }
+
+      const message =
+        meetingInput
+          .trim()
+          .slice(
+            0,
+            160
+          );
+
+      if (!message) {
+        return;
+      }
+
+      socketRef.current?.emit(
+        "devilGame:meeting-chat",
+        {
+          roomId,
+          message,
+        },
+        (response: {
+          ok: boolean;
+          message?: string;
+        }) => {
+          if (
+            !response.ok
+          ) {
+            setCombatMessage(
+              response.message ??
+              "회의 메시지를 보내지 못했습니다."
+            );
+
+            return;
+          }
+
+          setMeetingInput(
+            ""
+          );
+        }
+      );
+    };
+
+  const votePlayer =
+    (
+      targetId:
+        string
+    ) => {
+      if (
+        !meeting ||
+        meeting.phase !==
+        "voting" ||
+        voted ||
+        playerState !==
+        "alive"
+      ) {
+        return;
+      }
+
+      socketRef.current?.emit(
+        "devilGame:meeting-vote",
+        {
+          roomId,
+          targetId,
+        },
+        (response: {
+          ok: boolean;
+          message?: string;
+        }) => {
+          if (
+            !response.ok
+          ) {
+            setCombatMessage(
+              response.message ??
+              "투표하지 못했습니다."
+            );
+
+            return;
+          }
+
+          setVoted(
+            true
+          );
+        }
+      );
+    };
+
+  /* ======================================================
      Kill
   ====================================================== */
 
@@ -2095,9 +2741,10 @@ export default function DevilGameWorld({
       if (
         role !== "devil" ||
         playerState !==
-          "alive" ||
+        "alive" ||
         !nearbyKillTarget ||
-        cooldownRemaining > 0
+        cooldownRemaining > 0 ||
+        Boolean(meeting)
       ) {
         return;
       }
@@ -2120,15 +2767,15 @@ export default function DevilGameWorld({
           message?: string;
 
           cooldownEndsAt?:
-            number;
+          number;
 
           remainingMs?:
-            number;
+          number;
         }) => {
           if (!response.ok) {
             setCombatMessage(
               response.message ??
-                "처치에 실패했습니다."
+              "처치에 실패했습니다."
             );
 
             if (
@@ -2136,7 +2783,7 @@ export default function DevilGameWorld({
             ) {
               setKillCooldownEndsAt(
                 Date.now() +
-                  response.remainingMs
+                response.remainingMs
               );
             }
 
@@ -2200,7 +2847,7 @@ export default function DevilGameWorld({
           ) {
             setCombatMessage(
               response.message ??
-                "게임에서 나가지 못했습니다."
+              "게임에서 나가지 못했습니다."
             );
 
             return;
@@ -2227,6 +2874,7 @@ export default function DevilGameWorld({
         activeMission ||
         mapOpen ||
         deathOverlay ||
+        meeting ||
         !nearbyMission
       ) {
         return;
@@ -2239,7 +2887,8 @@ export default function DevilGameWorld({
     () => {
       if (
         deathOverlay ||
-        activeMission
+        activeMission ||
+        meeting
       ) {
         return;
       }
@@ -2255,9 +2904,10 @@ export default function DevilGameWorld({
       if (
         role !== "devil" ||
         playerState !==
-          "alive" ||
+        "alive" ||
         deathOverlay ||
-        activeMission
+        activeMission ||
+        meeting
       ) {
         return;
       }
@@ -2274,26 +2924,29 @@ export default function DevilGameWorld({
     ) &&
     !activeMission &&
     !mapOpen &&
-    !deathOverlay;
+    !deathOverlay &&
+    !meeting;
 
   const canKill =
     role === "devil" &&
     playerState ===
-      "alive" &&
+    "alive" &&
     Boolean(
       nearbyKillTarget
     ) &&
     cooldownRemaining <= 0 &&
     !activeMission &&
     !mapOpen &&
-    !deathOverlay;
+    !deathOverlay &&
+    !meeting;
 
   const canBlackout =
     role === "devil" &&
     playerState ===
-      "alive" &&
+    "alive" &&
     !activeMission &&
-    !deathOverlay;
+    !deathOverlay &&
+    !meeting;
 
   /* ======================================================
      Keyboard
@@ -2309,17 +2962,18 @@ export default function DevilGameWorld({
 
       if (
         target.tagName ===
-          "INPUT" ||
+        "INPUT" ||
         target.tagName ===
-          "TEXTAREA" ||
+        "TEXTAREA" ||
         target.tagName ===
-          "SELECT"
+        "SELECT"
       ) {
         return;
       }
 
       if (
-        deathOverlay
+        deathOverlay ||
+        meeting
       ) {
         return;
       }
@@ -2423,6 +3077,7 @@ export default function DevilGameWorld({
     cooldownRemaining,
     role,
     playerState,
+    meeting,
   ]);
 
   /* ======================================================
@@ -2432,23 +3087,23 @@ export default function DevilGameWorld({
   const cameraX =
     clamp(
       position.x -
-        VIEWPORT_WIDTH / 2,
+      VIEWPORT_WIDTH / 2,
 
       0,
 
       DEVIL_MAP_WIDTH -
-        VIEWPORT_WIDTH
+      VIEWPORT_WIDTH
     );
 
   const cameraY =
     clamp(
       position.y -
-        VIEWPORT_HEIGHT / 2,
+      VIEWPORT_HEIGHT / 2,
 
       0,
 
       DEVIL_MAP_HEIGHT -
-        VIEWPORT_HEIGHT
+      VIEWPORT_HEIGHT
     );
 
   const playerScreenX =
@@ -2470,7 +3125,8 @@ export default function DevilGameWorld({
     if (
       activeMission ||
       mapOpen ||
-      deathOverlay
+      deathOverlay ||
+      meeting
     ) {
       return;
     }
@@ -2506,10 +3162,10 @@ export default function DevilGameWorld({
 
     moveTo(
       cameraX +
-        clickX,
+      clickX,
 
       cameraY +
-        clickY
+      clickY
     );
   };
 
@@ -2592,16 +3248,24 @@ export default function DevilGameWorld({
   const cinematicKiller =
     killSequence
       ? getCinematicPlayer(
-          killSequence.killerId
-        )
+        killSequence.killerId
+      )
       : null;
 
   const cinematicVictim =
     killSequence
       ? getCinematicPlayer(
-          killSequence.victimId
-        )
+        killSequence.victimId
+      )
       : null;
+
+  const meetingPlayers:
+    GamePlayer[] = [
+      ...(selfPlayer
+        ? [selfPlayer]
+        : []),
+      ...otherPlayers,
+    ];
 
   /* ======================================================
      Render
@@ -2774,9 +3438,9 @@ export default function DevilGameWorld({
              */
             if (
               player.state ===
-                "ghost" &&
+              "ghost" &&
               playerState !==
-                "ghost"
+              "ghost"
             ) {
               return null;
             }
@@ -2916,7 +3580,7 @@ export default function DevilGameWorld({
               getDisplayName(
                 selfPlayer
                   ?.nickname ??
-                  nickname
+                nickname
               )
             }
             glasses={
@@ -2984,7 +3648,7 @@ export default function DevilGameWorld({
 
         {blackout &&
           playerState !==
-            "ghost" && (
+          "ghost" && (
             <div
               className="
                 pointer-events-none
@@ -3037,22 +3701,21 @@ export default function DevilGameWorld({
               text-[12px]
               font-black
 
-              ${
-                playerState ===
+              ${playerState ===
                 "ghost"
-                  ? "text-sky-300"
-                  : role ===
-                      "devil"
-                    ? "text-red-400"
-                    : "text-emerald-400"
+                ? "text-sky-300"
+                : role ===
+                  "devil"
+                  ? "text-red-400"
+                  : "text-emerald-400"
               }
             `}
           >
             {playerState ===
-            "ghost"
+              "ghost"
               ? "👻 유령 감자"
               : role ===
-                  "devil"
+                "devil"
                 ? "😈 악마 감자"
                 : "🥔 생존 감자"}
           </div>
@@ -3063,16 +3726,16 @@ export default function DevilGameWorld({
 
           {playerState ===
             "ghost" && (
-            <div
-              className="
+              <div
+                className="
                 mt-1
                 text-[8px]
                 text-sky-100/55
               "
-            >
-              벽과 문을 자유롭게 통과할 수 있습니다.
-            </div>
-          )}
+              >
+                벽과 문을 자유롭게 통과할 수 있습니다.
+              </div>
+            )}
 
           <div className="mt-3">
             <div
@@ -3169,41 +3832,83 @@ export default function DevilGameWorld({
 
           {role === "devil" &&
             playerState ===
-              "alive" && (
-            <div
-              className="
+            "alive" && (
+              <div
+                className="
                 mt-3
                 border-t
                 border-white/10
                 pt-2
                 text-[9px]
               "
-            >
-              <span className="text-white/40">
-                처치
-              </span>
+              >
+                <span className="text-white/40">
+                  처치
+                </span>
 
-              <span
-                className={`
+                <span
+                  className={`
                   float-right
                   font-bold
 
-                  ${
-                    cooldownRemaining >
-                    0
+                  ${cooldownRemaining >
+                      0
                       ? "text-zinc-400"
                       : "text-red-400"
-                  }
+                    }
                 `}
-              >
-                {cooldownRemaining >
-                0
-                  ? `${cooldownRemaining}초`
-                  : "준비 완료"}
-              </span>
-            </div>
-          )}
+                >
+                  {cooldownRemaining >
+                    0
+                    ? `${cooldownRemaining}초`
+                    : "준비 완료"}
+                </span>
+              </div>
+            )}
         </div>
+
+        {/* =================================================
+            Corpse Report
+        ================================================= */}
+
+        {nearbyCorpse &&
+          !meeting &&
+          playerState ===
+          "alive" && (
+            <button
+              type="button"
+              data-no-move
+              onClick={(event) => {
+                event.stopPropagation();
+                reportCorpse();
+              }}
+              className="
+                absolute
+                bottom-[86px]
+                left-1/2
+                z-[8850]
+                -translate-x-1/2
+                animate-pulse
+                rounded-2xl
+                border-2
+                border-red-300/60
+                bg-red-600
+                px-5
+                py-3
+                text-[11px]
+                font-black
+                text-white
+                shadow-[0_0_30px_rgba(239,68,68,0.5)]
+                transition
+                hover:bg-red-500
+                active:scale-95
+              "
+            >
+              🚨 {getDisplayName(
+                nearbyCorpse.nickname
+              )} 발견 · 긴급회의 소집
+            </button>
+          )}
 
         {/* =================================================
             Kill interaction
@@ -3211,10 +3916,11 @@ export default function DevilGameWorld({
 
         {role === "devil" &&
           playerState ===
-            "alive" &&
+          "alive" &&
           nearbyKillTarget &&
           !activeMission &&
-          !mapOpen && (
+          !mapOpen &&
+          !meeting && (
             <button
               type="button"
               data-no-move
@@ -3263,11 +3969,11 @@ export default function DevilGameWorld({
               </span>
 
               {cooldownRemaining >
-              0
+                0
                 ? `처치 대기 ${cooldownRemaining}초`
                 : `${getDisplayName(
-                    nearbyKillTarget.nickname
-                  )} 처치`}
+                  nearbyKillTarget.nickname
+                )} 처치`}
             </button>
           )}
 
@@ -3278,7 +3984,8 @@ export default function DevilGameWorld({
         {nearbyMission &&
           !activeMission &&
           !mapOpen &&
-          !deathOverlay && (
+          !deathOverlay &&
+          !meeting && (
             <button
               type="button"
               data-no-move
@@ -3407,10 +4114,11 @@ export default function DevilGameWorld({
             PC에서도 동일하게 클릭할 수 있다.
         ================================================= */}
 
-        {!deathOverlay && (
-          <div
-            data-no-move
-            className="
+        {!deathOverlay &&
+          !meeting && (
+            <div
+              data-no-move
+              className="
               absolute
               bottom-4
               right-4
@@ -3424,134 +4132,133 @@ export default function DevilGameWorld({
               max-[700px]:right-3
               max-[700px]:gap-1.5
             "
-          >
-            {/* 지도 */}
+            >
+              {/* 지도 */}
 
-            <ActionButton
-              label={
-                mapOpen
-                  ? "지도 닫기"
-                  : "지도"
-              }
-              icon="🗺️"
-              shortcut="M"
-              onClick={
-                handleMapAction
-              }
-              disabled={
-                Boolean(
-                  activeMission
-                )
-              }
-            />
-
-            {/* 업무 */}
-
-            {role ===
-              "survivor" &&
-              playerState ===
-                "alive" && (
-                <ActionButton
-                  label={
-                    nearbyMission
-                      ? nearbyMission.title
-                      : "업무"
-                  }
-                  icon="📋"
-                  shortcut="E"
-                  onClick={
-                    handleMissionAction
-                  }
-                  disabled={
-                    !canUseMission
-                  }
-                  active={
-                    canUseMission
-                  }
-                />
-              )}
-
-            {/* 유령도 미션은 계속 수행 가능 */}
-
-            {playerState ===
-              "ghost" && (
               <ActionButton
                 label={
-                  nearbyMission
-                    ? nearbyMission.title
-                    : "업무"
+                  mapOpen
+                    ? "지도 닫기"
+                    : "지도"
                 }
-                icon="📋"
-                shortcut="E"
+                icon="🗺️"
+                shortcut="M"
                 onClick={
-                  handleMissionAction
+                  handleMapAction
                 }
                 disabled={
-                  !canUseMission
-                }
-                active={
-                  canUseMission
+                  Boolean(
+                    activeMission
+                  )
                 }
               />
-            )}
 
-            {/* 악마 전용 */}
+              {/* 업무 */}
 
-            {role === "devil" &&
-              playerState ===
+              {role ===
+                "survivor" &&
+                playerState ===
                 "alive" && (
-                <>
                   <ActionButton
                     label={
-                      cooldownRemaining >
-                      0
-                        ? `처치 ${
-                            Math.ceil(
-                              cooldownRemaining /
-                                100
-                            ) / 10
-                          }s`
-                        : nearbyKillTarget
-                          ? "처치"
-                          : "대상 없음"
+                      nearbyMission
+                        ? nearbyMission.title
+                        : "업무"
                     }
-                    icon="🔪"
-                    shortcut="Q"
-                    variant="danger"
+                    icon="📋"
+                    shortcut="E"
                     onClick={
-                      tryKill
+                      handleMissionAction
                     }
                     disabled={
-                      !canKill
+                      !canUseMission
                     }
                     active={
-                      canKill
+                      canUseMission
                     }
                   />
+                )}
 
+              {/* 유령도 미션은 계속 수행 가능 */}
+
+              {playerState ===
+                "ghost" && (
                   <ActionButton
                     label={
-                      blackout
-                        ? "정전 해제"
-                        : "정전"
+                      nearbyMission
+                        ? nearbyMission.title
+                        : "업무"
                     }
-                    icon="🌑"
-                    shortcut="B"
-                    variant="dark"
+                    icon="📋"
+                    shortcut="E"
                     onClick={
-                      handleBlackoutAction
+                      handleMissionAction
                     }
                     disabled={
-                      !canBlackout
+                      !canUseMission
                     }
                     active={
-                      blackout
+                      canUseMission
                     }
                   />
-                </>
-              )}
-          </div>
-        )}
+                )}
+
+              {/* 악마 전용 */}
+
+              {role === "devil" &&
+                playerState ===
+                "alive" && (
+                  <>
+                    <ActionButton
+                      label={
+                        cooldownRemaining >
+                          0
+                          ? `처치 ${Math.ceil(
+                            cooldownRemaining /
+                            100
+                          ) / 10
+                          }s`
+                          : nearbyKillTarget
+                            ? "처치"
+                            : "대상 없음"
+                      }
+                      icon="🔪"
+                      shortcut="Q"
+                      variant="danger"
+                      onClick={
+                        tryKill
+                      }
+                      disabled={
+                        !canKill
+                      }
+                      active={
+                        canKill
+                      }
+                    />
+
+                    <ActionButton
+                      label={
+                        blackout
+                          ? "정전 해제"
+                          : "정전"
+                      }
+                      icon="🌑"
+                      shortcut="B"
+                      variant="dark"
+                      onClick={
+                        handleBlackoutAction
+                      }
+                      disabled={
+                        !canBlackout
+                      }
+                      active={
+                        blackout
+                      }
+                    />
+                  </>
+                )}
+            </div>
+          )}
 
         {/* =================================================
             Controls
@@ -3732,48 +4439,57 @@ export default function DevilGameWorld({
                     animate-[killerLunge_2.8s_cubic-bezier(.22,.9,.3,1)_forwards]
                   "
                 >
-                  <Potato
-                    name={
-                      getDisplayName(
-                        cinematicKiller.nickname
-                      )
-                    }
-                    glasses={
-                      cinematicKiller
-                        .characterStyle
-                        ?.glasses ??
-                      "none"
-                    }
-                    hat={
-                      cinematicKiller
-                        .characterStyle
-                        ?.hat ??
-                      "none"
-                    }
-                    ribbon={
-                      cinematicKiller
-                        .characterStyle
-                        ?.ribbon ??
-                      false
-                    }
-                    tie={
-                      cinematicKiller
-                        .characterStyle
-                        ?.tie ??
-                      false
-                    }
-                    color={
-                      cinematicKiller
-                        .characterStyle
-                        ?.color ??
-                      "default"
-                    }
-                    moving={false}
-                    ghost={false}
-                    attacking={true}
-                    evil={true}
-                    hit={false}
-                  />
+                  <div
+                    style={{
+                      transform:
+                        "scale(1.28)",
+                      transformOrigin:
+                        "center bottom",
+                    }}
+                  >
+                    <Potato
+                      name={
+                        getDisplayName(
+                          cinematicKiller.nickname
+                        )
+                      }
+                      glasses={
+                        cinematicKiller
+                          .characterStyle
+                          ?.glasses ??
+                        "none"
+                      }
+                      hat={
+                        cinematicKiller
+                          .characterStyle
+                          ?.hat ??
+                        "none"
+                      }
+                      ribbon={
+                        cinematicKiller
+                          .characterStyle
+                          ?.ribbon ??
+                        false
+                      }
+                      tie={
+                        cinematicKiller
+                          .characterStyle
+                          ?.tie ??
+                        false
+                      }
+                      color={
+                        cinematicKiller
+                          .characterStyle
+                          ?.color ??
+                        "default"
+                      }
+                      moving={false}
+                      ghost={false}
+                      attacking={true}
+                      evil={true}
+                      hit={false}
+                    />
+                  </div>
 
                   <div
                     className="
@@ -3798,48 +4514,57 @@ export default function DevilGameWorld({
                     animate-[victimHit_2.8s_cubic-bezier(.2,.8,.3,1)_forwards]
                   "
                 >
-                  <Potato
-                    name={
-                      getDisplayName(
-                        cinematicVictim.nickname
-                      )
-                    }
-                    glasses={
-                      cinematicVictim
-                        .characterStyle
-                        ?.glasses ??
-                      "none"
-                    }
-                    hat={
-                      cinematicVictim
-                        .characterStyle
-                        ?.hat ??
-                      "none"
-                    }
-                    ribbon={
-                      cinematicVictim
-                        .characterStyle
-                        ?.ribbon ??
-                      false
-                    }
-                    tie={
-                      cinematicVictim
-                        .characterStyle
-                        ?.tie ??
-                      false
-                    }
-                    color={
-                      cinematicVictim
-                        .characterStyle
-                        ?.color ??
-                      "default"
-                    }
-                    moving={false}
-                    ghost={false}
-                    attacking={false}
-                    evil={false}
-                    hit={true}
-                  />
+                  <div
+                    style={{
+                      transform:
+                        "scale(1.28)",
+                      transformOrigin:
+                        "center bottom",
+                    }}
+                  >
+                    <Potato
+                      name={
+                        getDisplayName(
+                          cinematicVictim.nickname
+                        )
+                      }
+                      glasses={
+                        cinematicVictim
+                          .characterStyle
+                          ?.glasses ??
+                        "none"
+                      }
+                      hat={
+                        cinematicVictim
+                          .characterStyle
+                          ?.hat ??
+                        "none"
+                      }
+                      ribbon={
+                        cinematicVictim
+                          .characterStyle
+                          ?.ribbon ??
+                        false
+                      }
+                      tie={
+                        cinematicVictim
+                          .characterStyle
+                          ?.tie ??
+                        false
+                      }
+                      color={
+                        cinematicVictim
+                          .characterStyle
+                          ?.color ??
+                        "default"
+                      }
+                      moving={false}
+                      ghost={false}
+                      attacking={false}
+                      evil={false}
+                      hit={true}
+                    />
+                  </div>
 
                   <div
                     className="
@@ -4083,9 +4808,9 @@ export default function DevilGameWorld({
 
         {deathOverlay &&
           !killSequence && (
-          <div
-            data-no-move
-            className="
+            <div
+              data-no-move
+              className="
               absolute
               inset-0
               z-[50000]
@@ -4094,45 +4819,410 @@ export default function DevilGameWorld({
               justify-center
               bg-black
             "
-          >
-            <div
-              className="
-                text-center
-                text-white
-              "
             >
               <div
                 className="
+                text-center
+                text-white
+              "
+              >
+                <div
+                  className="
                   text-5xl
                 "
-              >
-                💀
-              </div>
+                >
+                  💀
+                </div>
 
-              <div
-                className="
+                <div
+                  className="
                   mt-5
                   text-2xl
                   font-black
                   tracking-tight
                 "
-              >
-                잡혔습니다...
-              </div>
+                >
+                  잡혔습니다...
+                </div>
 
-              <div
-                className="
+                <div
+                  className="
                   mt-3
                   text-[11px]
                   text-white/40
                 "
+                >
+                  잠시 후 유령이 됩니다.
+                </div>
+              </div>
+            </div>
+          )}
+      </div>
+
+      {/* =================================================
+          Emergency Meeting
+      ================================================= */}
+
+      {meeting &&
+        !gameResult && (
+          <div
+            data-no-move
+            className="
+              fixed
+              inset-0
+              z-[65000]
+              flex
+              items-center
+              justify-center
+              bg-black/85
+              p-3
+              backdrop-blur-md
+            "
+          >
+            <div
+              className="
+                flex
+                h-[min(720px,94vh)]
+                w-full
+                max-w-[940px]
+                flex-col
+                overflow-hidden
+                rounded-[28px]
+                border
+                border-white/10
+                bg-[#f4f1e9]
+                shadow-[0_30px_100px_rgba(0,0,0,0.8)]
+              "
+            >
+              {/* Header */}
+
+              <div
+                className="
+                  bg-red-700
+                  px-5
+                  py-4
+                  text-white
+                  sm:px-6
+                  sm:py-5
+                "
               >
-                잠시 후 유령이 됩니다.
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[9px] font-black tracking-[0.25em] text-white/50">
+                      EMERGENCY MEETING
+                    </div>
+
+                    <div className="mt-1 text-[20px] font-black">
+                      🚨 긴급 회의
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-black/20 px-4 py-2 text-[11px] font-black">
+                    {meeting.phase ===
+                      "discussion"
+                      ? `토론 ${meetingSeconds}초`
+                      : meeting.phase ===
+                        "voting"
+                        ? `투표 ${meetingSeconds}초`
+                        : "투표 결과"}
+                  </div>
+                </div>
+
+                <div className="mt-3 text-[11px] font-semibold text-white/75">
+                  💀 {getDisplayName(
+                    meeting.victimNickname
+                  )}이(가) 발견되었습니다.
+                  {meeting.reporterNickname
+                    ? ` · 발견자 ${getDisplayName(
+                      meeting.reporterNickname
+                    )}`
+                    : ""}
+                </div>
+              </div>
+
+              <div
+                className="
+                  grid
+                  min-h-0
+                  flex-1
+                  grid-cols-1
+                  md:grid-cols-[280px_1fr]
+                "
+              >
+                {/* Participants / Voting */}
+
+                <div
+                  className="
+                    max-h-[250px]
+                    overflow-y-auto
+                    border-b
+                    border-black/10
+                    bg-[#ece8de]
+                    p-4
+                    md:max-h-none
+                    md:border-b-0
+                    md:border-r
+                  "
+                >
+                  <div className="mb-3 text-[9px] font-black tracking-[0.15em] text-black/35">
+                    PARTICIPANTS
+                  </div>
+
+                  {meetingPlayers.map(
+                    (player) => {
+                      const dead =
+                        player.state ===
+                        "ghost";
+
+                      const hasVoted =
+                        meeting.votedPlayerIds.includes(
+                          player.id
+                        );
+
+                      return (
+                        <div
+                          key={player.id}
+                          className="mb-2 flex items-center gap-3 rounded-xl border border-black/10 bg-white p-3"
+                        >
+                          <div className="text-xl">
+                            {dead
+                              ? "💀"
+                              : "🥔"}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-[11px] font-black text-black/70">
+                              {getDisplayName(
+                                player.nickname
+                              )}
+                            </div>
+
+                            <div className="mt-0.5 text-[8px] text-black/35">
+                              {dead
+                                ? "사망"
+                                : hasVoted
+                                  ? "투표 완료"
+                                  : "생존"}
+                            </div>
+                          </div>
+
+                          {meeting.phase ===
+                            "voting" &&
+                            !dead &&
+                            playerState ===
+                            "alive" &&
+                            !voted && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  votePlayer(
+                                    player.id
+                                  )
+                                }
+                                className="rounded-lg bg-zinc-900 px-2.5 py-2 text-[8px] font-black text-white transition hover:bg-red-700 active:scale-95"
+                              >
+                                투표
+                              </button>
+                            )}
+                        </div>
+                      );
+                    }
+                  )}
+
+                  {meeting.phase ===
+                    "voting" &&
+                    playerState ===
+                    "alive" &&
+                    !voted && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          votePlayer(
+                            "skip"
+                          )
+                        }
+                        className="mt-3 w-full rounded-xl border border-black/10 bg-white py-3 text-[10px] font-black text-black/60 transition hover:bg-amber-50 active:scale-[0.98]"
+                      >
+                        ⏭️ 투표 건너뛰기
+                      </button>
+                    )}
+
+                  {voted &&
+                    meeting.phase ===
+                    "voting" && (
+                      <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-center text-[9px] font-black text-emerald-700">
+                        ✓ 투표 완료 · 다른 감자를 기다리는 중
+                      </div>
+                    )}
+                </div>
+
+                {/* Chat */}
+
+                <div className="flex min-h-0 flex-col">
+                  <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                    {meetingMessages.length ===
+                      0 ? (
+                      <div className="flex h-full min-h-[160px] items-center justify-center text-center text-[11px] font-semibold text-black/30">
+                        누가 악마인지 이야기해보세요.
+                        <br />
+                        어디에서 누구를 봤는지 공유해보세요.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {meetingMessages.map(
+                          (message) => {
+                            const mine =
+                              message.playerId ===
+                              myPlayerId;
+
+                            return (
+                              <div
+                                key={message.id}
+                                className={
+                                  mine
+                                    ? "flex justify-end"
+                                    : "flex justify-start"
+                                }
+                              >
+                                <div
+                                  className={
+                                    mine
+                                      ? "max-w-[78%] rounded-2xl rounded-br-sm bg-zinc-900 px-4 py-3 text-white"
+                                      : "max-w-[78%] rounded-2xl rounded-bl-sm border border-black/10 bg-white px-4 py-3 text-black/70"
+                                  }
+                                >
+                                  <div className="mb-1 text-[8px] font-black opacity-45">
+                                    {getDisplayName(
+                                      message.nickname
+                                    )}
+                                  </div>
+
+                                  <div className="break-words text-[11px] font-semibold leading-5">
+                                    {message.message}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Vote Result */}
+
+                  {meeting.phase ===
+                    "result" &&
+                    meetingResult && (
+                      <div className="border-t border-black/10 bg-amber-50 p-5 text-center">
+                        {meetingResult.skipped ||
+                          !meetingResult.expelledPlayer ? (
+                          <>
+                            <div className="text-3xl">
+                              🤝
+                            </div>
+
+                            <div className="mt-2 text-[14px] font-black text-black/75">
+                              아무도 퇴출되지 않았습니다.
+                            </div>
+
+                            <div className="mt-1 text-[9px] font-semibold text-black/35">
+                              잠시 후 게임이 다시 시작됩니다.
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-3xl">
+                              🚪
+                            </div>
+
+                            <div className="mt-2 text-[14px] font-black text-black/75">
+                              {getDisplayName(
+                                meetingResult
+                                  .expelledPlayer
+                                  .nickname
+                              )} 퇴출
+                            </div>
+
+                            <div
+                              className={
+                                meetingResult
+                                  .expelledPlayer
+                                  .role ===
+                                  "devil"
+                                  ? "mt-2 text-[11px] font-black text-red-600"
+                                  : "mt-2 text-[11px] font-black text-emerald-700"
+                              }
+                            >
+                              {meetingResult
+                                .expelledPlayer
+                                .role ===
+                                "devil"
+                                ? "😈 악마였습니다!"
+                                : "🥔 악마가 아니었습니다."}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                  {/* Chat Input */}
+
+                  {meeting.phase !==
+                    "result" && (
+                      <div className="border-t border-black/10 bg-white p-3 sm:p-4">
+                        {playerState ===
+                          "alive" ? (
+                          <form
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              sendMeetingMessage();
+                            }}
+                            className="flex gap-2"
+                          >
+                            <input
+                              value={meetingInput}
+                              onChange={(event) =>
+                                setMeetingInput(
+                                  event.target.value
+                                )
+                              }
+                              onKeyDown={(event) =>
+                                event.stopPropagation()
+                              }
+                              onKeyUp={(event) =>
+                                event.stopPropagation()
+                              }
+                              onClick={(event) =>
+                                event.stopPropagation()
+                              }
+                              placeholder="의심되는 점을 이야기하세요..."
+                              maxLength={160}
+                              className="min-w-0 flex-1 rounded-xl border border-black/10 bg-[#f5f5f5] px-4 py-3 text-[11px] text-black outline-none focus:border-black/30"
+                            />
+
+                            <button
+                              type="submit"
+                              disabled={
+                                !meetingInput.trim()
+                              }
+                              className="rounded-xl bg-zinc-900 px-5 text-[10px] font-black text-white transition active:scale-95 disabled:opacity-35"
+                            >
+                              전송
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="text-center text-[10px] font-semibold text-black/35">
+                            👻 유령은 회의를 볼 수 있지만 대화나 투표에는 참여할 수 없습니다.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
           </div>
         )}
-      </div>
 
       {/* =================================================
           Leave Confirm
@@ -4273,14 +5363,14 @@ export default function DevilGameWorld({
             <div
               className={
                 gameResult.winningTeam ===
-                "devil"
+                  "devil"
                   ? "bg-red-500/10 px-6 py-8"
                   : "bg-emerald-500/10 px-6 py-8"
               }
             >
               <div className="text-5xl">
                 {gameResult.winningTeam ===
-                "devil"
+                  "devil"
                   ? "😈"
                   : "🎉"}
               </div>
@@ -4292,27 +5382,27 @@ export default function DevilGameWorld({
               <div
                 className={
                   gameResult.winningTeam ===
-                  "devil"
+                    "devil"
                     ? "mt-3 text-sm font-black text-red-300"
                     : "mt-3 text-sm font-black text-emerald-300"
                 }
               >
                 {gameResult.winningTeam ===
-                "devil"
+                  "devil"
                   ? "- 악마팀 -"
                   : "- 생존팀 -"}
               </div>
 
               <div className="mt-5 text-2xl font-black leading-tight">
                 {gameResult.winners.length >
-                0
+                  0
                   ? `${gameResult.winners
-                      .map((winner) =>
-                        getDisplayName(
-                          winner.nickname
-                        )
+                    .map((winner) =>
+                      getDisplayName(
+                        winner.nickname
                       )
-                      .join(" · ")} 승리!`
+                    )
+                    .join(" · ")} 승리!`
                   : "승리!"}
               </div>
 
@@ -4409,9 +5499,9 @@ function ActionButton({
   disabled?: boolean;
   active?: boolean;
   variant?:
-    | "default"
-    | "danger"
-    | "dark";
+  | "default"
+  | "danger"
+  | "dark";
 }) {
   const variantClass =
     variant === "danger"
@@ -4522,8 +5612,11 @@ function CorpseView({
   corpse,
 }: {
   corpse:
-    Corpse;
+  Corpse;
 }) {
+  const corpseStyle =
+    corpse.characterStyle;
+
   return (
     <div
       className="
@@ -4544,34 +5637,112 @@ function CorpseView({
           corpse.y,
       }}
     >
+      {/*
+       * 예전처럼 🥔 이모지 하나로 바꾸지 않고,
+       * 죽기 직전의 실제 캐릭터 외형을 그대로 눕혀서 보여준다.
+       */}
       <div
         className="
-          rotate-90
-          text-[32px]
-          drop-shadow-lg
+          relative
+          h-[78px]
+          w-[92px]
         "
       >
-        🥔
+        <div
+          className="
+            absolute
+            left-1/2
+            top-1/2
+            origin-center
+          "
+          style={{
+            transform:
+              "translate(-50%, -50%) rotate(88deg) scale(0.92)",
+
+            filter:
+              "grayscale(0.15) brightness(0.82)",
+
+            opacity:
+              0.94,
+          }}
+        >
+          <Potato
+            name=""
+            glasses={
+              corpseStyle
+                ?.glasses ??
+              "none"
+            }
+            hat={
+              corpseStyle
+                ?.hat ??
+              "none"
+            }
+            ribbon={
+              corpseStyle
+                ?.ribbon ??
+              false
+            }
+            tie={
+              corpseStyle
+                ?.tie ??
+              false
+            }
+            color={
+              corpseStyle
+                ?.color ??
+              "default"
+            }
+            moving={false}
+            ghost={false}
+            attacking={false}
+            evil={false}
+            hit={false}
+          />
+        </div>
+
+        {/* 사망 표시 */}
+        <div
+          className="
+            absolute
+            -right-1
+            -top-1
+            flex
+            h-7
+            w-7
+            items-center
+            justify-center
+            rounded-full
+            border
+            border-white/15
+            bg-black/80
+            text-[15px]
+            shadow-lg
+          "
+        >
+          💀
+        </div>
       </div>
 
       <div
         className="
-          -mt-2
+          -mt-1
           rounded-full
-          bg-black/70
-          px-2
+          border
+          border-white/10
+          bg-black/75
+          px-2.5
           py-1
           text-[8px]
           font-bold
-          text-white/70
+          text-white/75
+          shadow-lg
+          backdrop-blur-sm
         "
       >
-        💀{" "}
-        {
-          getDisplayName(
-            corpse.nickname
-          )
-        }
+        {getDisplayName(
+          corpse.nickname
+        )}
       </div>
     </div>
   );
@@ -4585,7 +5756,7 @@ function Control({
   children,
 }: {
   children:
-    React.ReactNode;
+  React.ReactNode;
 }) {
   return (
     <div
