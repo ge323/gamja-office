@@ -217,6 +217,14 @@ const REMOTE_STOP_DISTANCE =
 const REMOTE_TELEPORT_DISTANCE =
   450;
 
+/*
+ * 처치 연출 전체 길이.
+ * 마지막 처치와 동시에 게임이 끝나더라도
+ * 이 연출이 끝난 뒤 결과 화면을 보여준다.
+ */
+const KILL_SEQUENCE_DURATION =
+  2800;
+
 /* =========================================================
    Helpers
 ========================================================= */
@@ -431,6 +439,21 @@ export default function DevilGameWorld({
   const myPlayerIdRef =
     useRef(playerId);
 
+  /*
+   * 마지막 처치 연출이 시작된 시각.
+   * 게임 종료 이벤트가 같은 순간 도착하면 결과 화면을 지연한다.
+   */
+  const lastKillAnimationAtRef =
+    useRef(0);
+
+  /*
+   * 결과 화면 지연 타이머.
+   */
+  const pendingResultTimeoutRef =
+    useRef<number | null>(
+      null
+    );
+
   /* ======================================================
      Game identity
   ====================================================== */
@@ -485,6 +508,21 @@ export default function DevilGameWorld({
   const [
     attackEffect,
     setAttackEffect,
+  ] =
+    useState<{
+      killerId: string;
+      victimId: string;
+    } | null>(
+      null
+    );
+
+  /*
+   * 처치 당사자(악마 / 피해자)에게만 보여주는
+   * 짧은 처치 시네마틱.
+   */
+  const [
+    killSequence,
+    setKillSequence,
   ] =
     useState<{
       killerId: string;
@@ -1154,9 +1192,73 @@ export default function DevilGameWorld({
         false
       );
 
-      setGameResult(
-        result
-      );
+      /*
+       * 마지막 처치 직후 승리 조건이 만족되면
+       * 서버의 게임 종료 이벤트가 처치 애니메이션보다 먼저 도착할 수 있다.
+       *
+       * 서버 판정은 즉시 유지하되,
+       * 화면의 GAME OVER만 처치 시네마틱이 끝난 뒤 표시한다.
+       *
+       * 퇴장 / 인원 부족 등 처치와 관계없는 종료는 즉시 표시된다.
+       */
+      const elapsedSinceKill =
+        Date.now() -
+        lastKillAnimationAtRef.current;
+
+      const shouldWaitForKillSequence =
+        lastKillAnimationAtRef.current >
+          0 &&
+        elapsedSinceKill <
+          KILL_SEQUENCE_DURATION;
+
+      const resultDelay =
+        shouldWaitForKillSequence
+          ? Math.max(
+              0,
+              KILL_SEQUENCE_DURATION -
+                elapsedSinceKill
+            )
+          : 0;
+
+      if (
+        pendingResultTimeoutRef.current !==
+        null
+      ) {
+        window.clearTimeout(
+          pendingResultTimeoutRef.current
+        );
+
+        pendingResultTimeoutRef.current =
+          null;
+      }
+
+      if (
+        resultDelay <=
+        0
+      ) {
+        setGameResult(
+          result
+        );
+
+        return;
+      }
+
+      pendingResultTimeoutRef.current =
+        window.setTimeout(
+          () => {
+            setKillSequence(
+              null
+            );
+
+            setGameResult(
+              result
+            );
+
+            pendingResultTimeoutRef.current =
+              null;
+          },
+          resultDelay
+        );
     };
 
     socket.on(
@@ -1175,6 +1277,57 @@ export default function DevilGameWorld({
         data:
           KillConfirmedPayload
       ) => {
+        /*
+         * 이 시각을 기록해두면 바로 이어서 GAME OVER 이벤트가 와도
+         * 처치 장면이 먼저 끝까지 재생된다.
+         */
+        lastKillAnimationAtRef.current =
+          Date.now();
+
+        const isKillParticipant =
+          data.killerId ===
+            myPlayerIdRef.current ||
+          data.victimId ===
+            myPlayerIdRef.current;
+
+        /*
+         * 처치 시네마틱은 악마와 피해자에게만 보여준다.
+         * 다른 생존자에게 전체 화면 시네마틱을 보여주면
+         * 악마 정체가 노출될 수 있기 때문이다.
+         */
+        if (
+          isKillParticipant
+        ) {
+          setKillSequence({
+            killerId:
+              data.killerId,
+
+            victimId:
+              data.victimId,
+          });
+
+          setMapOpen(
+            false
+          );
+
+          setActiveMission(
+            null
+          );
+
+          setMoving(
+            false
+          );
+
+          window.setTimeout(
+            () => {
+              setKillSequence(
+                null
+              );
+            },
+            KILL_SEQUENCE_DURATION
+          );
+        }
+
         setAttackEffect({
           killerId:
             data.killerId,
@@ -1287,6 +1440,18 @@ export default function DevilGameWorld({
     );
 
     return () => {
+      if (
+        pendingResultTimeoutRef.current !==
+        null
+      ) {
+        window.clearTimeout(
+          pendingResultTimeoutRef.current
+        );
+
+        pendingResultTimeoutRef.current =
+          null;
+      }
+
       socket.disconnect();
 
       socketRef.current =
@@ -2377,6 +2542,67 @@ export default function DevilGameWorld({
     attackEffect?.victimId ===
     myPlayerId;
 
+  /*
+   * 처치 시네마틱에 사용할 실제 플레이어 정보.
+   * 서버에서 받은 캐릭터 스타일을 그대로 사용하므로
+   * 색 / 안경 / 모자 / 리본 / 넥타이도 유지된다.
+   */
+  const getCinematicPlayer = (
+    targetPlayerId: string
+  ): GamePlayer | null => {
+    if (
+      targetPlayerId ===
+      myPlayerId
+    ) {
+      if (
+        selfPlayer
+      ) {
+        return selfPlayer;
+      }
+
+      return {
+        id:
+          myPlayerId,
+
+        nickname,
+
+        characterStyle,
+
+        state:
+          playerState,
+
+        x:
+          position.x,
+
+        y:
+          position.y,
+      };
+    }
+
+    return (
+      otherPlayers.find(
+        (player) =>
+          player.id ===
+          targetPlayerId
+      ) ??
+      null
+    );
+  };
+
+  const cinematicKiller =
+    killSequence
+      ? getCinematicPlayer(
+          killSequence.killerId
+        )
+      : null;
+
+  const cinematicVictim =
+    killSequence
+      ? getCinematicPlayer(
+          killSequence.victimId
+        )
+      : null;
+
   /* ======================================================
      Render
   ====================================================== */
@@ -3413,10 +3639,450 @@ export default function DevilGameWorld({
         />
 
         {/* =================================================
+            Kill Cinematic
+
+            악마와 피해자에게만 표시되는 짧은 처치 장면.
+            마지막 처치로 게임이 끝나는 경우에도 이 연출 후
+            GAME OVER 화면으로 넘어간다.
+        ================================================= */}
+
+        {killSequence &&
+          cinematicKiller &&
+          cinematicVictim && (
+            <div
+              data-no-move
+              className="
+                pointer-events-none
+                absolute
+                inset-0
+                z-[56000]
+                overflow-hidden
+                bg-black
+              "
+            >
+              {/* 붉은 비네팅 */}
+
+              <div
+                className="
+                  absolute
+                  inset-0
+                  animate-[killBackdrop_2.8s_ease-out_forwards]
+                "
+                style={{
+                  background:
+                    "radial-gradient(circle at center, rgba(80,0,0,0.12) 0%, rgba(10,0,0,0.82) 55%, rgba(0,0,0,1) 100%)",
+                }}
+              />
+
+              {/* 경고 문구 */}
+
+              <div
+                className="
+                  absolute
+                  left-1/2
+                  top-[12%]
+                  -translate-x-1/2
+                  text-center
+                  text-white
+                  animate-[killTitle_2.8s_ease-out_forwards]
+                "
+              >
+                <div
+                  className="
+                    text-[9px]
+                    font-black
+                    tracking-[0.35em]
+                    text-red-400/70
+                  "
+                >
+                  DEVIL ATTACK
+                </div>
+
+                <div
+                  className="
+                    mt-2
+                    text-[17px]
+                    font-black
+                    tracking-tight
+                  "
+                >
+                  누군가 습격당했습니다
+                </div>
+              </div>
+
+              {/* 캐릭터 연출 */}
+
+              <div
+                className="
+                  absolute
+                  inset-x-0
+                  top-1/2
+                  flex
+                  -translate-y-1/2
+                  items-end
+                  justify-center
+                  gap-[120px]
+                "
+              >
+                {/* 악마 */}
+
+                <div
+                  className="
+                    relative
+                    animate-[killerLunge_2.8s_cubic-bezier(.22,.9,.3,1)_forwards]
+                  "
+                >
+                  <Potato
+                    name={
+                      getDisplayName(
+                        cinematicKiller.nickname
+                      )
+                    }
+                    glasses={
+                      cinematicKiller
+                        .characterStyle
+                        ?.glasses ??
+                      "none"
+                    }
+                    hat={
+                      cinematicKiller
+                        .characterStyle
+                        ?.hat ??
+                      "none"
+                    }
+                    ribbon={
+                      cinematicKiller
+                        .characterStyle
+                        ?.ribbon ??
+                      false
+                    }
+                    tie={
+                      cinematicKiller
+                        .characterStyle
+                        ?.tie ??
+                      false
+                    }
+                    color={
+                      cinematicKiller
+                        .characterStyle
+                        ?.color ??
+                      "default"
+                    }
+                    moving={false}
+                    ghost={false}
+                    attacking={true}
+                    evil={true}
+                    hit={false}
+                  />
+
+                  <div
+                    className="
+                      absolute
+                      -right-7
+                      top-[32px]
+                      text-[34px]
+                      opacity-0
+                      drop-shadow-[0_0_12px_rgba(239,68,68,0.95)]
+                      animate-[knifeSlash_2.8s_ease-out_forwards]
+                    "
+                  >
+                    🔪
+                  </div>
+                </div>
+
+                {/* 피해자 */}
+
+                <div
+                  className="
+                    relative
+                    animate-[victimHit_2.8s_cubic-bezier(.2,.8,.3,1)_forwards]
+                  "
+                >
+                  <Potato
+                    name={
+                      getDisplayName(
+                        cinematicVictim.nickname
+                      )
+                    }
+                    glasses={
+                      cinematicVictim
+                        .characterStyle
+                        ?.glasses ??
+                      "none"
+                    }
+                    hat={
+                      cinematicVictim
+                        .characterStyle
+                        ?.hat ??
+                      "none"
+                    }
+                    ribbon={
+                      cinematicVictim
+                        .characterStyle
+                        ?.ribbon ??
+                      false
+                    }
+                    tie={
+                      cinematicVictim
+                        .characterStyle
+                        ?.tie ??
+                      false
+                    }
+                    color={
+                      cinematicVictim
+                        .characterStyle
+                        ?.color ??
+                      "default"
+                    }
+                    moving={false}
+                    ghost={false}
+                    attacking={false}
+                    evil={false}
+                    hit={true}
+                  />
+
+                  <div
+                    className="
+                      absolute
+                      left-1/2
+                      top-1/2
+                      -translate-x-1/2
+                      -translate-y-1/2
+                      text-[44px]
+                      opacity-0
+                      animate-[impactMark_2.8s_ease-out_forwards]
+                    "
+                  >
+                    💥
+                  </div>
+                </div>
+              </div>
+
+              {/* 공격 순간 화면 플래시 */}
+
+              <div
+                className="
+                  absolute
+                  inset-0
+                  bg-red-600
+                  opacity-0
+                  animate-[killFlash_2.8s_ease-out_forwards]
+                "
+              />
+
+              {/* 마지막 사망 표시 */}
+
+              <div
+                className="
+                  absolute
+                  bottom-[13%]
+                  left-1/2
+                  -translate-x-1/2
+                  text-center
+                  opacity-0
+                  animate-[killFinish_2.8s_ease-out_forwards]
+                "
+              >
+                <div
+                  className="
+                    text-[34px]
+                  "
+                >
+                  💀
+                </div>
+
+                <div
+                  className="
+                    mt-2
+                    text-[10px]
+                    font-black
+                    tracking-[0.18em]
+                    text-white/60
+                  "
+                >
+                  ELIMINATED
+                </div>
+              </div>
+
+              <style jsx>{`
+                @keyframes killBackdrop {
+                  0% {
+                    opacity: 0;
+                  }
+                  8% {
+                    opacity: 1;
+                  }
+                  82% {
+                    opacity: 1;
+                  }
+                  100% {
+                    opacity: 0;
+                  }
+                }
+
+                @keyframes killTitle {
+                  0%,
+                  8% {
+                    opacity: 0;
+                    transform: translate(-50%, -8px);
+                  }
+                  18%,
+                  72% {
+                    opacity: 1;
+                    transform: translate(-50%, 0);
+                  }
+                  88%,
+                  100% {
+                    opacity: 0;
+                    transform: translate(-50%, -4px);
+                  }
+                }
+
+                @keyframes killerLunge {
+                  0%,
+                  15% {
+                    transform: translateX(-70px) scale(1);
+                  }
+                  32% {
+                    transform: translateX(28px) scale(1.08);
+                  }
+                  43% {
+                    transform: translateX(48px) scale(1.12);
+                  }
+                  58% {
+                    transform: translateX(16px) scale(1.04);
+                  }
+                  82% {
+                    transform: translateX(8px) scale(1);
+                  }
+                  100% {
+                    transform: translateX(8px) scale(0.98);
+                    opacity: 0;
+                  }
+                }
+
+                @keyframes victimHit {
+                  0%,
+                  29% {
+                    transform: translateX(55px) rotate(0deg);
+                    filter: brightness(1);
+                  }
+                  35% {
+                    transform: translateX(70px) rotate(7deg);
+                    filter: brightness(2.3);
+                  }
+                  41% {
+                    transform: translateX(48px) rotate(-8deg);
+                    filter: brightness(0.75);
+                  }
+                  55% {
+                    transform: translateX(85px) translateY(12px)
+                      rotate(18deg);
+                  }
+                  72% {
+                    transform: translateX(95px) translateY(34px)
+                      rotate(68deg);
+                    opacity: 1;
+                  }
+                  88%,
+                  100% {
+                    transform: translateX(100px) translateY(48px)
+                      rotate(88deg);
+                    opacity: 0;
+                  }
+                }
+
+                @keyframes knifeSlash {
+                  0%,
+                  24% {
+                    opacity: 0;
+                    transform: translate(-28px, 18px) rotate(-35deg)
+                      scale(0.7);
+                  }
+                  31% {
+                    opacity: 1;
+                  }
+                  41% {
+                    opacity: 1;
+                    transform: translate(42px, -14px) rotate(35deg)
+                      scale(1.25);
+                  }
+                  50%,
+                  100% {
+                    opacity: 0;
+                    transform: translate(58px, -22px) rotate(48deg)
+                      scale(1.35);
+                  }
+                }
+
+                @keyframes impactMark {
+                  0%,
+                  31% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(0.2)
+                      rotate(-20deg);
+                  }
+                  36% {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1.35)
+                      rotate(8deg);
+                  }
+                  48% {
+                    opacity: 0;
+                    transform: translate(-50%, -50%) scale(1.8)
+                      rotate(18deg);
+                  }
+                  100% {
+                    opacity: 0;
+                  }
+                }
+
+                @keyframes killFlash {
+                  0%,
+                  30% {
+                    opacity: 0;
+                  }
+                  34% {
+                    opacity: 0.48;
+                  }
+                  38% {
+                    opacity: 0;
+                  }
+                  42% {
+                    opacity: 0.18;
+                  }
+                  46%,
+                  100% {
+                    opacity: 0;
+                  }
+                }
+
+                @keyframes killFinish {
+                  0%,
+                  58% {
+                    opacity: 0;
+                    transform: translate(-50%, 8px);
+                  }
+                  70%,
+                  87% {
+                    opacity: 1;
+                    transform: translate(-50%, 0);
+                  }
+                  100% {
+                    opacity: 0;
+                    transform: translate(-50%, -4px);
+                  }
+                }
+              `}</style>
+            </div>
+          )}
+
+        {/* =================================================
             피해자 화면
         ================================================= */}
 
-        {deathOverlay && (
+        {deathOverlay &&
+          !killSequence && (
           <div
             data-no-move
             className="
