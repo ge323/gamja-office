@@ -68,6 +68,10 @@ type GamePlayer = {
    * 다른 플레이어의 걷기 모션을 자연스럽게 보여주기 위해 사용한다.
    */
   moving?: boolean;
+
+  missionIds?: string[];
+
+  completedMissionIds?: string[];
 };
 
 type RemotePlayer =
@@ -578,14 +582,7 @@ export default function DevilGameWorld({
     missions,
     setMissions,
   ] =
-    useState<Mission[]>(
-      () =>
-        INITIAL_MISSIONS.map(
-          (mission) => ({
-            ...mission,
-          })
-        )
-    );
+    useState<Mission[]>([]);
 
   const [
     activeMission,
@@ -875,6 +872,10 @@ export default function DevilGameWorld({
               role:
                 "devil" |
                 "survivor";
+
+              missionIds?: string[];
+
+              completedMissionIds?: string[];
             };
 
             state?:
@@ -905,6 +906,37 @@ export default function DevilGameWorld({
 
             setPlayerState(
               response.self.state
+            );
+
+            const assignedMissionIds =
+              response.self.missionIds ??
+              [];
+
+            const completedMissionIds =
+              response.self.completedMissionIds ??
+              [];
+
+            const assignedMissions =
+              INITIAL_MISSIONS
+                .filter(
+                  (mission) =>
+                    assignedMissionIds.includes(
+                      mission.id
+                    )
+                )
+                .map(
+                  (mission) => ({
+                    ...mission,
+
+                    completed:
+                      completedMissionIds.includes(
+                        mission.id
+                      ),
+                  })
+                );
+
+            setMissions(
+              assignedMissions
             );
 
             const nextPosition = {
@@ -963,7 +995,14 @@ export default function DevilGameWorld({
 
           if (nextSelf) {
             setSelfPlayer(
-              nextSelf
+              (previous) => ({
+                ...previous,
+                ...nextSelf,
+                missionIds:
+                  previous?.missionIds,
+                completedMissionIds:
+                  previous?.completedMissionIds,
+              })
             );
 
             setPlayerState(
@@ -1056,46 +1095,78 @@ export default function DevilGameWorld({
       }
     );
 
+    const handleGameFinished = (
+      rawResult:
+        GameResultPayload |
+        {
+          roomId: string;
+          winner: "devil" | "survivor";
+          reason: string;
+          winnerPlayers: GameResultWinner[];
+          finishedAt: number;
+        }
+    ) => {
+      const result: GameResultPayload =
+        "winningTeam" in rawResult
+          ? rawResult
+          : {
+              roomId:
+                rawResult.roomId,
+              winningTeam:
+                rawResult.winner,
+              reason:
+                rawResult.reason,
+              winners:
+                rawResult.winnerPlayers ??
+                [],
+              finishedAt:
+                rawResult.finishedAt,
+            };
+
+      targetPositionRef.current =
+        null;
+
+      if (
+        animationFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          animationFrameRef.current
+        );
+
+        animationFrameRef.current =
+          null;
+      }
+
+      setMoving(
+        false
+      );
+
+      setMapOpen(
+        false
+      );
+
+      setActiveMission(
+        null
+      );
+
+      setLeaveConfirmOpen(
+        false
+      );
+
+      setGameResult(
+        result
+      );
+    };
+
     socket.on(
       "devilGame:end",
-      (result:
-        GameResultPayload
-      ) => {
-        targetPositionRef.current =
-          null;
+      handleGameFinished
+    );
 
-        if (
-          animationFrameRef.current !==
-          null
-        ) {
-          cancelAnimationFrame(
-            animationFrameRef.current
-          );
-
-          animationFrameRef.current =
-            null;
-        }
-
-        setMoving(
-          false
-        );
-
-        setMapOpen(
-          false
-        );
-
-        setActiveMission(
-          null
-        );
-
-        setLeaveConfirmOpen(
-          false
-        );
-
-        setGameResult(
-          result
-        );
-      }
+    socket.on(
+      "devilGame:finished",
+      handleGameFinished
     );
 
     socket.on(
@@ -1728,23 +1799,110 @@ export default function DevilGameWorld({
   const completeMission = (
     missionId: string
   ) => {
-    setMissions(
-      (previous) =>
-        previous.map(
-          (mission) =>
-            mission.id ===
-            missionId
-              ? {
-                  ...mission,
-                  completed:
-                    true,
-                }
-              : mission
-        )
-    );
+    const socket =
+      socketRef.current;
 
-    setActiveMission(
-      null
+    if (
+      !socket ||
+      !socket.connected
+    ) {
+      setCombatMessage(
+        "서버와 연결되어 있지 않아 미션을 완료할 수 없습니다."
+      );
+
+      return;
+    }
+
+    socket.emit(
+      "devilGame:missionComplete",
+      {
+        roomId,
+
+        playerId:
+          myPlayerIdRef.current,
+
+        missionId,
+      },
+      (response: {
+        ok: boolean;
+
+        message?: string;
+
+        missionId?: string;
+
+        alreadyCompleted?: boolean;
+
+        completedMissionIds?: string[];
+
+        completedCount?: number;
+
+        totalCount?: number;
+      }) => {
+        if (
+          !response.ok
+        ) {
+          setCombatMessage(
+            response.message ??
+              "미션 완료 처리에 실패했습니다."
+          );
+
+          return;
+        }
+
+        setMissions(
+          (previous) =>
+            previous.map(
+              (mission) =>
+                mission.id ===
+                missionId
+                  ? {
+                      ...mission,
+
+                      completed:
+                        true,
+                    }
+                  : mission
+            )
+        );
+
+        if (
+          response.completedMissionIds
+        ) {
+          setSelfPlayer(
+            (previous) => {
+              if (!previous) {
+                return previous;
+              }
+
+              return {
+                ...previous,
+
+                completedMissionIds:
+                  response.completedMissionIds,
+              };
+            }
+          );
+        }
+
+        setActiveMission(
+          null
+        );
+
+        setCombatMessage(
+          response.alreadyCompleted
+            ? "이미 완료한 업무입니다."
+            : "✅ 업무 완료!"
+        );
+
+        window.setTimeout(
+          () => {
+            setCombatMessage(
+              ""
+            );
+          },
+          1800
+        );
+      }
     );
   };
 
@@ -1760,23 +1918,6 @@ export default function DevilGameWorld({
 
       setActiveMission(
         nearbyMission
-      );
-    };
-
-  const resetMissions =
-    () => {
-      setMissions(
-        INITIAL_MISSIONS.map(
-          (mission) => ({
-            ...mission,
-            completed:
-              false,
-          })
-        )
-      );
-
-      setActiveMission(
-        null
       );
     };
 
@@ -1878,6 +2019,9 @@ export default function DevilGameWorld({
 
       socket.emit(
         "devilGame:leave",
+        {
+          roomId,
+        },
         (response: {
           ok: boolean;
           message?: string;
@@ -2092,12 +2236,6 @@ export default function DevilGameWorld({
         return;
       }
 
-      if (
-        event.code ===
-        "KeyR"
-      ) {
-        resetMissions();
-      }
     };
 
     window.addEventListener(
@@ -3236,8 +3374,6 @@ export default function DevilGameWorld({
               <Control>B : 정전</Control>
             )}
 
-          <Control>R : 미션 초기화</Control>
-
           <span className="rounded-lg bg-amber-400/15 px-2 py-1 text-[8px] font-bold text-amber-200">
             📍 중앙 사무실 회의 테이블 : 긴급회의 장소
           </span>
@@ -3522,9 +3658,30 @@ export default function DevilGameWorld({
             <div className="p-6">
               <button
                 type="button"
-                onClick={
-                  onReturnToOffice
-                }
+                onClick={() => {
+                  const socket =
+                    socketRef.current;
+
+                  if (
+                    !socket ||
+                    !socket.connected
+                  ) {
+                    onReturnToOffice();
+                    return;
+                  }
+
+                  socket.emit(
+                    "devilGame:returnOffice",
+                    {
+                      roomId,
+                      playerId:
+                        myPlayerIdRef.current,
+                    },
+                    () => {
+                      onReturnToOffice();
+                    }
+                  );
+                }}
                 className="
                   w-full
                   rounded-2xl
