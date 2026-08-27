@@ -62,7 +62,26 @@ type GamePlayer = {
 
   x: number;
   y: number;
+
+  /*
+   * 서버가 마지막으로 알고 있는 이동 상태.
+   * 다른 플레이어의 걷기 모션을 자연스럽게 보여주기 위해 사용한다.
+   */
+  moving?: boolean;
 };
+
+type RemotePlayer =
+  GamePlayer & {
+    /* 실제 화면에 그려지는 보간 좌표 */
+    renderX: number;
+    renderY: number;
+
+    /* 서버에서 받은 최신 목표 좌표 */
+    targetX: number;
+    targetY: number;
+
+    lastUpdateAt: number;
+  };
 
 type Corpse = {
   id: string;
@@ -149,6 +168,23 @@ const KILL_UI_DISTANCE =
 
 const MOVE_EMIT_INTERVAL =
   50;
+
+/*
+ * 다른 플레이어 좌표는 네트워크 패킷이 들어올 때마다
+ * 바로 점프시키지 않고 목표 좌표를 향해 보간한다.
+ */
+const REMOTE_SMOOTHING =
+  14;
+
+const REMOTE_STOP_DISTANCE =
+  0.6;
+
+/*
+ * 재접속/스폰처럼 좌표 차이가 아주 큰 경우에는
+ * 긴 시간 미끄러지지 않고 즉시 해당 위치로 맞춘다.
+ */
+const REMOTE_TELEPORT_DISTANCE =
+  450;
 
 /* =========================================================
    Helpers
@@ -327,6 +363,16 @@ export default function DevilGameWorld({
       null
     );
 
+  const remoteAnimationFrameRef =
+    useRef<number | null>(
+      null
+    );
+
+  const remoteLastFrameTimeRef =
+    useRef<number | null>(
+      null
+    );
+
   const lastFrameTimeRef =
     useRef<number | null>(
       null
@@ -389,7 +435,7 @@ export default function DevilGameWorld({
     setOtherPlayers,
   ] =
     useState<
-      GamePlayer[]
+      RemotePlayer[]
     >([]);
 
   const [
@@ -668,18 +714,92 @@ export default function DevilGameWorld({
     socketRef.current =
       socket;
 
+    const syncRemotePlayers = (
+      players:
+        GamePlayer[],
+      selfId:
+        string,
+      snap = false
+    ) => {
+      setOtherPlayers(
+        (previous) => {
+          const previousMap =
+            new Map(
+              previous.map(
+                (player) => [
+                  player.id,
+                  player,
+                ]
+              )
+            );
+
+          return players
+            .filter(
+              (player) =>
+                player.id !==
+                selfId
+            )
+            .map(
+              (player) => {
+                const before =
+                  previousMap.get(
+                    player.id
+                  );
+
+                if (
+                  !before ||
+                  snap
+                ) {
+                  return {
+                    ...player,
+                    renderX:
+                      player.x,
+                    renderY:
+                      player.y,
+                    targetX:
+                      player.x,
+                    targetY:
+                      player.y,
+                    moving:
+                      Boolean(
+                        player.moving
+                      ),
+                    lastUpdateAt:
+                      performance.now(),
+                  };
+                }
+
+                return {
+                  ...before,
+                  ...player,
+                  targetX:
+                    player.x,
+                  targetY:
+                    player.y,
+                  moving:
+                    Boolean(
+                      player.moving
+                    ),
+                  lastUpdateAt:
+                    performance.now(),
+                };
+              }
+            );
+        }
+      );
+    };
+
     const applyGameState = (
       state:
         GameStatePayload,
       selfId:
-        string
+        string,
+      snap = false
     ) => {
-      setOtherPlayers(
-        state.players.filter(
-          (player) =>
-            player.id !==
-            selfId
-        )
+      syncRemotePlayers(
+        state.players,
+        selfId,
+        snap
       );
 
       setCorpses(
@@ -759,7 +879,8 @@ export default function DevilGameWorld({
             ) {
               applyGameState(
                 response.state,
-                response.self.id
+                response.self.id,
+                true
               );
             }
           }
@@ -803,12 +924,9 @@ export default function DevilGameWorld({
           }
         }
 
-        setOtherPlayers(
-          state.players.filter(
-            (player) =>
-              player.id !==
-              selfId
-          )
+        syncRemotePlayers(
+          state.players,
+          selfId
         );
       }
     );
@@ -820,23 +938,71 @@ export default function DevilGameWorld({
 
         x: number;
         y: number;
+
+        moving?: boolean;
       }) => {
         setOtherPlayers(
           (previous) =>
             previous.map(
-              (player) =>
-                player.id ===
-                data.id
-                  ? {
-                      ...player,
+              (player) => {
+                if (
+                  player.id !==
+                  data.id
+                ) {
+                  return player;
+                }
 
-                      x:
-                        data.x,
+                const dx =
+                  data.x -
+                  player.renderX;
 
-                      y:
-                        data.y,
-                    }
-                  : player
+                const dy =
+                  data.y -
+                  player.renderY;
+
+                const distance =
+                  Math.sqrt(
+                    dx * dx +
+                    dy * dy
+                  );
+
+                const teleport =
+                  distance >
+                  REMOTE_TELEPORT_DISTANCE;
+
+                return {
+                  ...player,
+
+                  x:
+                    data.x,
+
+                  y:
+                    data.y,
+
+                  targetX:
+                    data.x,
+
+                  targetY:
+                    data.y,
+
+                  renderX:
+                    teleport
+                      ? data.x
+                      : player.renderX,
+
+                  renderY:
+                    teleport
+                      ? data.y
+                      : player.renderY,
+
+                  moving:
+                    data.moving ??
+                    true,
+
+                  lastUpdateAt:
+                    performance.now(),
+                };
+              }
             )
         );
       }
@@ -971,6 +1137,137 @@ export default function DevilGameWorld({
   ]);
 
   /* ======================================================
+     Remote player interpolation
+
+     서버에서는 약 50ms 간격으로 좌표가 오기 때문에
+     받은 좌표를 즉시 화면에 적용하면 다른 캐릭터가
+     순간이동하듯 끊겨 보인다.
+
+     renderX/renderY가 targetX/targetY를 매 프레임
+     부드럽게 따라가도록 보간한다.
+  ====================================================== */
+
+  useEffect(() => {
+    const animateRemotePlayers = (
+      timestamp: number
+    ) => {
+      const previousTimestamp =
+        remoteLastFrameTimeRef.current ??
+        timestamp;
+
+      const deltaTime =
+        Math.min(
+          50,
+          timestamp -
+            previousTimestamp
+        ) / 1000;
+
+      remoteLastFrameTimeRef.current =
+        timestamp;
+
+      const alpha =
+        1 -
+        Math.exp(
+          -REMOTE_SMOOTHING *
+            deltaTime
+        );
+
+      setOtherPlayers(
+        (previous) =>
+          previous.map(
+            (player) => {
+              const dx =
+                player.targetX -
+                player.renderX;
+
+              const dy =
+                player.targetY -
+                player.renderY;
+
+              const distance =
+                Math.sqrt(
+                  dx * dx +
+                  dy * dy
+                );
+
+              if (
+                distance <=
+                REMOTE_STOP_DISTANCE
+              ) {
+                if (
+                  player.renderX ===
+                    player.targetX &&
+                  player.renderY ===
+                    player.targetY
+                ) {
+                  return player;
+                }
+
+                return {
+                  ...player,
+                  renderX:
+                    player.targetX,
+                  renderY:
+                    player.targetY,
+                };
+              }
+
+              if (
+                distance >
+                REMOTE_TELEPORT_DISTANCE
+              ) {
+                return {
+                  ...player,
+                  renderX:
+                    player.targetX,
+                  renderY:
+                    player.targetY,
+                };
+              }
+
+              return {
+                ...player,
+                renderX:
+                  player.renderX +
+                  dx * alpha,
+                renderY:
+                  player.renderY +
+                  dy * alpha,
+              };
+            }
+          )
+      );
+
+      remoteAnimationFrameRef.current =
+        requestAnimationFrame(
+          animateRemotePlayers
+        );
+    };
+
+    remoteAnimationFrameRef.current =
+      requestAnimationFrame(
+        animateRemotePlayers
+      );
+
+    return () => {
+      if (
+        remoteAnimationFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          remoteAnimationFrameRef.current
+        );
+      }
+
+      remoteAnimationFrameRef.current =
+        null;
+
+      remoteLastFrameTimeRef.current =
+        null;
+    };
+  }, []);
+
+  /* ======================================================
      Stable player identity sync
 
      page.tsx에서 전달된 playerId가 바뀌는 경우에도
@@ -1024,7 +1321,9 @@ export default function DevilGameWorld({
   ====================================================== */
 
   const stopMovement =
-    () => {
+    (
+      notifyServer = true
+    ) => {
       targetPositionRef.current =
         null;
 
@@ -1046,6 +1345,19 @@ export default function DevilGameWorld({
       setMoving(
         false
       );
+
+      if (
+        notifyServer
+      ) {
+        socketRef.current?.emit(
+          "devilGame:move",
+          {
+            ...positionRef.current,
+            moving:
+              false,
+          }
+        );
+      }
     };
 
   /* ======================================================
@@ -1128,10 +1440,16 @@ export default function DevilGameWorld({
 
       socketRef.current?.emit(
         "devilGame:move",
-        finalPosition
+        {
+          ...finalPosition,
+          moving:
+            false,
+        }
       );
 
-      stopMovement();
+      stopMovement(
+        false
+      );
 
       return;
     }
@@ -1214,7 +1532,11 @@ export default function DevilGameWorld({
 
       socketRef.current?.emit(
         "devilGame:move",
-        nextPosition
+        {
+          ...nextPosition,
+          moving:
+            true,
+        }
       );
     }
 
@@ -1948,11 +2270,11 @@ export default function DevilGameWorld({
             }
 
             const screenX =
-              player.x -
+              player.renderX -
               cameraX;
 
             const screenY =
-              player.y -
+              player.renderY -
               cameraY;
 
             const attacking =
@@ -1972,9 +2294,6 @@ export default function DevilGameWorld({
                   pointer-events-none
                   absolute
                   z-[4900]
-                  transition-[left,top]
-                  duration-75
-                  ease-linear
                 "
                 style={{
                   left:
@@ -1988,7 +2307,7 @@ export default function DevilGameWorld({
 
                   zIndex:
                     Math.round(
-                      player.y
+                      player.renderY
                     ) +
                     3000,
                 }}
@@ -2028,6 +2347,11 @@ export default function DevilGameWorld({
                       .characterStyle
                       ?.color ??
                     "default"
+                  }
+                  moving={
+                    Boolean(
+                      player.moving
+                    )
                   }
                   ghost={
                     player.state ===

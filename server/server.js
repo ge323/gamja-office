@@ -604,6 +604,12 @@ function createGameRuntime(
         spawnId:
           spawnPoint.id,
 
+        /*
+         * 다른 참가자 화면에서 걷기 모션을 표시하기 위한 상태.
+         */
+        moving:
+          false,
+
         lastKillAt:
           0,
       };
@@ -645,6 +651,11 @@ function getPublicGamePlayer(
 
     y:
       gamePlayer.y,
+
+    moving:
+      Boolean(
+        gamePlayer.moving
+      ),
   };
 }
 
@@ -2424,6 +2435,17 @@ io.on(
         gamePlayer.y =
           y;
 
+        /*
+         * 클라이언트가 보내준 이동 상태도 함께 저장한다.
+         * 구버전 클라이언트처럼 moving 값이 없는 경우에는
+         * 좌표 패킷이 왔다는 사실 자체를 이동 중으로 본다.
+         */
+        gamePlayer.moving =
+          position?.moving ===
+          false
+            ? false
+            : true;
+
         socket
           .to(
             getSocketRoomName(
@@ -2439,6 +2461,9 @@ io.on(
               x,
 
               y,
+
+              moving:
+                gamePlayer.moving,
             }
           );
       }
