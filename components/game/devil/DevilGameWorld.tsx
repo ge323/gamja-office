@@ -1143,45 +1143,61 @@ export default function DevilGameWorld({
               )
             );
 
-          return players
-            .filter(
+          const remotePlayers =
+            (Array.isArray(players)
+              ? players
+              : []
+            ).filter(
               (player) =>
+                Boolean(player?.id) &&
                 player.id !==
-                selfId
-            )
-            .map(
-              (player) => {
-                const before =
-                  previousMap.get(
-                    player.id
-                  );
+                  selfId
+            );
 
-                if (
-                  !before ||
-                  snap
-                ) {
-                  return {
-                    ...player,
-                    renderX:
+          console.log(
+            "👥 REMOTE PLAYERS SYNC",
+            {
+              selfId,
+              total:
+                players?.length ??
+                0,
+              remote:
+                remotePlayers.length,
+              remotePlayers:
+                remotePlayers.map(
+                  (player) => ({
+                    id:
+                      player.id,
+                    nickname:
+                      player.nickname,
+                    x:
                       player.x,
-                    renderY:
+                    y:
                       player.y,
-                    targetX:
-                      player.x,
-                    targetY:
-                      player.y,
-                    moving:
-                      Boolean(
-                        player.moving
-                      ),
-                    lastUpdateAt:
-                      performance.now(),
-                  };
-                }
+                    state:
+                      player.state,
+                  })
+                ),
+            }
+          );
 
+          return remotePlayers.map(
+            (player) => {
+              const before =
+                previousMap.get(
+                  player.id
+                );
+
+              if (
+                !before ||
+                snap
+              ) {
                 return {
-                  ...before,
                   ...player,
+                  renderX:
+                    player.x,
+                  renderY:
+                    player.y,
                   targetX:
                     player.x,
                   targetY:
@@ -1194,7 +1210,23 @@ export default function DevilGameWorld({
                     performance.now(),
                 };
               }
-            );
+
+              return {
+                ...before,
+                ...player,
+                targetX:
+                  player.x,
+                targetY:
+                  player.y,
+                moving:
+                  Boolean(
+                    player.moving
+                  ),
+                lastUpdateAt:
+                  performance.now(),
+              };
+            }
+          );
         }
       );
     };
@@ -1206,14 +1238,25 @@ export default function DevilGameWorld({
         string,
       snap = false
     ) => {
+      const gamePlayers =
+        Array.isArray(
+          state.players
+        )
+          ? state.players
+          : [];
+
       syncRemotePlayers(
-        state.players,
+        gamePlayers,
         selfId,
         snap
       );
 
       setCorpses(
-        state.corpses ?? []
+        Array.isArray(
+          state.corpses
+        )
+          ? state.corpses
+          : []
       );
 
       setTeamMissionProgress(
@@ -1245,18 +1288,30 @@ export default function DevilGameWorld({
     socket.on(
       "connect",
       () => {
+        console.log(
+          "🎮 GAME SOCKET CONNECTED",
+          {
+            socketId:
+              socket.id,
+            roomId,
+            playerId,
+            nickname,
+          }
+        );
+
         socket.emit(
           "devilGame:join",
 
           {
             roomId,
             playerId,
+            nickname,
           },
 
           (response: {
             ok: boolean;
-
             message?: string;
+            playerId?: string;
 
             self?: GamePlayer & {
               role:
@@ -1275,6 +1330,15 @@ export default function DevilGameWorld({
               !response.ok ||
               !response.self
             ) {
+              console.error(
+                "❌ GAME JOIN FAILED",
+                response
+              );
+
+              setOtherPlayers(
+                []
+              );
+
               setCombatMessage(
                 response.message ??
                 "게임에 다시 연결하지 못했습니다."
@@ -1283,11 +1347,43 @@ export default function DevilGameWorld({
               return;
             }
 
-            myPlayerIdRef.current =
+            const resolvedPlayerId =
+              response.playerId ??
               response.self.id;
 
+            console.log(
+              "✅ GAME JOIN SUCCESS",
+              {
+                resolvedPlayerId,
+                nickname:
+                  response.self.nickname,
+                playerCount:
+                  response.state
+                    ?.players
+                    ?.length ??
+                  0,
+                players:
+                  response.state
+                    ?.players
+                    ?.map(
+                      (player) => ({
+                        id:
+                          player.id,
+                        nickname:
+                          player.nickname,
+                        state:
+                          player.state,
+                      })
+                    ) ??
+                  [],
+              }
+            );
+
+            myPlayerIdRef.current =
+              resolvedPlayerId;
+
             setMyPlayerId(
-              response.self.id
+              resolvedPlayerId
             );
 
             setSelfPlayer(
@@ -1340,6 +1436,9 @@ export default function DevilGameWorld({
             positionRef.current =
               nextPosition;
 
+            targetPositionRef.current =
+              null;
+
             setPosition(
               nextPosition
             );
@@ -1349,8 +1448,20 @@ export default function DevilGameWorld({
             ) {
               applyGameState(
                 response.state,
-                response.self.id,
+                resolvedPlayerId,
                 true
+              );
+            } else {
+              console.error(
+                "❌ GAME JOIN RESPONSE HAS NO STATE"
+              );
+
+              setOtherPlayers(
+                []
+              );
+
+              setCombatMessage(
+                "게임 참가자 정보를 불러오지 못했습니다."
               );
             }
           }
@@ -1367,72 +1478,86 @@ export default function DevilGameWorld({
         const selfId =
           myPlayerIdRef.current;
 
-        setCorpses(
-          state.corpses ?? []
-        );
+        if (!selfId) {
+          console.warn(
+            "⚠️ game state received without selfId"
+          );
 
-        setTeamMissionProgress(
-          state.missionProgress ?? {
-            completed: 0,
-            total: 0,
-            percentage: 0,
+          return;
+        }
+
+        console.log(
+          "📡 GAME STATE",
+          {
+            selfId,
+            count:
+              state.players
+                ?.length ??
+              0,
+            players:
+              state.players
+                ?.map(
+                  (player) => ({
+                    id:
+                      player.id,
+                    nickname:
+                      player.nickname,
+                    state:
+                      player.state,
+                  })
+                ) ??
+              [],
           }
         );
 
-        if (
-          state.meeting?.active
-        ) {
-          setMeeting(
-            state.meeting
+        applyGameState(
+          state,
+          selfId
+        );
+
+        const nextSelf =
+          state.players.find(
+            (player) =>
+              player.id ===
+              selfId
           );
 
-          setMeetingMessages(
-            state.meeting.messages ??
-            []
-          );
-        } else if (
-          meetingResult ===
-          null
-        ) {
-          setMeeting(
-            null
-          );
-        }
+        if (nextSelf) {
+          setSelfPlayer(
+            (previous) => {
+              if (!previous) {
+                return {
+                  ...nextSelf,
+                };
+              }
 
-        /*
-         * 서버 상태에서 내 캐릭터와 다른 캐릭터를 명확히 분리한다.
-         * 참가자 전원이 같은 캐릭터처럼 보이는 문제를 방지한다.
-         */
-        if (selfId) {
-          const nextSelf =
-            state.players.find(
-              (player) =>
-                player.id ===
-                selfId
-            );
-
-          if (nextSelf) {
-            setSelfPlayer(
-              (previous) => ({
+              return {
                 ...previous,
                 ...nextSelf,
                 missionIds:
-                  previous?.missionIds,
+                  previous.missionIds,
                 completedMissionIds:
-                  previous?.completedMissionIds,
-              })
-            );
+                  previous.completedMissionIds,
+              };
+            }
+          );
 
-            setPlayerState(
-              nextSelf.state
-            );
-          }
+          setPlayerState(
+            nextSelf.state
+          );
+        } else {
+          console.warn(
+            "⚠️ self player missing from game state",
+            {
+              selfId,
+              players:
+                state.players.map(
+                  (player) =>
+                    player.id
+                ),
+            }
+          );
         }
-
-        syncRemotePlayers(
-          state.players,
-          selfId
-        );
       }
     );
 
@@ -1590,7 +1715,7 @@ export default function DevilGameWorld({
     );
 
     socket.on(
-      "devilGame:meeting-message",
+      "devilGame:meeting-chat",
       (
         message:
           MeetingChatMessage
@@ -2215,12 +2340,21 @@ export default function DevilGameWorld({
   ====================================================== */
 
   useEffect(() => {
-    myPlayerIdRef.current =
-      playerId;
+    /*
+     * 최초 진입 때만 props의 playerId를 기준으로 한다.
+     * 재접속 과정에서 서버가 nickname fallback으로 실제 고정 ID를
+     * 복구한 뒤에는 socket join callback에서 myPlayerIdRef를 갱신한다.
+     */
+    if (
+      !myPlayerIdRef.current
+    ) {
+      myPlayerIdRef.current =
+        playerId;
 
-    setMyPlayerId(
-      playerId
-    );
+      setMyPlayerId(
+        playerId
+      );
+    }
   }, [
     playerId,
   ]);

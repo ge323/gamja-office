@@ -2156,34 +2156,6 @@ io.on(
     );
 
     /* =====================================================
-       Character Style
-    ===================================================== */
-
-    socket.on(
-      "player:style",
-      characterStyle => {
-        const player =
-          players[
-            socket.id
-          ];
-
-        if (!player) {
-          return;
-        }
-
-        player.characterStyle =
-          characterStyle ??
-          null;
-
-        io.emit(
-          "players:update",
-          Object.values(
-            players
-          )
-        );
-      }
-    );
-    /* =====================================================
    Character Style
 ===================================================== */
 
@@ -3030,6 +3002,12 @@ socket.on(
 
 /* =====================================================
    Game Join / Reconnect
+
+   게임 화면 전환 시 Socket ID가 바뀔 수 있으므로
+   게임 시작 당시의 고정 playerId를 우선 사용한다.
+
+   playerId 전달이 꼬인 경우에는 같은 방의 nickname을
+   보조 식별자로 사용해 기존 gamePlayer를 복구한다.
 ===================================================== */
 
 socket.on(
@@ -3046,9 +3024,15 @@ socket.on(
         .trim()
         .toUpperCase();
 
-    const playerId =
+    const requestedPlayerId =
       String(
         payload?.playerId ??
+          ""
+      ).trim();
+
+    const requestedNickname =
+      String(
+        payload?.nickname ??
           ""
       ).trim();
 
@@ -3074,16 +3058,67 @@ socket.on(
       return;
     }
 
-    const gamePlayer =
-      room.gamePlayers[
-        playerId
-      ];
+    /*
+     * 1순위: 게임 시작 당시의 고정 playerId.
+     */
+    let gamePlayer =
+      requestedPlayerId
+        ? room.gamePlayers[
+            requestedPlayerId
+          ]
+        : null;
+
+    /*
+     * playerId가 없거나 잘못 전달된 경우 nickname으로 복구.
+     * 대기실에서 같은 닉네임을 막고 있으므로 방 안에서는
+     * 한 명만 검색된다.
+     */
+    if (
+      !gamePlayer &&
+      requestedNickname
+    ) {
+      gamePlayer =
+        Object.values(
+          room.gamePlayers
+        ).find(
+          player =>
+            player.leftGame !==
+              true &&
+            player.nickname ===
+              requestedNickname
+        ) ??
+        null;
+    }
 
     if (
       !gamePlayer ||
       gamePlayer.leftGame ===
         true
     ) {
+      console.log(
+        "❌ GAME JOIN FAILED",
+        {
+          roomId,
+          requestedPlayerId,
+          requestedNickname,
+          availablePlayers:
+            Object.values(
+              room.gamePlayers
+            ).map(
+              player => ({
+                id:
+                  player.id,
+                nickname:
+                  player.nickname,
+                leftGame:
+                  player.leftGame,
+                connectedSocketId:
+                  player.connectedSocketId,
+              })
+            ),
+        }
+      );
+
       callback?.({
         ok:
           false,
@@ -3095,6 +3130,10 @@ socket.on(
       return;
     }
 
+    /*
+     * 이전 Socket이 아직 연결된 것으로 남아 있더라도
+     * 최신 게임 화면 Socket을 기준으로 다시 연결한다.
+     */
     gamePlayer.connectedSocketId =
       socket.id;
 
@@ -3126,9 +3165,44 @@ socket.on(
         gamePlayer.characterStyle,
     };
 
+    const publicState =
+      getPublicGameState(
+        room
+      );
+
+    console.log(
+      "✅ GAME JOIN SUCCESS",
+      {
+        roomId:
+          room.id,
+        playerId:
+          gamePlayer.id,
+        nickname:
+          gamePlayer.nickname,
+        socketId:
+          socket.id,
+        publicPlayerCount:
+          publicState.players.length,
+        publicPlayers:
+          publicState.players.map(
+            player => ({
+              id:
+                player.id,
+              nickname:
+                player.nickname,
+              state:
+                player.state,
+            })
+          ),
+      }
+    );
+
     callback?.({
       ok:
         true,
+
+      playerId:
+        gamePlayer.id,
 
       self: {
         ...getPublicGamePlayer(
@@ -3149,11 +3223,13 @@ socket.on(
       },
 
       state:
-        getPublicGameState(
-          room
-        ),
+        publicState,
     });
 
+    /*
+     * 같은 방의 모든 클라이언트가 최신 참가자 목록을
+     * 다시 받도록 전체 상태를 브로드캐스트한다.
+     */
     broadcastGameState(
       room
     );
