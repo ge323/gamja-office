@@ -44,15 +44,16 @@ const POTATO_COLORS: PotatoColor[] = [
 const HAIR_TYPES: HairType[] = [
   "none",
   "short",
-  "side",
   "middle",
   "bob",
   "curly",
-  "ponytail",
   "bun",
   "braid",
-  "spike",
   "long",
+  "crop",
+  "comma",
+  "twoBlock",
+  "slick",
 ];
 
 const HAIR_COLORS: HairColor[] = [
@@ -661,14 +662,15 @@ export default function CharacterCustomizer({
             {([
               ["none", "없음"],
               ["short", "숏컷"],
-              ["side", "옆가르마"],
+              ["crop", "크롭컷"],
+              ["comma", "쉼표머리"],
+              ["twoBlock", "투블럭"],
+              ["slick", "넘긴머리"],
               ["middle", "가운데가르마"],
               ["bob", "C컬 단발"],
               ["curly", "웨이브"],
-              ["ponytail", "포니테일"],
               ["bun", "올림머리"],
               ["braid", "양갈래 땋기"],
-              ["spike", "스파이크"],
               ["long", "긴 생머리"],
             ] as [HairType, string][]).map(
               ([value, label]) => (

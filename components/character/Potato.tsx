@@ -25,15 +25,16 @@ export type PotatoDirection =
 export type HairType =
   | "none"
   | "short"
-  | "side"
   | "middle"
   | "bob"
   | "curly"
-  | "ponytail"
   | "bun"
   | "braid"
-  | "spike"
-  | "long";
+  | "long"
+  | "crop"
+  | "comma"
+  | "twoBlock"
+  | "slick";
 
 export type HairColor =
   | "black"
@@ -1825,13 +1826,19 @@ export default function Potato({
 
    Layer policy
    ---------------------------------------------------------
-   BackHairLayer  : outer 80x100 character coordinate / z 1~4
-                    body(z-10)보다 뒤에 렌더링
+   BackHairLayer  : 캐릭터 바깥 좌표 / body(z-10) 뒤
+   FrontHairLayer : 감자 body 내부 / 얼굴보다 아래
 
-   FrontHairLayer : potato body(58x75) 내부 coordinate / z 24~28
-                    이마와 정수리만 담당
+   삭제된 스타일:
+   - side
+   - ponytail
+   - spike
 
-   얼굴(눈/입)은 z 33~35이므로 항상 보인다.
+   추가된 남자 헤어:
+   - crop     : 크롭컷
+   - comma    : 쉼표머리
+   - twoBlock : 투블럭
+   - slick    : 넘긴머리
 ========================================================= */
 
 type HairLayerProps = {
@@ -1863,14 +1870,6 @@ function resolveHairPalette(
   };
 }
 
-/* =========================================================
-   Back Hair
-
-   이 컴포넌트는 감자 몸통 "밖"에서 렌더링된다.
-   그래서 긴 머리의 중앙 뒤통수가 감자 몸에 가려지고,
-   양옆/아래쪽 머리만 자연스럽게 보인다.
-========================================================= */
-
 function BackHairLayer({
   type,
   color,
@@ -1885,11 +1884,10 @@ function BackHairLayer({
     fill,
     shadow,
     shine,
-  } =
-    resolveHairPalette(
-      color,
-      ghost
-    );
+  } = resolveHairPalette(
+    color,
+    ghost
+  );
 
   const backView =
     direction === "up";
@@ -1898,103 +1896,101 @@ function BackHairLayer({
     direction === "left" ||
     direction === "right";
 
-  const mirror =
-    direction === "right";
-
   const common =
     "pointer-events-none absolute";
 
-  /*
-   * 뒤통수 베이스.
-   * 몸통보다 넓고 아래까지 내려오지만 z-index가 낮아서
-   * 얼굴을 절대 가리지 않는다.
-   */
   const HairMass = ({
     top,
     width,
     height,
     radius,
-    className = "",
   }: {
     top: number;
     width: number;
     height: number;
     radius: string;
-    className?: string;
   }) => (
     <div
-      className={`${common} left-1/2 z-[2] -translate-x-1/2 ${className}`}
+      className={`${common} left-1/2 z-[2] -translate-x-1/2`}
       style={{
         top,
         width,
         height,
-        borderRadius:
-          radius,
-        backgroundColor:
-          fill,
+        borderRadius: radius,
+        backgroundColor: fill,
         boxShadow:
-          `inset 0 -6px 0 ${shadow}`,
+          `inset 0 -5px 0 ${shadow}`,
       }}
     >
-      <div
-        className="
-          absolute
-          left-[13px]
-          top-[8px]
-          h-[3px]
-          w-[20px]
-          -rotate-[9deg]
-          rounded-full
-        "
-        style={{
-          backgroundColor:
-            shine,
-        }}
-      />
+      {backView && (
+        <div
+          className="absolute left-[13px] top-[7px] h-[3px] w-[19px] -rotate-[8deg] rounded-full"
+          style={{
+            backgroundColor: shine,
+          }}
+        />
+      )}
     </div>
   );
 
-  /* ======================================================
-     SHORT
+  /* 짧은 계열: 뒤통수를 작고 단정하게 채운다. */
+  if (
+    type === "short" ||
+    type === "middle" ||
+    type === "crop" ||
+    type === "comma" ||
+    type === "twoBlock" ||
+    type === "slick"
+  ) {
+    const isTwoBlock =
+      type === "twoBlock";
 
-     짧은 머리도 뒤통수는 반드시 채운다.
-     정면에서는 몸통 뒤로 살짝 보이고,
-     뒷모습에서는 머리 전체가 자연스럽게 보인다.
-  ====================================================== */
+    const isSlick =
+      type === "slick";
 
-  if (type === "short") {
     return (
       <>
         <HairMass
-          top={5}
+          top={
+            isSlick
+              ? 1
+              : 4
+          }
           width={
             sideView
               ? 58
-              : 64
+              : isTwoBlock
+                ? 66
+                : 63
           }
           height={
             backView
-              ? 39
-              : 35
+              ? isTwoBlock
+                ? 43
+                : 38
+              : isTwoBlock
+                ? 36
+                : 32
           }
-          radius="48% 48% 40% 40% / 42% 42% 58% 58%"
+          radius={
+            isSlick
+              ? "48% 52% 36% 42% / 38% 42% 58% 62%"
+              : "49% 51% 40% 40% / 42% 42% 58% 58%"
+          }
         />
 
-        {backView && (
+        {isTwoBlock && (
           <>
             <div
-              className={`${common} left-[7px] top-[7px] z-[3] h-[19px] w-[17px] rotate-[13deg] rounded-b-[75%]`}
+              className={`${common} left-[5px] top-[22px] z-[3] h-[20px] w-[11px] rounded-b-[75%]`}
               style={{
-                backgroundColor:
-                  fill,
+                backgroundColor: fill,
               }}
             />
-
             <div
-              className={`${common} right-[7px] top-[7px] z-[3] h-[19px] w-[17px] -rotate-[13deg] rounded-b-[75%]`}
+              className={`${common} right-[5px] top-[22px] z-[3] h-[20px] w-[11px] rounded-b-[75%]`}
               style={{
-                backgroundColor:
-                  fill,
+                backgroundColor: fill,
               }}
             />
           </>
@@ -2002,173 +1998,30 @@ function BackHairLayer({
       </>
     );
   }
-
-  /* ======================================================
-     SIDE PART
-
-     앞에서만 가르마가 보이고 뒤에서는 짧은 뒤통수가 보인다.
-  ====================================================== */
-
-  if (type === "side") {
-    return (
-      <>
-        <HairMass
-          top={4}
-          width={
-            sideView
-              ? 60
-              : 66
-          }
-          height={
-            backView
-              ? 42
-              : 37
-          }
-          radius="48% 48% 38% 38% / 40% 40% 60% 60%"
-        />
-
-        {backView && (
-          <div
-            className={`${common} left-[8px] top-[9px] z-[3] h-[24px] w-[42px] -rotate-[5deg] rounded-[60%_40%_55%_45%]`}
-            style={{
-              backgroundColor:
-                fill,
-              boxShadow:
-                `inset 0 -3px 0 ${shadow}`,
-            }}
-          />
-        )}
-      </>
-    );
-  }
-
-  /* ======================================================
-     MIDDLE PART
-  ====================================================== */
-
-  if (type === "middle") {
-    return (
-      <>
-        <HairMass
-          top={4}
-          width={
-            sideView
-              ? 60
-              : 66
-          }
-          height={
-            backView
-              ? 43
-              : 38
-          }
-          radius="48% 48% 38% 38% / 40% 40% 60% 60%"
-        />
-
-        {backView && (
-          <div
-            className={`${common} left-1/2 top-[5px] z-[3] h-[33px] w-[2px] -translate-x-1/2 rounded-full`}
-            style={{
-              backgroundColor:
-                shadow,
-              opacity:
-                0.45,
-            }}
-          />
-        )}
-      </>
-    );
-  }
-
-  /* ======================================================
-     SPIKE
-
-     스파이크도 두피/뒤통수 베이스를 먼저 채운 뒤
-     앞 레이어의 뾰족한 가닥이 위에 올라간다.
-  ====================================================== */
-
-  if (type === "spike") {
-    return (
-      <>
-        <HairMass
-          top={5}
-          width={
-            sideView
-              ? 57
-              : 62
-          }
-          height={
-            backView
-              ? 34
-              : 30
-          }
-          radius="48% 48% 40% 40% / 44% 44% 56% 56%"
-        />
-
-        {backView && (
-          <div className={`${common} left-1/2 top-[-7px] z-[3] flex w-[62px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
-            {[14, 22, 27, 23, 15].map(
-              (
-                height,
-                index
-              ) => (
-                <span
-                  key={
-                    index
-                  }
-                  className="w-[12px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
-                  style={{
-                    height,
-                    backgroundColor:
-                      fill,
-                  }}
-                />
-              )
-            )}
-          </div>
-        )}
-      </>
-    );
-  }
-
-  /* ======================================================
-     C-CURL BOB
-  ====================================================== */
 
   if (type === "bob") {
     return (
       <>
         <HairMass
-          top={5}
-          width={
-            sideView
-              ? 62
-              : 70
-          }
-          height={58}
-          radius="46% 46% 38% 38% / 36% 36% 64% 64%"
+          top={4}
+          width={70}
+          height={60}
+          radius="47% 47% 38% 38% / 38% 38% 62% 62%"
         />
 
-        {/* C컬 끝부분 */}
         {!backView &&
           !sideView && (
           <>
             <div
-              className={`${common} left-[2px] top-[47px] z-[3] h-[20px] w-[22px] rotate-[14deg] rounded-[38%_62%_72%_28%]`}
+              className={`${common} left-[2px] top-[48px] z-[3] h-[18px] w-[21px] rotate-[13deg] rounded-[40%_60%_75%_25%]`}
               style={{
-                backgroundColor:
-                  fill,
-                boxShadow:
-                  `inset -4px -2px 0 ${shadow}`,
+                backgroundColor: fill,
               }}
             />
-
             <div
-              className={`${common} right-[2px] top-[47px] z-[3] h-[20px] w-[22px] -rotate-[14deg] rounded-[62%_38%_28%_72%]`}
+              className={`${common} right-[2px] top-[48px] z-[3] h-[18px] w-[21px] -rotate-[13deg] rounded-[60%_40%_25%_75%]`}
               style={{
-                backgroundColor:
-                  fill,
-                boxShadow:
-                  `inset 4px -2px 0 ${shadow}`,
+                backgroundColor: fill,
               }}
             />
           </>
@@ -2176,236 +2029,96 @@ function BackHairLayer({
       </>
     );
   }
-
-  /* ======================================================
-     WAVE
-  ====================================================== */
 
   if (type === "curly") {
     return (
       <>
         <HairMass
-          top={2}
-          width={74}
-          height={72}
-          radius="46% 46% 34% 34% / 34% 34% 66% 66%"
+          top={1}
+          width={75}
+          height={73}
+          radius="46% 46% 35% 35% / 34% 34% 66% 66%"
         />
 
         {!backView && (
           <>
-            {/* 얼굴 바깥쪽 S-wave */}
-            {[
-              {
-                left:
-                  -2,
-                top:
-                  24,
-                rotate:
-                  -12,
-              },
-              {
-                left:
-                  -4,
-                top:
-                  43,
-                rotate:
-                  12,
-              },
-              {
-                right:
-                  -2,
-                top:
-                  24,
-                rotate:
-                  12,
-              },
-              {
-                right:
-                  -4,
-                top:
-                  43,
-                rotate:
-                  -12,
-              },
-            ].map(
-              (
-                item,
-                index
-              ) => (
-                <div
-                  key={
-                    index
-                  }
-                  className={`${common} z-[3] h-[23px] w-[22px] rounded-[65%_35%_65%_35%]`}
-                  style={{
-                    left:
-                      "left" in item
-                        ? item.left
-                        : undefined,
-
-                    right:
-                      "right" in item
-                        ? item.right
-                        : undefined,
-
-                    top:
-                      item.top,
-
-                    backgroundColor:
-                      fill,
-
-                    boxShadow:
-                      `inset 0 -3px 0 ${shadow}`,
-
-                    transform:
-                      `rotate(${item.rotate}deg)`,
-                  }}
-                />
-              )
-            )}
+            <div
+              className={`${common} left-[-4px] top-[30px] z-[3] h-[23px] w-[22px] -rotate-[12deg] rounded-[65%_35%_65%_35%]`}
+              style={{ backgroundColor: fill }}
+            />
+            <div
+              className={`${common} left-[-2px] top-[49px] z-[3] h-[22px] w-[21px] rotate-[12deg] rounded-[35%_65%_35%_65%]`}
+              style={{ backgroundColor: fill }}
+            />
+            <div
+              className={`${common} right-[-4px] top-[30px] z-[3] h-[23px] w-[22px] rotate-[12deg] rounded-[35%_65%_35%_65%]`}
+              style={{ backgroundColor: fill }}
+            />
+            <div
+              className={`${common} right-[-2px] top-[49px] z-[3] h-[22px] w-[21px] -rotate-[12deg] rounded-[65%_35%_65%_35%]`}
+              style={{ backgroundColor: fill }}
+            />
           </>
         )}
       </>
     );
   }
 
-  /* ======================================================
-     LONG
-  ====================================================== */
-
   if (type === "long") {
     return (
-      <>
-        <HairMass
-          top={0}
-          width={
-            sideView
-              ? 66
-              : 76
-          }
-          height={
-            backView
-              ? 78
-              : 82
-          }
-          radius="47% 47% 25% 25% / 30% 30% 70% 70%"
-        />
-
-        {/* 아래쪽을 조금 넓혀 긴 생머리 느낌 */}
-        {!sideView && (
-          <div
-            className={`${common} bottom-[15px] left-1/2 z-[2] h-[31px] w-[72px] -translate-x-1/2 rounded-b-[38%]`}
-            style={{
-              backgroundColor:
-                fill,
-              boxShadow:
-                `inset 0 -5px 0 ${shadow}`,
-            }}
-          />
-        )}
-      </>
-    );
-  }
-
-  /* ======================================================
-     PONYTAIL
-  ====================================================== */
-
-  if (type === "ponytail") {
-    return (
-      <div
-        className={`${common} inset-0 z-[2]`}
-        style={
-          mirror
-            ? {
-                transform:
-                  "scaleX(-1)",
-              }
-            : undefined
+      <HairMass
+        top={0}
+        width={
+          sideView
+            ? 67
+            : 77
         }
-      >
-        <HairMass
-          top={2}
-          width={63}
-          height={45}
-          radius="48% 48% 42% 42%"
-        />
-
-        <div
-          className={`${common} right-[-7px] top-[25px] z-[3] h-[48px] w-[22px] rotate-[25deg] rounded-[65%_35%_75%_25%]`}
-          style={{
-            backgroundColor:
-              fill,
-            boxShadow:
-              `inset 4px -3px 0 ${shadow}`,
-          }}
-        />
-
-        <div
-          className={`${common} right-[3px] top-[17px] z-[4] h-[11px] w-[11px] rounded-full`}
-          style={{
-            backgroundColor:
-              shadow,
-          }}
-        />
-      </div>
+        height={
+          backView
+            ? 80
+            : 83
+        }
+        radius="47% 47% 25% 25% / 30% 30% 70% 70%"
+      />
     );
   }
-
-  /* ======================================================
-     BUN
-  ====================================================== */
 
   if (type === "bun") {
     return (
       <>
         <HairMass
           top={3}
-          width={62}
-          height={42}
-          radius="48% 48% 42% 42%"
+          width={63}
+          height={44}
+          radius="49% 49% 42% 42%"
         />
 
         <div
-          className={`${common} left-1/2 top-[-17px] z-[3] h-[30px] w-[32px] -translate-x-1/2 rounded-full border-[2px]`}
+          className={`${common} left-1/2 top-[-20px] z-[3] h-[31px] w-[33px] -translate-x-1/2 rounded-full border-[2px]`}
           style={{
-            backgroundColor:
-              fill,
-            borderColor:
-              shadow,
-          }}
-        />
-
-        <div
-          className={`${common} left-1/2 top-[-10px] z-[4] h-[3px] w-[14px] -translate-x-1/2 -rotate-[12deg] rounded-full`}
-          style={{
-            backgroundColor:
-              shine,
+            backgroundColor: fill,
+            borderColor: shadow,
           }}
         />
       </>
     );
   }
 
-  /* ======================================================
-     BRAID
-  ====================================================== */
-
   if (type === "braid") {
     const steps = [
-      22,
-      34,
-      46,
-      58,
+      23,
+      35,
+      47,
+      59,
     ];
 
     return (
       <>
         <HairMass
           top={3}
-          width={62}
-          height={43}
-          radius="48% 48% 42% 42%"
+          width={63}
+          height={44}
+          radius="49% 49% 42% 42%"
         />
 
         {!sideView &&
@@ -2415,27 +2128,14 @@ function BackHairLayer({
               index
             ) => (
               <div
-                key={`braid-left-${top}`}
+                key={`braid-l-${top}`}
                 className={`${common} left-[-2px] z-[3] rounded-full border`}
                 style={{
                   top,
-
-                  width:
-                    15 -
-                    index,
-
-                  height:
-                    16 -
-                    index,
-
-                  backgroundColor:
-                    fill,
-
-                  borderColor:
-                    shadow,
-
-                  transform:
-                    `rotate(${index % 2 === 0 ? 10 : -10}deg)`,
+                  width: 15 - index,
+                  height: 16 - index,
+                  backgroundColor: fill,
+                  borderColor: shadow,
                 }}
               />
             )
@@ -2448,27 +2148,14 @@ function BackHairLayer({
               index
             ) => (
               <div
-                key={`braid-right-${top}`}
+                key={`braid-r-${top}`}
                 className={`${common} right-[-2px] z-[3] rounded-full border`}
                 style={{
                   top,
-
-                  width:
-                    15 -
-                    index,
-
-                  height:
-                    16 -
-                    index,
-
-                  backgroundColor:
-                    fill,
-
-                  borderColor:
-                    shadow,
-
-                  transform:
-                    `rotate(${index % 2 === 0 ? -10 : 10}deg)`,
+                  width: 15 - index,
+                  height: 16 - index,
+                  backgroundColor: fill,
+                  borderColor: shadow,
                 }}
               />
             )
@@ -2479,13 +2166,6 @@ function BackHairLayer({
 
   return null;
 }
-
-/* =========================================================
-   Front Hair
-
-   몸통 내부에서 정수리/앞머리만 담당.
-   절대로 눈높이 아래까지 내려오지 않는다.
-========================================================= */
 
 function FrontHairLayer({
   type,
@@ -2501,14 +2181,16 @@ function FrontHairLayer({
     fill,
     shadow,
     shine,
-  } =
-    resolveHairPalette(
-      color,
-      ghost
-    );
+  } = resolveHairPalette(
+    color,
+    ghost
+  );
 
   const base =
     "pointer-events-none absolute z-[26]";
+
+  const backView =
+    direction === "up";
 
   const sideView =
     direction === "left" ||
@@ -2517,507 +2199,198 @@ function FrontHairLayer({
   const mirror =
     direction === "right";
 
-  const backView =
-    direction === "up";
-
-  /* ======================================================
-     SPIKE
-  ====================================================== */
-
-  if (type === "spike") {
-    return (
-      <div
-        className={`${base} left-1/2 top-[-18px] flex w-[60px] -translate-x-1/2 items-end justify-center gap-[1px]`}
-      >
-        {[20, 29, 37, 31, 22].map(
-          (
-            height,
-            index
-          ) => (
-            <span
-              key={
-                index
-              }
-              className="
-                w-[12px]
-                [clip-path:polygon(50%_0,100%_100%,0_100%)]
-              "
-              style={{
-                height,
-
-                backgroundColor:
-                  fill,
-              }}
-            />
-          )
-        )}
-      </div>
-    );
-  }
-
-  /*
-   * 공통 정수리.
-   * 예전처럼 큰 타원 한 장으로 얼굴을 덮지 않고
-   * body의 윗부분에만 걸치게 만든다.
-   */
   const Crown = ({
     width = 60,
     height = 25,
+    top = -14,
+    radius = "55% 55% 38% 38% / 68% 68% 32% 32%",
   }: {
     width?: number;
     height?: number;
+    top?: number;
+    radius?: string;
   }) => (
     <>
       <div
-        className={`${base} left-1/2 top-[-14px] -translate-x-1/2`}
+        className={`${base} left-1/2 -translate-x-1/2`}
         style={{
+          top,
           width,
           height,
-
-          backgroundColor:
-            fill,
-
-          borderRadius:
-            "55% 55% 38% 38% / 68% 68% 32% 32%",
-
+          backgroundColor: fill,
+          borderRadius: radius,
           boxShadow:
             `inset 0 -4px 0 ${shadow}`,
         }}
       />
 
       <div
-        className="
-          pointer-events-none
-          absolute
-          left-[12px]
-          top-[-6px]
-          z-[27]
-          h-[3px]
-          w-[20px]
-          -rotate-[8deg]
-          rounded-full
-        "
+        className="pointer-events-none absolute left-[12px] top-[-6px] z-[27] h-[3px] w-[20px] -rotate-[8deg] rounded-full"
         style={{
-          backgroundColor:
-            shine,
+          backgroundColor: shine,
         }}
       />
     </>
   );
 
-if (backView) {
-  /*
-   * 뒷모습에서는 얼굴이 없으므로
-   * 머리 길이에 맞게 몸통 위를 머리색으로 덮는다.
-   */
+  /* 뒷모습: 스타일 길이에 맞춰 중앙 뒤통수를 채운다. */
+  if (backView) {
+    const config =
+      type === "long"
+        ? { width: 64, height: 68 }
+        : type === "curly"
+          ? { width: 64, height: 58 }
+          : type === "bob"
+            ? { width: 63, height: 47 }
+            : type === "braid" ||
+                type === "bun"
+              ? { width: 62, height: 42 }
+              : { width: 61, height: 35 };
 
-  if (type === "long") {
-    return (
-      <>
-        {/* 긴 생머리 뒤통수 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-11px]
-            z-[26]
-
-            h-[68px]
-            w-[64px]
-
-            -translate-x-1/2
-
-            rounded-[50%_50%_32%_32%/35%_35%_65%_65%]
-          "
-          style={{
-            backgroundColor: fill,
-            boxShadow: `inset 0 -5px 0 ${shadow}`,
-          }}
-        />
-
-        {/* 머리 윤기 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-[12px]
-            top-[-3px]
-            z-[27]
-
-            h-[3px]
-            w-[21px]
-
-            -rotate-[8deg]
-            rounded-full
-          "
-          style={{
-            backgroundColor: shine,
-          }}
-        />
-      </>
-    );
-  }
-
-  if (type === "curly") {
-    return (
-      <>
-        {/* 웨이브 뒷머리 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-10px]
-            z-[26]
-
-            h-[60px]
-            w-[64px]
-
-            -translate-x-1/2
-
-            rounded-[50%_50%_38%_38%]
-          "
-          style={{
-            backgroundColor: fill,
-            boxShadow: `inset 0 -5px 0 ${shadow}`,
-          }}
-        />
-
-        {/* 웨이브 끝 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            -left-[4px]
-            top-[38px]
-            z-[27]
-
-            h-[22px]
-            w-[20px]
-
-            rotate-[15deg]
-            rounded-[60%_40%_65%_35%]
-          "
-          style={{
-            backgroundColor: fill,
-          }}
-        />
-
-        <div
-          className="
-            pointer-events-none
-            absolute
-            -right-[4px]
-            top-[38px]
-            z-[27]
-
-            h-[22px]
-            w-[20px]
-
-            -rotate-[15deg]
-            rounded-[40%_60%_35%_65%]
-          "
-          style={{
-            backgroundColor: fill,
-          }}
-        />
-      </>
-    );
-  }
-
-  if (type === "bob") {
     return (
       <div
-        className="
-          pointer-events-none
-          absolute
-          left-1/2
-          top-[-10px]
-          z-[26]
-
-          h-[47px]
-          w-[63px]
-
-          -translate-x-1/2
-
-          rounded-[50%_50%_42%_42%]
-        "
+        className="pointer-events-none absolute left-1/2 top-[-10px] z-[26] -translate-x-1/2 rounded-[50%_50%_42%_42%]"
         style={{
+          width: config.width,
+          height: config.height,
           backgroundColor: fill,
-          boxShadow: `inset 0 -4px 0 ${shadow}`,
+          boxShadow:
+            `inset 0 -4px 0 ${shadow}`,
         }}
       />
     );
   }
 
-  if (type === "ponytail") {
-    return (
-      <>
-        {/* 뒤통수 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-10px]
-            z-[26]
-
-            h-[42px]
-            w-[62px]
-
-            -translate-x-1/2
-            rounded-[50%]
-          "
-          style={{
-            backgroundColor: fill,
-          }}
-        />
-
-        {/* 묶은 머리 */}
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[25px]
-            z-[27]
-
-            h-[43px]
-            w-[21px]
-
-            -translate-x-1/2
-
-            rotate-[5deg]
-            rounded-[45%_55%_70%_30%]
-          "
-          style={{
-            backgroundColor: fill,
-            boxShadow: `inset -3px -3px 0 ${shadow}`,
-          }}
-        />
-      </>
-    );
-  }
-
-  if (type === "bun") {
-    return (
-      <>
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-10px]
-            z-[26]
-
-            h-[41px]
-            w-[62px]
-
-            -translate-x-1/2
-            rounded-[50%]
-          "
-          style={{
-            backgroundColor: fill,
-          }}
-        />
-
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-28px]
-            z-[27]
-
-            h-[29px]
-            w-[31px]
-
-            -translate-x-1/2
-            rounded-full
-          "
-          style={{
-            backgroundColor: fill,
-            boxShadow: `inset 0 -3px 0 ${shadow}`,
-          }}
-        />
-      </>
-    );
-  }
-
-  if (type === "braid") {
-    return (
-      <>
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-10px]
-            z-[26]
-
-            h-[42px]
-            w-[62px]
-
-            -translate-x-1/2
-            rounded-[50%]
-          "
-          style={{
-            backgroundColor: fill,
-          }}
-        />
-
-        {[26, 38, 50, 62].map((top, index) => (
-          <div
-            key={`back-braid-left-${top}`}
-            className="
-              pointer-events-none
-              absolute
-              left-[-4px]
-              z-[27]
-              rounded-full
-            "
-            style={{
-              top,
-              width: 14 - index,
-              height: 15 - index,
-              backgroundColor: fill,
-              border: `1px solid ${shadow}`,
-            }}
-          />
-        ))}
-
-        {[26, 38, 50, 62].map((top, index) => (
-          <div
-            key={`back-braid-right-${top}`}
-            className="
-              pointer-events-none
-              absolute
-              right-[-4px]
-              z-[27]
-              rounded-full
-            "
-            style={{
-              top,
-              width: 14 - index,
-              height: 15 - index,
-              backgroundColor: fill,
-              border: `1px solid ${shadow}`,
-            }}
-          />
-        ))}
-      </>
-    );
-  }
-
-  /*
-   * 숏컷 / 옆가르마 / 가운데가르마
-   */
-  return (
-    <div
-      className="
-        pointer-events-none
-        absolute
-        left-1/2
-        top-[-10px]
-        z-[26]
-
-        h-[35px]
-        w-[61px]
-
-        -translate-x-1/2
-
-        rounded-[50%_50%_43%_43%]
-      "
-      style={{
-        backgroundColor: fill,
-        boxShadow: `inset 0 -4px 0 ${shadow}`,
-      }}
-    />
-  );
-}
-  /* ======================================================
-     SHORT
-  ====================================================== */
-
   if (type === "short") {
     return (
       <>
-        <Crown />
-
-        <div
-          className={`${base} left-[5px] top-[2px] h-[15px] w-[18px] rotate-[17deg] rounded-b-[80%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+        <Crown
+          width={60}
+          height={24}
         />
 
         <div
-          className={`${base} left-[20px] top-[2px] h-[13px] w-[17px] rotate-[4deg] rounded-b-[80%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          className={`${base} left-[5px] top-[2px] h-[14px] w-[18px] rotate-[15deg] rounded-b-[80%]`}
+          style={{ backgroundColor: fill }}
         />
-
         <div
-          className={`${base} right-[6px] top-[1px] h-[15px] w-[17px] -rotate-[15deg] rounded-b-[80%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          className={`${base} left-[20px] top-[2px] h-[12px] w-[17px] rotate-[3deg] rounded-b-[80%]`}
+          style={{ backgroundColor: fill }}
+        />
+        <div
+          className={`${base} right-[6px] top-[1px] h-[14px] w-[17px] -rotate-[14deg] rounded-b-[80%]`}
+          style={{ backgroundColor: fill }}
         />
       </>
     );
   }
 
-  /* ======================================================
-     SIDE PART
-  ====================================================== */
+  if (type === "crop") {
+    return (
+      <>
+        <Crown
+          width={60}
+          height={21}
+          top={-12}
+          radius="52% 52% 35% 35% / 62% 62% 38% 38%"
+        />
 
-  if (type === "side") {
+        {[6, 16, 26, 36, 46].map(
+          (
+            left,
+            index
+          ) => (
+            <div
+              key={left}
+              className={`${base} top-[1px] h-[10px] w-[10px] rounded-b-[75%]`}
+              style={{
+                left,
+                backgroundColor: fill,
+                transform:
+                  `rotate(${index % 2 === 0 ? -6 : 6}deg)`,
+              }}
+            />
+          )
+        )}
+      </>
+    );
+  }
+
+  if (type === "comma") {
     const content = (
       <>
-        <Crown />
-
-        <div
-          className={`${base} left-[2px] top-[-1px] h-[21px] w-[28px] -rotate-[18deg] rounded-[70%_35%_75%_35%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+        <Crown
+          width={62}
+          height={25}
+          top={-14}
         />
 
         <div
-          className={`${base} left-[21px] top-[2px] h-[14px] w-[24px] -rotate-[8deg] rounded-b-[80%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          className={`${base} left-[5px] top-[-1px] h-[20px] w-[29px] -rotate-[18deg] rounded-[70%_35%_75%_35%]`}
+          style={{ backgroundColor: fill }}
+        />
+
+        <div
+          className={`${base} right-[13px] top-[3px] h-[18px] w-[13px] rotate-[22deg] rounded-b-full`}
+          style={{ backgroundColor: fill }}
         />
       </>
     );
 
-    return sideView &&
-      mirror ? (
+    return sideView && mirror ? (
       <div
         className="absolute inset-0"
         style={{
-          transform:
-            "scaleX(-1)",
+          transform: "scaleX(-1)",
         }}
       >
         {content}
       </div>
-    ) : (
-      content
+    ) : content;
+  }
+
+  if (type === "twoBlock") {
+    return (
+      <>
+        <Crown
+          width={64}
+          height={27}
+          top={-15}
+        />
+
+        <div
+          className={`${base} left-[4px] top-[0px] h-[18px] w-[24px] rotate-[10deg] rounded-b-[78%]`}
+          style={{ backgroundColor: fill }}
+        />
+        <div
+          className={`${base} left-[22px] top-[1px] h-[16px] w-[18px] rounded-b-[78%]`}
+          style={{ backgroundColor: fill }}
+        />
+        <div
+          className={`${base} right-[5px] top-[0px] h-[17px] w-[18px] -rotate-[8deg] rounded-b-[78%]`}
+          style={{ backgroundColor: fill }}
+        />
+      </>
     );
   }
 
-  /* ======================================================
-     MIDDLE PART
-  ====================================================== */
+  if (type === "slick") {
+    return (
+      <>
+        <Crown
+          width={63}
+          height={25}
+          top={-15}
+          radius="45% 60% 35% 42% / 70% 62% 38% 30%"
+        />
+
+        <div
+          className={`${base} left-[7px] top-[-1px] h-[13px] w-[39px] -rotate-[8deg] rounded-[70%_30%_55%_45%]`}
+          style={{ backgroundColor: fill }}
+        />
+      </>
+    );
+  }
 
   if (type === "middle") {
     return (
@@ -3026,48 +2399,19 @@ if (backView) {
 
         <div
           className={`${base} left-[2px] top-[0px] h-[19px] w-[25px] rotate-[10deg] rounded-[65%_35%_72%_38%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          style={{ backgroundColor: fill }}
         />
-
         <div
           className={`${base} right-[2px] top-[0px] h-[19px] w-[25px] -rotate-[10deg] rounded-[35%_65%_38%_72%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          style={{ backgroundColor: fill }}
         />
-
         <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-9px]
-            z-[28]
-            h-[19px]
-            w-[2px]
-            -translate-x-1/2
-            rounded-full
-          "
-          style={{
-            backgroundColor:
-              shine,
-          }}
+          className="pointer-events-none absolute left-1/2 top-[-9px] z-[28] h-[19px] w-[2px] -translate-x-1/2 rounded-full"
+          style={{ backgroundColor: shine }}
         />
       </>
     );
   }
-
-  /* ======================================================
-     C-CURL BOB
-
-     단발은 "네모 헬멧"이 아니라
-     둥근 정수리 + 짧은 시스루 앞머리만 전면에 둔다.
-     옆/아래 C컬은 BackHairLayer가 담당한다.
-  ====================================================== */
 
   if (type === "bob") {
     return (
@@ -3077,57 +2421,19 @@ if (backView) {
           height={27}
         />
 
-        {[
-          {
-            left:
-              6,
-            rotate:
-              12,
-          },
-          {
-            left:
-              18,
-            rotate:
-              5,
-          },
-          {
-            right:
-              18,
-            rotate:
-              -5,
-          },
-          {
-            right:
-              6,
-            rotate:
-              -12,
-          },
-        ].map(
+        {[6, 18, 30, 42].map(
           (
-            item,
+            left,
             index
           ) => (
             <div
-              key={
-                index
-              }
-              className={`${base} top-[2px] h-[14px] w-[12px] rounded-b-[85%]`}
+              key={left}
+              className={`${base} top-[2px] h-[13px] w-[11px] rounded-b-[85%]`}
               style={{
-                left:
-                  "left" in item
-                    ? item.left
-                    : undefined,
-
-                right:
-                  "right" in item
-                    ? item.right
-                    : undefined,
-
-                backgroundColor:
-                  fill,
-
+                left,
+                backgroundColor: fill,
                 transform:
-                  `rotate(${item.rotate}deg)`,
+                  `rotate(${index < 2 ? 7 : -7}deg)`,
               }}
             />
           )
@@ -3136,10 +2442,6 @@ if (backView) {
     );
   }
 
-  /* ======================================================
-     WAVE
-  ====================================================== */
-
   if (type === "curly") {
     return (
       <>
@@ -3147,37 +2449,21 @@ if (backView) {
           width={63}
           height={27}
         />
-
         <div
-          className={`${base} left-[4px] top-[1px] h-[16px] w-[21px] rotate-[14deg] rounded-b-[82%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          className={`${base} left-[4px] top-[1px] h-[15px] w-[21px] rotate-[13deg] rounded-b-[82%]`}
+          style={{ backgroundColor: fill }}
         />
-
         <div
-          className={`${base} right-[4px] top-[1px] h-[16px] w-[21px] -rotate-[14deg] rounded-b-[82%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          className={`${base} right-[4px] top-[1px] h-[15px] w-[21px] -rotate-[13deg] rounded-b-[82%]`}
+          style={{ backgroundColor: fill }}
         />
       </>
     );
   }
 
-  /* ======================================================
-     PONYTAIL / BUN / BRAID
-  ====================================================== */
-
   if (
-    type ===
-      "ponytail" ||
-    type ===
-      "bun" ||
-    type ===
-      "braid"
+    type === "bun" ||
+    type === "braid"
   ) {
     return (
       <>
@@ -3185,54 +2471,32 @@ if (backView) {
           width={61}
           height={26}
         />
-
         <div
           className={`${base} left-[5px] top-[1px] h-[15px] w-[20px] rotate-[13deg] rounded-b-[80%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          style={{ backgroundColor: fill }}
         />
-
         <div
           className={`${base} right-[5px] top-[1px] h-[15px] w-[20px] -rotate-[13deg] rounded-b-[80%]`}
-          style={{
-            backgroundColor:
-              fill,
-          }}
+          style={{ backgroundColor: fill }}
         />
       </>
     );
   }
 
-  /* ======================================================
-     LONG
-
-     긴머리는 정수리 + 아주 짧은 양쪽 앞머리만 전면.
-     긴 길이는 전부 뒤 레이어에 존재한다.
-  ====================================================== */
-
+  /* long */
   return (
     <>
       <Crown
         width={64}
         height={28}
       />
-
       <div
         className={`${base} left-[3px] top-[1px] h-[16px] w-[22px] rotate-[13deg] rounded-b-[82%]`}
-        style={{
-          backgroundColor:
-            fill,
-        }}
+        style={{ backgroundColor: fill }}
       />
-
       <div
         className={`${base} right-[3px] top-[1px] h-[16px] w-[22px] -rotate-[13deg] rounded-b-[82%]`}
-        style={{
-          backgroundColor:
-            fill,
-        }}
+        style={{ backgroundColor: fill }}
       />
     </>
   );
