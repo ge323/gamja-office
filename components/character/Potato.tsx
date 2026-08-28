@@ -1807,13 +1807,13 @@ export default function Potato({
 
 /* =========================================================
    Hair
-========================================================= */
-
-/* =========================================================
-   Hair
 
    얼굴 안전지대(눈/입/볼터치): x: 7~51, y: 24~58 (body 58x75 기준)
    모든 헤어 요소는 이 사각형을 침범하지 않는다.
+
+   BackFill: 옆머리(SideLock) 길이만큼 뒤통수 중앙을 채워서
+   목 뒤로 몸통 색이 비쳐 보이지 않게 한다. (short/side/middle처럼
+   짧은 스타일도 캡 높이와 맞춰 항상 채워둔다.)
 ========================================================= */
 
 type HairLayerProps = {
@@ -1884,6 +1884,31 @@ function HairLayer({
         style={{ backgroundColor: shine }}
       />
     </div>
+  );
+
+  /* -----------------------------------------------------
+     뒤통수 채움판. 캡/옆머리보다 z-index가 낮아서
+     실루엣(뾰족한 라인 등) 아래에 깔리며, 옆머리 길이와
+     같은 높이로 뒤통수 중앙이 비어 보이지 않게 채워준다.
+     짧은 스타일에는 캡과 비슷한 높이를 줘서 표 안 나게 한다.
+  ----------------------------------------------------- */
+  const BackFill = ({
+    height,
+  }: {
+    height: number;
+  }) => (
+    <div
+      className="pointer-events-none absolute z-[16] left-1/2 -translate-x-1/2"
+      style={{
+        top: -6,
+        width: 50,
+        height,
+        backgroundColor: fill,
+        borderRadius:
+          "50% 50% 40% 40% / 40% 40% 30% 30%",
+        boxShadow: `inset 0 -6px 0 ${shadow}`,
+      }}
+    />
   );
 
   /* -----------------------------------------------------
@@ -2077,24 +2102,50 @@ function HairLayer({
         {(type === "bob" ||
           type === "curly" ||
           type === "long") && (
-          <SideLock
-            side="right"
-            height={
-              type === "long"
-                ? 62
-                : type === "curly"
-                  ? 46
-                  : 38
-            }
-            curl={type === "curly"}
-          />
+          <>
+            <BackFill
+              height={
+                type === "long"
+                  ? 62
+                  : type === "curly"
+                    ? 46
+                    : 38
+              }
+            />
+            <SideLock
+              side="right"
+              height={
+                type === "long"
+                  ? 62
+                  : type === "curly"
+                    ? 46
+                    : 38
+              }
+              curl={type === "curly"}
+            />
+          </>
         )}
 
-        {type === "ponytail" && <Ponytail toward="side" />}
+        {type === "ponytail" && (
+          <>
+            <BackFill height={20} />
+            <Ponytail toward="side" />
+          </>
+        )}
 
-        {type === "bun" && <Bun top={-24} />}
+        {type === "bun" && (
+          <>
+            <BackFill height={20} />
+            <Bun top={-24} />
+          </>
+        )}
 
-        {type === "braid" && <Braids count={3} />}
+        {type === "braid" && (
+          <>
+            <BackFill height={40} />
+            <Braids count={3} />
+          </>
+        )}
 
         {type === "spike" && <Spikes heights={[18, 26, 20]} />}
 
@@ -2138,6 +2189,15 @@ function HairLayer({
           type === "long" ||
           type === "braid") && (
           <>
+            <BackFill
+              height={
+                type === "long"
+                  ? 60
+                  : type === "braid"
+                    ? 44
+                    : 38
+              }
+            />
             <SideLock
               side="left"
               height={type === "long" ? 60 : 38}
@@ -2151,9 +2211,19 @@ function HairLayer({
           </>
         )}
 
-        {type === "ponytail" && <Ponytail toward="back" />}
+        {type === "ponytail" && (
+          <>
+            <BackFill height={20} />
+            <Ponytail toward="back" />
+          </>
+        )}
 
-        {type === "bun" && <Bun top={-26} />}
+        {type === "bun" && (
+          <>
+            <BackFill height={20} />
+            <Bun top={-26} />
+          </>
+        )}
 
         {type === "braid" && <Braids count={4} />}
 
@@ -2173,6 +2243,7 @@ function HairLayer({
 
       {type === "short" && (
         <>
+          <BackFill height={20} />
           <Fringe side="left" top={4} width={16} rotate={16} />
           <Fringe side="right" top={4} width={16} rotate={-15} />
         </>
@@ -2180,6 +2251,7 @@ function HairLayer({
 
       {type === "side" && (
         <>
+          <BackFill height={20} />
           <Fringe side="left" top={-2} width={22} rotate={-20} />
           <Fringe side="right" top={4} width={16} rotate={-12} />
         </>
@@ -2187,6 +2259,7 @@ function HairLayer({
 
       {type === "middle" && (
         <>
+          <BackFill height={20} />
           <Fringe side="left" top={0} width={18} rotate={12} />
           <Fringe side="right" top={0} width={18} rotate={-12} />
           <div
@@ -2200,6 +2273,15 @@ function HairLayer({
         type === "curly" ||
         type === "long") && (
         <>
+          <BackFill
+            height={
+              type === "long"
+                ? 58
+                : type === "curly"
+                  ? 42
+                  : 36
+            }
+          />
           <SideLock
             side="left"
             height={
@@ -2227,6 +2309,7 @@ function HairLayer({
 
       {type === "ponytail" && (
         <>
+          <BackFill height={20} />
           <Fringe side="left" top={2} width={16} rotate={16} />
           <Fringe side="right" top={2} width={16} rotate={-15} />
           <Ponytail toward="side" />
@@ -2235,6 +2318,7 @@ function HairLayer({
 
       {type === "bun" && (
         <>
+          <BackFill height={20} />
           <Fringe side="left" top={2} width={15} rotate={14} />
           <Fringe side="right" top={2} width={15} rotate={-14} />
           <Bun />
@@ -2243,6 +2327,7 @@ function HairLayer({
 
       {type === "braid" && (
         <>
+          <BackFill height={44} />
           <Fringe side="left" top={2} width={15} rotate={14} />
           <Fringe side="right" top={2} width={15} rotate={-14} />
           <Braids />
@@ -2255,6 +2340,7 @@ function HairLayer({
     </>
   );
 }
+
 /* =========================================================
    Eyes
 ========================================================= */
