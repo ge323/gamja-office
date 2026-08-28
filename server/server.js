@@ -1098,6 +1098,14 @@ function finishPotatoWar(
 
 /* =========================================================
    Winner Check
+
+   규칙:
+   - 악마가 모두 사라지면 생존팀 승리
+   - 살아있는 생존자가 0명이면 악마팀 승리
+   - 악마 수 >= 생존자 수가 되어도 게임은 계속 진행
+   - 단순 사망/유령화는 "인원 부족" 종료 사유가 아님
+   - 실제 게임 퇴장(leftGame)으로 참가자가 3명 미만이 된 경우에만
+     not-enough-players로 게임 종료
 ========================================================= */
 
 function checkGameEnd(
@@ -1111,11 +1119,23 @@ function checkGameEnd(
     return;
   }
 
-  const activePlayers =
-    getActiveGamePlayers(
-      room
+  const allGamePlayers =
+    Object.values(
+      room.gamePlayers ??
+        {}
     );
 
+  const activePlayers =
+    allGamePlayers.filter(
+      player =>
+        player.leftGame !==
+        true
+    );
+
+  /*
+   * 모든 플레이어가 실제로 게임을 나간 경우
+   * 방만 정리한다.
+   */
   if (
     activePlayers.length ===
     0
@@ -1151,7 +1171,8 @@ function checkGameEnd(
     );
 
   /*
-   * 악마 전멸.
+   * 1. 악마가 모두 죽거나 투표로 퇴출된 경우
+   *    생존팀 승리.
    */
   if (
     aliveDevils.length ===
@@ -1167,34 +1188,11 @@ function checkGameEnd(
   }
 
   /*
-   * 전체 참가자 3명 미만.
-   */
-  if (
-    activePlayers.length <
-    DEVIL_GAME_MIN_PLAYERS
-  ) {
-    if (
-      aliveDevils.length >=
-      aliveSurvivors.length
-    ) {
-      finishPotatoWar(
-        room,
-        "devil",
-        "not-enough-players"
-      );
-    } else {
-      finishPotatoWar(
-        room,
-        "survivor",
-        "not-enough-players"
-      );
-    }
-
-    return;
-  }
-
-  /*
-   * 생존자 전멸.
+   * 2. 살아있는 생존자가 한 명도 남지 않은 경우
+   *    악마팀 승리.
+   *
+   * 악마 1 : 생존자 1 같은 동수 상황에서는
+   * 여기 걸리지 않으므로 게임이 계속된다.
    */
   if (
     aliveSurvivors.length ===
@@ -1210,18 +1208,93 @@ function checkGameEnd(
   }
 
   /*
-   * 악마 수 >= 살아있는 생존자 수.
+   * 3. 실제 퇴장으로 참가 인원이 최소 인원보다 적어진 경우만
+   *    인원 부족으로 종료한다.
+   *
+   * state === "ghost"는 사망/퇴출 상태일 뿐,
+   * activePlayers에는 계속 포함되므로
+   * 단순 처치 때문에 이 조건이 발동하지 않는다.
    */
+  const hasActuallyLeft =
+    allGamePlayers.some(
+      player =>
+        player.leftGame ===
+        true
+    );
+
   if (
-    aliveDevils.length >=
-    aliveSurvivors.length
+    hasActuallyLeft &&
+    activePlayers.length <
+      DEVIL_GAME_MIN_PLAYERS
   ) {
+    /*
+     * 남아있는 진영을 기준으로 승리팀 결정.
+     * 양쪽 진영이 모두 남아있다면 살아있는 인원 기준으로 판정한다.
+     */
+    const activeDevils =
+      activePlayers.filter(
+        player =>
+          player.role ===
+          "devil"
+      );
+
+    const activeSurvivors =
+      activePlayers.filter(
+        player =>
+          player.role ===
+          "survivor"
+      );
+
+    if (
+      activeDevils.length ===
+      0
+    ) {
+      finishPotatoWar(
+        room,
+        "survivor",
+        "not-enough-players"
+      );
+
+      return;
+    }
+
+    if (
+      activeSurvivors.length ===
+      0
+    ) {
+      finishPotatoWar(
+        room,
+        "devil",
+        "not-enough-players"
+      );
+
+      return;
+    }
+
+    const winningTeam =
+      aliveDevils.length >
+      aliveSurvivors.length
+        ? "devil"
+        : "survivor";
+
     finishPotatoWar(
       room,
-      "devil",
-      "devils-outnumber-survivors"
+      winningTeam,
+      "not-enough-players"
     );
+
+    return;
   }
+
+  /*
+   * 중요:
+   * 예전의
+   *
+   * aliveDevils.length >= aliveSurvivors.length
+   *
+   * 승리 조건은 사용하지 않는다.
+   * 따라서 악마와 생존자가 동수가 되어도 게임은 계속된다.
+   */
 }
 
 /* =========================================================
@@ -3678,8 +3751,6 @@ io.on(
         );
       }
     );
-const POTATO_WAR_EMERGENCY_MEETING_LIMIT = 1;
-
     /* =====================================================
        Manual Emergency Meeting
     ===================================================== */
