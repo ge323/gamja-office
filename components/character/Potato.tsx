@@ -1839,7 +1839,7 @@ function HairLayer({
     className?: string;
   }) => (
     <div
-      className={`${base} left-1/2 top-[-7px] h-[25px] w-[53px] -translate-x-1/2 rounded-[62%_62%_34%_34%] ${className}`}
+      className={`${base} left-1/2 top-[-9px] h-[21px] w-[53px] -translate-x-1/2 rounded-[62%_62%_34%_34%] ${className}`}
       style={{
         backgroundColor: hairColor,
         boxShadow: `inset 0 -4px 0 ${hairShadow}`,
@@ -1891,9 +1891,9 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[7px] top-[5px] h-[18px] w-[15px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} left-[20px] top-[6px] h-[15px] w-[14px] rotate-[6deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[8px] top-[4px] h-[17px] w-[14px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[7px] top-[3px] h-[14px] w-[15px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[20px] top-[4px] h-[12px] w-[14px] rotate-[6deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[8px] top-[3px] h-[13px] w-[14px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       </>
     );
   }
@@ -1902,8 +1902,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[5px] top-[0px] h-[35px] w-[22px] -rotate-[24deg] rounded-[70%_35%_75%_35%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} left-[20px] top-[8px] h-[18px] w-[22px] -rotate-[13deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[5px] top-[-2px] h-[23px] w-[20px] -rotate-[24deg] rounded-[70%_35%_75%_35%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[20px] top-[5px] h-[13px] w-[21px] -rotate-[13deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       </>
     );
   }
@@ -1912,8 +1912,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[4px] top-[4px] h-[29px] w-[22px] rotate-[10deg] rounded-[65%_35%_70%_40%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[4px] top-[4px] h-[29px] w-[22px] -rotate-[10deg] rounded-[35%_65%_40%_70%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[4px] top-[1px] h-[20px] w-[21px] rotate-[10deg] rounded-[65%_35%_70%_40%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[4px] top-[1px] h-[20px] w-[21px] -rotate-[10deg] rounded-[35%_65%_40%_70%]`} style={{ backgroundColor: hairColor }} />
         <div className={`${base} left-1/2 top-[-3px] h-[20px] w-[3px] -translate-x-1/2 rotate-[2deg] rounded-full`} style={{ backgroundColor: hairHighlight }} />
       </>
     );
@@ -1928,7 +1928,7 @@ function HairLayer({
         {[12, 21, 30, 39].map((left, index) => (
           <div
             key={left}
-            className={`${base} top-[7px] h-[15px] w-[7px] rounded-b-full`}
+            className={`${base} top-[5px] h-[11px] w-[7px] rounded-b-full`}
             style={{ left, backgroundColor: hairColor, transform: `rotate(${index % 2 ? 5 : -5}deg)` }}
           />
         ))}
@@ -1961,8 +1961,8 @@ function HairLayer({
             }}
           />
         ))}
-        <div className={`${base} left-[8px] top-[4px] h-[22px] w-[17px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[8px] top-[5px] h-[21px] w-[17px] -rotate-[17deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[8px] top-[1px] h-[15px] w-[16px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[8px] top-[2px] h-[15px] w-[16px] -rotate-[17deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       </>
     );
   }
@@ -1971,7 +1971,7 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[7px] top-[4px] h-[26px] w-[19px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[7px] top-[1px] h-[18px] w-[18px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
         <div className={`${base} right-[-10px] top-[15px] h-[47px] w-[22px] rotate-[12deg] rounded-[65%_40%_75%_35%] border-l-[3px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
         <div className={`${base} right-[2px] top-[11px] h-[11px] w-[11px] rounded-full`} style={{ backgroundColor: hairShadow }} />
       </>
@@ -1983,8 +1983,8 @@ function HairLayer({
       <>
         <Crown />
         <div className={`${base} left-1/2 top-[-20px] h-[28px] w-[29px] -translate-x-1/2 rounded-full border-[2px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
-        <div className={`${base} left-[8px] top-[5px] h-[23px] w-[18px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[8px] top-[5px] h-[23px] w-[18px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[8px] top-[2px] h-[16px] w-[17px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[8px] top-[2px] h-[16px] w-[17px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       </>
     );
   }
@@ -1993,8 +1993,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[5px] top-[4px] h-[24px] w-[18px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[5px] top-[4px] h-[24px] w-[18px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[5px] top-[1px] h-[17px] w-[17px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[5px] top-[1px] h-[17px] w-[17px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
         {[22, 32, 42, 52].map((top, index) => (
           <div key={`l-${top}`} className={`${base} left-[0px] h-[13px] w-[12px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? -12 : 12}deg)` }} />
         ))}
@@ -2025,8 +2025,8 @@ function HairLayer({
       <Crown />
       <div className={`${base} left-[-2px] top-[7px] h-[59px] w-[17px] rounded-[65%_30%_55%_45%]`} style={{ backgroundColor: hairColor }} />
       <div className={`${base} right-[-2px] top-[7px] h-[59px] w-[17px] rounded-[30%_65%_45%_55%]`} style={{ backgroundColor: hairColor }} />
-      <div className={`${base} left-[9px] top-[5px] h-[21px] w-[17px] rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-      <div className={`${base} right-[9px] top-[5px] h-[21px] w-[17px] -rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} left-[9px] top-[1px] h-[14px] w-[16px] rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} right-[9px] top-[1px] h-[14px] w-[16px] -rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
     </>
   );
 }
