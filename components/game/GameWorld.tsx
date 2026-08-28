@@ -1579,139 +1579,174 @@ const [
      Create Room
   ====================================================== */
 
-  const handleCreateDevilRoom =
-    () => {
-      const socket =
-        socketRef.current;
+  const handleCreateDevilRoom = () => {
+  const socket =
+    socketRef.current;
 
-      if (
-        !socket ||
-        !socket.connected ||
-        creatingRoom
-      ) {
+  if (
+    !socket ||
+    !socket.connected ||
+    creatingRoom
+  ) {
+    if (
+      !socket ||
+      !socket.connected
+    ) {
+      setGameError(
+        "게임 서버와 연결되어 있지 않습니다."
+      );
+    }
+
+    return;
+  }
+
+  setCreatingRoom(true);
+  setGameError("");
+
+  let finished = false;
+
+  const timeout =
+    window.setTimeout(
+      () => {
+        if (finished) {
+          return;
+        }
+
+        finished = true;
+
+        setCreatingRoom(false);
+
+        setGameError(
+          "게임방 생성 응답이 없습니다. 잠시 후 다시 시도해주세요."
+        );
+
+        /*
+         * 혹시 서버에서는 방이 만들어졌지만
+         * callback만 놓친 경우를 대비해서
+         * 최신 방 목록을 다시 요청한다.
+         */
+        socket.emit(
+          "devilRooms:list"
+        );
+      },
+      7000
+    );
+
+  socket.emit(
+    "devilRoom:create",
+
+    {
+      maxPlayers: 6,
+    },
+
+    (response: {
+      ok: boolean;
+
+      room?:
+        DevilLobbyRoom;
+
+      message?:
+        string;
+    }) => {
+      if (finished) {
         return;
       }
 
-      setCreatingRoom(
-        true
+      finished = true;
+
+      window.clearTimeout(
+        timeout
       );
 
-      setGameError(
-        ""
+      setCreatingRoom(false);
+
+      if (
+        !response?.ok ||
+        !response?.room
+      ) {
+        setGameError(
+          response?.message ??
+            "게임방을 만들지 못했습니다."
+        );
+
+        return;
+      }
+
+      setCurrentDevilRoom(
+        response.room
       );
 
-      socket.emit(
-        "devilRoom:create",
-
-        {
-          maxPlayers: 6,
-        },
-
-        (response: {
-          ok: boolean;
-
-          room?:
-            DevilLobbyRoom;
-
-          message?:
-            string;
-        }) => {
-          setCreatingRoom(
-            false
-          );
-
-          if (
-            !response.ok ||
-            !response.room
-          ) {
-            setGameError(
-              response.message ??
-                "게임방을 만들지 못했습니다."
-            );
-
-            return;
-          }
-
-          setCurrentDevilRoom(
-            response.room
-          );
-
-          setDevilLobbyMessages(
-            []
-          );
-
-          setGameMenuOpen(
-            false
-          );
-        }
+      setDevilLobbyMessages(
+        []
       );
-    };
+
+      setGameMenuOpen(
+        false
+      );
+    }
+  );
+};
 
   /* ======================================================
      Devil Game
      Join Room
   ====================================================== */
 
-  const handleJoinDevilRoom =
-    (
-      roomId: string
-    ) => {
-      const socket =
-        socketRef.current;
+const handleJoinDevilRoom = (
+  roomId: string
+) => {
+  const socket =
+    socketRef.current;
 
+  if (
+    !socket ||
+    !socket.connected
+  ) {
+    setGameError(
+      "게임 서버와 연결되어 있지 않습니다."
+    );
+
+    return;
+  }
+
+  setGameError("");
+
+  socket.emit(
+    "devilRoom:join",
+
+    roomId,
+
+    (response: {
+      ok: boolean;
+      room?: DevilLobbyRoom;
+      message?: string;
+    }) => {
       if (
-        !socket ||
-        !socket.connected
+        !response?.ok ||
+        !response?.room
       ) {
+        setGameError(
+          response?.message ??
+            "게임방에 참가하지 못했습니다."
+        );
+
         return;
       }
 
-      setGameError(
-        ""
+      setCurrentDevilRoom(
+        response.room
       );
 
-      socket.emit(
-        "devilRoom:join",
-
-        {
-          roomId,
-        },
-
-        (response: {
-          ok: boolean;
-
-          room?:
-            DevilLobbyRoom;
-
-          message?:
-            string;
-        }) => {
-          if (
-            !response.ok ||
-            !response.room
-          ) {
-            setGameError(
-              response.message ??
-                "게임방에 참가하지 못했습니다."
-            );
-
-            return;
-          }
-
-          setCurrentDevilRoom(
-            response.room
-          );
-
-          setDevilLobbyMessages(
-            []
-          );
-
-          setGameMenuOpen(
-            false
-          );
-        }
+      setDevilLobbyMessages(
+        []
       );
-    };
+
+      setGameMenuOpen(
+        false
+      );
+    }
+  );
+};
 
   /* ======================================================
      Devil Game
