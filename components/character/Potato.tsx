@@ -1809,6 +1809,13 @@ export default function Potato({
    Hair
 ========================================================= */
 
+/* =========================================================
+   Hair
+
+   얼굴 안전지대(눈/입/볼터치): x: 7~51, y: 24~58 (body 58x75 기준)
+   모든 헤어 요소는 이 사각형을 침범하지 않는다.
+========================================================= */
+
 type HairLayerProps = {
   type: HairType;
   color: string;
@@ -1832,7 +1839,7 @@ function HairLayer({
 
   const shadow = ghost
     ? "rgba(33, 74, 94, 0.22)"
-    : "rgba(0, 0, 0, 0.16)";
+    : "rgba(0, 0, 0, 0.18)";
 
   const shine = ghost
     ? "rgba(220, 246, 255, 0.2)"
@@ -1848,77 +1855,80 @@ function HairLayer({
     direction === "right";
 
   /* -----------------------------------------------------
-     정수리 캡. 항상 안전지대(y >= 24)보다 위에서 끝난다.
+     정수리 캡. 이후 모든 옆머리는 이 캡과 반드시
+     세로로 겹치게(overlap) 배치해서 이음매가 안 보이게 한다.
   ----------------------------------------------------- */
   const Cap = ({
-    top,
-    height,
-    width,
+    top = -12,
+    width = 56,
+    height = 26,
   }: {
-    top: number;
-    height: number;
-    width: number;
+    top?: number;
+    width?: number;
+    height?: number;
   }) => (
     <div
       className={`${base} left-1/2 -translate-x-1/2`}
       style={{
         top,
         width,
-        // 안전지대 침범 방지: 아무리 커도 y=20에서 끝나도록 clamp
-        height: Math.min(height, 20 - top),
+        height,
         backgroundColor: fill,
         borderRadius:
-          "50% 50% 45% 45% / 60% 60% 40% 40%",
+          "50% 50% 45% 45% / 65% 65% 35% 35%",
         boxShadow: `inset 0 -4px 0 ${shadow}`,
       }}
     >
       <div
-        className="absolute left-[15px] top-[5px] h-[3px] w-[18px] -rotate-[8deg] rounded-full"
+        className="absolute left-[14px] top-[6px] h-[3px] w-[18px] -rotate-[8deg] rounded-full"
         style={{ backgroundColor: shine }}
       />
     </div>
   );
 
   /* -----------------------------------------------------
-     옆으로 늘어지는 머리 (볼~어깨 라인).
-     안전지대(x: 7~51) 바깥, 즉 왼쪽은 x<7, 오른쪽은 x>51에만 위치.
+     옆으로 흘러내리는 머리 한 타래.
+     - top을 캡 안쪽(음수)으로 잡아 캡과 겹치게 해서 이음매 제거
+     - 몸통에 바짝 붙이고(overhang을 작게), 아래로 갈수록
+       clip-path로 좁아지게 해서 "귀"가 아니라 "머리카락"처럼 보이게 함
   ----------------------------------------------------- */
-  const SidePanel = ({
+  const SideLock = ({
     side,
-    top,
     height,
+    curl = false,
   }: {
     side: "left" | "right";
-    top: number;
     height: number;
-  }) => (
-    <div
-      className={base}
-      style={
-        side === "left"
-          ? {
-              left: -8,
-              top,
-              width: 14, // x: -8 ~ 6, 안전지대(x>=7) 침범 안 함
-              height,
-              backgroundColor: fill,
-              borderRadius: "45% 45% 50% 50%",
-            }
-          : {
-              right: -8,
-              top,
-              width: 14, // x: 52 ~ 66, 안전지대(x<=51) 침범 안 함
-              height,
-              backgroundColor: fill,
-              borderRadius: "45% 45% 50% 50%",
-            }
-      }
-    />
-  );
+    curl?: boolean;
+  }) => {
+    const width = 15;
+    const posStyle =
+      side === "left"
+        ? { left: -5 }
+        : { right: -5 };
 
-  /* -----------------------------------------------------
-     이마 앞머리. 항상 안전지대(y>=24) 위에서 끝난다.
-  ----------------------------------------------------- */
+    return (
+      <div
+        className={base}
+        style={{
+          ...posStyle,
+          top: -2, // 캡(top -12, height 26 → bottom 14)과 확실히 겹치도록
+          width,
+          height,
+          backgroundColor: fill,
+          clipPath:
+            "polygon(0% 0%, 100% 0%, 92% 78%, 55% 100%, 30% 92%, 8% 70%)",
+          boxShadow: curl
+            ? `inset ${
+                side === "left" ? "-3px" : "3px"
+              } 0 0 ${shadow}`
+            : undefined,
+        }}
+      />
+    );
+  };
+
+  /* 이마를 덮는 짧은 앞머리 — short / side / middle 전용 */
   const Fringe = ({
     side,
     top,
@@ -1938,7 +1948,7 @@ function HairLayer({
               left: 8,
               top,
               width,
-              height: 20 - top, // 항상 y=20에서 끝나도록 계산
+              height: 20 - top,
               backgroundColor: fill,
               transform: `rotate(${rotate}deg)`,
             }
@@ -1954,7 +1964,7 @@ function HairLayer({
     />
   );
 
-  const Bun = ({ top = -20 }: { top?: number }) => (
+  const Bun = ({ top = -24 }: { top?: number }) => (
     <div
       className={`${base} left-1/2 -translate-x-1/2 rounded-full`}
       style={{
@@ -1967,7 +1977,6 @@ function HairLayer({
     />
   );
 
-  /* 포니테일: 몸통 옆(안전지대 밖)으로만 뻗어나간다 */
   const Ponytail = ({
     toward,
   }: {
@@ -1977,8 +1986,8 @@ function HairLayer({
       <div
         className={`${base} left-1/2 -translate-x-1/2`}
         style={{
-          top: 4,
-          width: 14,
+          top: 2,
+          width: 13,
           height: 58,
           backgroundColor: fill,
           borderRadius: "60% 40% 70% 30%",
@@ -1989,27 +1998,21 @@ function HairLayer({
       <div
         className={base}
         style={{
-          right: -14, // x: 58~44, 안전지대(x<=51) 밖 유지
-          top: 8,
-          width: 14,
+          right: -13,
+          top: 4,
+          width: 13,
           height: 50,
           backgroundColor: fill,
           borderRadius: "60% 40% 70% 30%",
-          transform: "rotate(14deg)",
+          transform: "rotate(16deg)",
         }}
       />
     );
 
-  const Braids = ({
-    spanTop,
-    count = 4,
-  }: {
-    spanTop: number;
-    count?: number;
-  }) => {
+  const Braids = ({ count = 4 }: { count?: number }) => {
     const steps = Array.from(
       { length: count },
-      (_, index) => spanTop + index * 12
+      (_, index) => 12 + index * 12
     );
 
     return (
@@ -2019,15 +2022,13 @@ function HairLayer({
             key={`l-${top}`}
             className={`${base} rounded-full border`}
             style={{
-              left: -10, // 안전지대(x>=7) 밖
+              left: -9,
               top,
               width: 12 - index,
               height: 13 - index,
               backgroundColor: fill,
               borderColor: shadow,
-              transform: `rotate(${
-                index % 2 ? -10 : 10
-              }deg)`,
+              transform: `rotate(${index % 2 ? -10 : 10}deg)`,
             }}
           />
         ))}
@@ -2037,15 +2038,13 @@ function HairLayer({
             key={`r-${top}`}
             className={`${base} rounded-full border`}
             style={{
-              right: -10, // 안전지대(x<=51) 밖
+              right: -9,
               top,
               width: 12 - index,
               height: 13 - index,
               backgroundColor: fill,
               borderColor: shadow,
-              transform: `rotate(${
-                index % 2 ? 10 : -10
-              }deg)`,
+              transform: `rotate(${index % 2 ? 10 : -10}deg)`,
             }}
           />
         ))}
@@ -2053,11 +2052,7 @@ function HairLayer({
     );
   };
 
-  const Spikes = ({
-    heights,
-  }: {
-    heights: number[];
-  }) => (
+  const Spikes = ({ heights }: { heights: number[] }) => (
     <div
       className={`${base} left-1/2 top-[-15px] flex w-[54px] -translate-x-1/2 items-end justify-center gap-[1px]`}
     >
@@ -2077,39 +2072,33 @@ function HairLayer({
   if (profile) {
     const content = (
       <>
-        <Cap top={-10} width={58} height={20} />
+        <Cap top={-10} width={56} height={22} />
 
         {(type === "bob" ||
           type === "curly" ||
           type === "long") && (
-          <SidePanel
+          <SideLock
             side="right"
-            top={14}
             height={
               type === "long"
-                ? 60
+                ? 62
                 : type === "curly"
-                  ? 44
+                  ? 46
                   : 38
             }
+            curl={type === "curly"}
           />
         )}
 
-        {type === "ponytail" && (
-          <Ponytail toward="side" />
-        )}
+        {type === "ponytail" && <Ponytail toward="side" />}
 
-        {type === "bun" && <Bun top={-22} />}
+        {type === "bun" && <Bun top={-24} />}
 
-        {type === "braid" && (
-          <Braids spanTop={16} count={3} />
-        )}
+        {type === "braid" && <Braids count={3} />}
 
-        {type === "spike" && (
-          <Spikes heights={[18, 26, 20]} />
-        )}
+        {type === "spike" && <Spikes heights={[18, 26, 20]} />}
 
-        {/* 이마를 살짝 덮는 짧은 앞머리 (스파이크 제외) */}
+        {/* 이마 살짝 덮는 짧은 앞머리 (스파이크 제외) */}
         {type !== "spike" && (
           <div
             className={`${base} rounded-b-[80%]`}
@@ -2117,7 +2106,7 @@ function HairLayer({
               left: 6,
               top: -2,
               width: 15,
-              height: 18, // y=16까지, 눈(y>=~29)과 여유 확보
+              height: 16,
               backgroundColor: fill,
               transform: "rotate(14deg)",
             }}
@@ -2129,11 +2118,7 @@ function HairLayer({
     return (
       <div
         className="absolute inset-0"
-        style={
-          mirror
-            ? { transform: "scaleX(-1)" }
-            : undefined
-        }
+        style={mirror ? { transform: "scaleX(-1)" } : undefined}
       >
         {content}
       </div>
@@ -2146,36 +2131,31 @@ function HairLayer({
   if (back) {
     return (
       <>
-        <Cap top={-14} width={62} height={30} />
+        <Cap top={-14} width={62} height={32} />
 
         {(type === "bob" ||
           type === "curly" ||
           type === "long" ||
           type === "braid") && (
           <>
-            <SidePanel
+            <SideLock
               side="left"
-              top={8}
               height={type === "long" ? 60 : 38}
+              curl={type === "curly"}
             />
-
-            <SidePanel
+            <SideLock
               side="right"
-              top={8}
               height={type === "long" ? 60 : 38}
+              curl={type === "curly"}
             />
           </>
         )}
 
-        {type === "ponytail" && (
-          <Ponytail toward="back" />
-        )}
+        {type === "ponytail" && <Ponytail toward="back" />}
 
-        {type === "bun" && <Bun top={-24} />}
+        {type === "bun" && <Bun top={-26} />}
 
-        {type === "braid" && (
-          <Braids spanTop={16} count={4} />
-        )}
+        {type === "braid" && <Braids count={4} />}
 
         {type === "spike" && (
           <Spikes heights={[22, 32, 38, 32, 22]} />
@@ -2186,12 +2166,10 @@ function HairLayer({
 
   /* =====================================================
      정면 (direction === "down")
-     — 눈/입/볼터치가 항상 보이도록, 어떤 요소도
-       x:[7,51] y:[24,58] 안전지대를 침범하지 않는다.
   ===================================================== */
   return (
     <>
-      <Cap top={-10} width={60} height={20} />
+      <Cap />
 
       {type === "short" && (
         <>
@@ -2222,32 +2200,28 @@ function HairLayer({
         type === "curly" ||
         type === "long") && (
         <>
-          <SidePanel
+          <SideLock
             side="left"
-            top={14}
             height={
               type === "long"
                 ? 58
                 : type === "curly"
                   ? 42
-                  : 38
+                  : 36
             }
+            curl={type === "curly"}
           />
-
-          <SidePanel
+          <SideLock
             side="right"
-            top={14}
             height={
               type === "long"
                 ? 58
                 : type === "curly"
                   ? 42
-                  : 38
+                  : 36
             }
+            curl={type === "curly"}
           />
-
-          <Fringe side="left" top={2} width={16} rotate={16} />
-          <Fringe side="right" top={2} width={16} rotate={-15} />
         </>
       )}
 
@@ -2263,7 +2237,7 @@ function HairLayer({
         <>
           <Fringe side="left" top={2} width={15} rotate={14} />
           <Fringe side="right" top={2} width={15} rotate={-14} />
-          <Bun top={-22} />
+          <Bun />
         </>
       )}
 
@@ -2271,7 +2245,7 @@ function HairLayer({
         <>
           <Fringe side="left" top={2} width={15} rotate={14} />
           <Fringe side="right" top={2} width={15} rotate={-14} />
-          <Braids spanTop={16} count={4} />
+          <Braids />
         </>
       )}
 
