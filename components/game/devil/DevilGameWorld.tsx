@@ -5614,7 +5614,7 @@ export default function DevilGameWorld({
                 </div>
               </div>
 
-              <style jsx>{`
+              <style>{`
                 @keyframes killBackdrop {
                   0% {
                     opacity: 0;
@@ -6548,7 +6548,7 @@ export default function DevilGameWorld({
             </button>
           </div>
 
-          <style jsx>{`
+          <style>{`
             @keyframes potatoVictoryBounce {
               0% {
                 transform: translateY(0) rotate(-1deg);
