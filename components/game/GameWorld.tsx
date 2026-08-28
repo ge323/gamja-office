@@ -2642,76 +2642,96 @@ const handleToggleDevilReady =
                       player.nickname
                     )
                   }
+
                   glasses={
                     player
                       .characterStyle
                       ?.glasses ??
                     "none"
                   }
+
                   hat={
                     player
                       .characterStyle
                       ?.hat ??
                     "none"
                   }
+
                   ribbon={
                     player
                       .characterStyle
                       ?.ribbon ??
                     false
                   }
+
                   tie={
                     player
                       .characterStyle
                       ?.tie ??
                     false
                   }
+
+                  special={
+                    player
+                      .characterStyle
+                      ?.special ??
+                    "none"
+                  }
+
                   color={
                     player
                       .characterStyle
                       ?.color ??
                     "default"
                   }
+
                   hair={
                     player
                       .characterStyle
                       ?.hair ??
                     "none"
                   }
+
                   hairColor={
                     player
                       .characterStyle
                       ?.hairColor ??
                     "brown"
                   }
+
                   eyes={
                     player
                       .characterStyle
                       ?.eyes ??
                     "dot"
                   }
+
                   mouth={
                     player
                       .characterStyle
                       ?.mouth ??
                     "default"
                   }
+
                   blush={
                     player
                       .characterStyle
                       ?.blush ??
                     true
                   }
+
                   freckles={
                     player
                       .characterStyle
                       ?.freckles ??
                     false
                   }
+
                   moving={
                     player.moving ??
                     false
                   }
+
                   direction={
                     player.direction ??
                     "down"
@@ -2786,48 +2806,66 @@ const handleToggleDevilReady =
                   nickname
                 )
               }
+
               glasses={
                 characterStyle.glasses
               }
+
               hat={
                 characterStyle.hat
               }
+
               ribbon={
                 characterStyle.ribbon
               }
+
               tie={
                 characterStyle.tie
               }
+
+              special={
+                characterStyle.special ??
+                "none"
+              }
+
               color={
                 characterStyle.color
               }
+
               hair={
                 characterStyle.hair ??
                 "none"
               }
+
               hairColor={
                 characterStyle.hairColor ??
                 "brown"
               }
+
               eyes={
                 characterStyle.eyes ??
                 "dot"
               }
+
               mouth={
                 characterStyle.mouth ??
                 "default"
               }
+
               blush={
                 characterStyle.blush ??
                 true
               }
+
               freckles={
                 characterStyle.freckles ??
                 false
               }
+
               moving={
                 moving
               }
+
               direction={
                 direction
               }
