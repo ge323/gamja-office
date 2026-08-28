@@ -1826,415 +1826,457 @@ function HairLayer({
     return null;
   }
 
-  const hairColor =
-    ghost
-      ? "rgba(67, 107, 128, 0.72)"
-      : color;
+  const fill = ghost
+    ? "rgba(67, 107, 128, 0.72)"
+    : color;
 
-  const shadow =
-    ghost
-      ? "rgba(33, 74, 94, 0.22)"
-      : "rgba(0, 0, 0, 0.17)";
+  const shadow = ghost
+    ? "rgba(33, 74, 94, 0.22)"
+    : "rgba(0, 0, 0, 0.16)";
 
-  const shine =
-    ghost
-      ? "rgba(220, 246, 255, 0.16)"
-      : "rgba(255, 255, 255, 0.18)";
+  const shine = ghost
+    ? "rgba(220, 246, 255, 0.2)"
+    : "rgba(255, 255, 255, 0.22)";
 
-  /*
-   * 머리 구조를 3단계로 나눈다.
-   *
-   * back  : 얼굴 뒤로 내려오는 머리
-   * crown : 정수리 볼륨
-   * bang  : 이마까지만 내려오는 앞머리
-   *
-   * 눈 영역(top 약 27~39px)은 비워 둔다.
-   */
-  const Back = ({
-    className = "",
+  const base =
+    "pointer-events-none absolute z-[18]";
+
+  const back = direction === "up";
+  const mirror = direction === "right";
+  const profile =
+    direction === "left" ||
+    direction === "right";
+
+  /* -----------------------------------------------------
+     공용 헤어 캡: 감자 몸통(타원) 위에 항상 자연스럽게 얹힘.
+     모든 스타일이 이 캡을 공유하고, 그 위에 길이만 추가한다.
+  ----------------------------------------------------- */
+  const Cap = ({
+    top,
+    height,
+    width,
   }: {
-    className?: string;
+    top: number;
+    height: number;
+    width: number;
   }) => (
     <div
-      className={`pointer-events-none absolute z-[12] ${className}`}
+      className={`${base} left-1/2 -translate-x-1/2`}
       style={{
-        backgroundColor:
-          hairColor,
-        boxShadow:
-          `inset 0 -4px 0 ${shadow}`,
+        top,
+        width,
+        height,
+        backgroundColor: fill,
+        borderRadius:
+          "50% 50% 45% 45% / 60% 60% 40% 40%",
+        boxShadow: `inset 0 -4px 0 ${shadow}`,
       }}
-    />
-  );
-
-  const Front = ({
-    className = "",
-  }: {
-    className?: string;
-  }) => (
-    <div
-      className={`pointer-events-none absolute z-[24] ${className}`}
-      style={{
-        backgroundColor:
-          hairColor,
-      }}
-    />
-  );
-
-  const Crown = () => (
-    <>
-      <Front className="left-1/2 top-[-13px] h-[29px] w-[64px] -translate-x-1/2 rounded-[60%_60%_36%_36%]" />
-
+    >
       <div
-        className="
-          pointer-events-none
-          absolute
-          left-[12px]
-          top-[-5px]
-          z-[25]
-          h-[3px]
-          w-[24px]
-          -rotate-[9deg]
-          rounded-full
-        "
+        className="absolute left-[15px] top-[5px] h-[3px] w-[18px] -rotate-[8deg] rounded-full"
+        style={{ backgroundColor: shine }}
+      />
+    </div>
+  );
+
+  /* 볼~어깨 라인을 따라 내려오는 좌우 길이 패널 */
+  const SidePanel = ({
+    side,
+    top,
+    height,
+    width,
+  }: {
+    side: "left" | "right";
+    top: number;
+    height: number;
+    width: number;
+  }) => (
+    <div
+      className={base}
+      style={
+        side === "left"
+          ? {
+              left: 4,
+              top,
+              width,
+              height,
+              backgroundColor: fill,
+              borderRadius: "45% 45% 50% 50%",
+            }
+          : {
+              right: 4,
+              top,
+              width,
+              height,
+              backgroundColor: fill,
+              borderRadius: "45% 45% 50% 50%",
+            }
+      }
+    />
+  );
+
+  /* 이마를 덮는 앞머리 한 쪽 */
+  const Fringe = ({
+    side,
+    top,
+    height,
+    width,
+    rotate,
+  }: {
+    side: "left" | "right";
+    top: number;
+    height: number;
+    width: number;
+    rotate: number;
+  }) => (
+    <div
+      className={`${base} rounded-b-[75%]`}
+      style={
+        side === "left"
+          ? {
+              left: 8,
+              top,
+              width,
+              height,
+              backgroundColor: fill,
+              transform: `rotate(${rotate}deg)`,
+            }
+          : {
+              right: 8,
+              top,
+              width,
+              height,
+              backgroundColor: fill,
+              transform: `rotate(${rotate}deg)`,
+            }
+      }
+    />
+  );
+
+  const Bun = ({ top = -18 }: { top?: number }) => (
+    <div
+      className={`${base} left-1/2 -translate-x-1/2 rounded-full`}
+      style={{
+        top,
+        width: 24,
+        height: 24,
+        backgroundColor: fill,
+        border: `2px solid ${shadow}`,
+      }}
+    />
+  );
+
+  const Ponytail = ({
+    toward,
+  }: {
+    toward: "back" | "side";
+  }) =>
+    toward === "back" ? (
+      <div
+        className={`${base} left-1/2 -translate-x-1/2`}
         style={{
-          backgroundColor:
-            shine,
+          top: 6,
+          width: 16,
+          height: 60,
+          backgroundColor: fill,
+          borderRadius: "60% 40% 70% 30%",
+          transform: "rotate(4deg)",
         }}
       />
-    </>
-  );
+    ) : (
+      <div
+        className={base}
+        style={{
+          right: -10,
+          top: 10,
+          width: 16,
+          height: 52,
+          backgroundColor: fill,
+          borderRadius: "60% 40% 70% 30%",
+          transform: "rotate(14deg)",
+        }}
+      />
+    );
 
-  /* ======================================================
-     BACK VIEW
-  ====================================================== */
-
-  if (direction === "up") {
-    if (type === "spike") {
-      return (
-        <div className="pointer-events-none absolute left-1/2 top-[-16px] z-[18] flex w-[58px] -translate-x-1/2 items-end justify-center gap-[1px]">
-          {[21, 31, 38, 32, 23].map(
-            (height, index) => (
-              <span
-                key={index}
-                className="w-[12px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
-                style={{
-                  height,
-                  backgroundColor:
-                    hairColor,
-                }}
-              />
-            )
-          )}
-        </div>
-      );
-    }
+  const Braids = ({
+    spanTop,
+    count = 4,
+  }: {
+    spanTop: number;
+    count?: number;
+  }) => {
+    const steps = Array.from(
+      { length: count },
+      (_, index) => spanTop + index * 12
+    );
 
     return (
       <>
-        <Crown />
+        {steps.map((top, index) => (
+          <div
+            key={`l-${top}`}
+            className={`${base} rounded-full border`}
+            style={{
+              left: -2,
+              top,
+              width: 13 - index,
+              height: 14 - index,
+              backgroundColor: fill,
+              borderColor: shadow,
+              transform: `rotate(${
+                index % 2 ? -10 : 10
+              }deg)`,
+            }}
+          />
+        ))}
+
+        {steps.map((top, index) => (
+          <div
+            key={`r-${top}`}
+            className={`${base} rounded-full border`}
+            style={{
+              right: -2,
+              top,
+              width: 13 - index,
+              height: 14 - index,
+              backgroundColor: fill,
+              borderColor: shadow,
+              transform: `rotate(${
+                index % 2 ? 10 : -10
+              }deg)`,
+            }}
+          />
+        ))}
+      </>
+    );
+  };
+
+  const Spikes = ({
+    heights,
+  }: {
+    heights: number[];
+  }) => (
+    <div
+      className={`${base} left-1/2 top-[-15px] flex w-[54px] -translate-x-1/2 items-end justify-center gap-[1px]`}
+    >
+      {heights.map((height, index) => (
+        <span
+          key={index}
+          className="w-[11px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+          style={{ height, backgroundColor: fill }}
+        />
+      ))}
+    </div>
+  );
+
+  /* =====================================================
+     옆모습 (left / right)
+     "left" 기준으로 그리고, right는 좌우 반전해서 재사용한다.
+  ===================================================== */
+  if (profile) {
+    const content = (
+      <>
+        <Cap top={-10} width={58} height={34} />
 
         {(type === "bob" ||
           type === "curly" ||
           type === "long") && (
-          <Back className="left-1/2 top-[2px] h-[62px] w-[72px] -translate-x-1/2 rounded-[45%_45%_32%_32%]" />
+          <SidePanel
+            side="right"
+            top={16}
+            width={20}
+            height={type === "long" ? 58 : 40}
+          />
         )}
 
         {type === "ponytail" && (
-          <>
-            <Back className="left-1/2 top-[1px] h-[45px] w-[66px] -translate-x-1/2 rounded-[48%]" />
-            <Back className="right-[-15px] top-[14px] h-[52px] w-[28px] rotate-[13deg] rounded-[70%_35%_70%_35%]" />
-          </>
+          <Ponytail toward="side" />
         )}
 
-        {type === "bun" && (
-          <>
-            <Back className="left-1/2 top-[0px] h-[40px] w-[65px] -translate-x-1/2 rounded-[50%]" />
-            <Back className="left-1/2 top-[-25px] h-[31px] w-[33px] -translate-x-1/2 rounded-full" />
-          </>
-        )}
+        {type === "bun" && <Bun top={-20} />}
 
         {type === "braid" && (
-          <>
-            <Back className="left-1/2 top-[0px] h-[40px] w-[65px] -translate-x-1/2 rounded-[50%]" />
-
-            {[23, 36, 49].map(
-              (top, index) => (
-                <Back
-                  key={`back-l-${top}`}
-                  className="left-[-5px] h-[16px] w-[15px] rounded-full"
-                />
-              )
-            )}
-
-            {[23, 36, 49].map(
-              top => (
-                <Back
-                  key={`back-r-${top}`}
-                  className="right-[-5px] h-[16px] w-[15px] rounded-full"
-                />
-              )
-            )}
-          </>
+          <Braids spanTop={18} count={3} />
         )}
 
-        {type !== "bob" &&
-          type !== "curly" &&
-          type !== "long" &&
-          type !== "ponytail" &&
-          type !== "bun" &&
-          type !== "braid" && (
-          <Back className="left-1/2 top-[0px] h-[38px] w-[66px] -translate-x-1/2 rounded-[50%]" />
+        {type === "spike" && (
+          <Spikes heights={[18, 26, 20]} />
+        )}
+
+        {/* 얼굴 쪽 짧은 앞머리 (스파이크 제외) */}
+        {type !== "spike" && (
+          <div
+            className={`${base} rounded-b-[80%]`}
+            style={{
+              left: 6,
+              top: -2,
+              width: 16,
+              height: 16,
+              backgroundColor: fill,
+              transform: "rotate(14deg)",
+            }}
+          />
         )}
       </>
     );
-  }
 
-  /* ======================================================
-     SHORT
-  ====================================================== */
-
-  if (type === "short") {
     return (
-      <>
-        <Crown />
-
-        <Front className="left-[5px] top-[3px] h-[15px] w-[18px] rotate-[18deg] rounded-b-[75%]" />
-        <Front className="left-[20px] top-[3px] h-[13px] w-[17px] rotate-[5deg] rounded-b-[75%]" />
-        <Front className="right-[6px] top-[2px] h-[15px] w-[17px] -rotate-[16deg] rounded-b-[75%]" />
-      </>
-    );
-  }
-
-  /* ======================================================
-     SIDE PART
-  ====================================================== */
-
-  if (type === "side") {
-    return (
-      <>
-        <Crown />
-
-        <Front className="left-[1px] top-[-1px] h-[23px] w-[29px] -rotate-[20deg] rounded-[70%_35%_72%_35%]" />
-
-        <Front className="left-[19px] top-[2px] h-[15px] w-[27px] -rotate-[9deg] rounded-b-[75%]" />
-      </>
-    );
-  }
-
-  /* ======================================================
-     MIDDLE PART
-  ====================================================== */
-
-  if (type === "middle") {
-    return (
-      <>
-        <Crown />
-
-        <Front className="left-[0px] top-[0px] h-[21px] w-[27px] rotate-[11deg] rounded-[65%_35%_70%_40%]" />
-
-        <Front className="right-[0px] top-[0px] h-[21px] w-[27px] -rotate-[11deg] rounded-[35%_65%_40%_70%]" />
-
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[-7px]
-            z-[26]
-            h-[19px]
-            w-[2px]
-            -translate-x-1/2
-            rounded-full
-          "
-          style={{
-            backgroundColor:
-              shine,
-          }}
-        />
-      </>
-    );
-  }
-
-  /* ======================================================
-     BOB
-  ====================================================== */
-
-  if (type === "bob") {
-    return (
-      <>
-        <Back className="left-1/2 top-[2px] h-[57px] w-[72px] -translate-x-1/2 rounded-[45%_45%_38%_38%]" />
-
-        <Crown />
-
-        <Front className="left-[5px] top-[3px] h-[16px] w-[17px] rotate-[12deg] rounded-b-[80%]" />
-        <Front className="left-[19px] top-[3px] h-[14px] w-[13px] rotate-[4deg] rounded-b-[80%]" />
-        <Front className="right-[19px] top-[3px] h-[14px] w-[13px] -rotate-[4deg] rounded-b-[80%]" />
-        <Front className="right-[5px] top-[3px] h-[16px] w-[17px] -rotate-[12deg] rounded-b-[80%]" />
-      </>
-    );
-  }
-
-  /* ======================================================
-     WAVE
-  ====================================================== */
-
-  if (type === "curly") {
-    return (
-      <>
-        {/* 하나의 큰 뒷머리 실루엣 */}
-        <Back className="left-1/2 top-[0px] h-[69px] w-[78px] -translate-x-1/2 rounded-[45%_45%_32%_32%]" />
-
-        {/* 옆 웨이브는 얼굴 바깥으로만 */}
-        <Back className="left-[-10px] top-[25px] h-[25px] w-[24px] -rotate-[16deg] rounded-[65%_35%_65%_35%]" />
-        <Back className="left-[-7px] top-[45px] h-[24px] w-[23px] rotate-[12deg] rounded-[35%_65%_35%_65%]" />
-
-        <Back className="right-[-10px] top-[25px] h-[25px] w-[24px] rotate-[16deg] rounded-[35%_65%_35%_65%]" />
-        <Back className="right-[-7px] top-[45px] h-[24px] w-[23px] -rotate-[12deg] rounded-[65%_35%_65%_35%]" />
-
-        <Crown />
-
-        {/* 앞머리는 눈 위에서 끝남 */}
-        <Front className="left-[5px] top-[1px] h-[17px] w-[20px] rotate-[14deg] rounded-b-[75%]" />
-        <Front className="right-[5px] top-[1px] h-[17px] w-[20px] -rotate-[14deg] rounded-b-[75%]" />
-      </>
-    );
-  }
-
-  /* ======================================================
-     PONYTAIL
-  ====================================================== */
-
-  if (type === "ponytail") {
-    return (
-      <>
-        <Back className="left-1/2 top-[1px] h-[43px] w-[67px] -translate-x-1/2 rounded-[48%]" />
-
-        <Back className="right-[-17px] top-[13px] h-[57px] w-[30px] rotate-[13deg] rounded-[65%_35%_72%_35%]" />
-
-        <Crown />
-
-        <Front className="left-[5px] top-[1px] h-[17px] w-[21px] rotate-[14deg] rounded-b-[75%]" />
-
-        <Front className="right-[8px] top-[2px] h-[15px] w-[18px] -rotate-[9deg] rounded-b-[75%]" />
-
-        <div
-          className="
-            pointer-events-none
-            absolute
-            right-[-1px]
-            top-[9px]
-            z-[27]
-            h-[11px]
-            w-[11px]
-            rounded-full
-          "
-          style={{
-            backgroundColor:
-              shadow,
-          }}
-        />
-      </>
-    );
-  }
-
-  /* ======================================================
-     BUN
-  ====================================================== */
-
-  if (type === "bun") {
-    return (
-      <>
-        <Back className="left-1/2 top-[0px] h-[43px] w-[67px] -translate-x-1/2 rounded-[48%]" />
-
-        <Back className="left-1/2 top-[-27px] h-[33px] w-[35px] -translate-x-1/2 rounded-full" />
-
-        <Crown />
-
-        <Front className="left-[5px] top-[1px] h-[17px] w-[20px] rotate-[13deg] rounded-b-[75%]" />
-
-        <Front className="right-[5px] top-[1px] h-[17px] w-[20px] -rotate-[13deg] rounded-b-[75%]" />
-      </>
-    );
-  }
-
-  /* ======================================================
-     BRAID
-  ====================================================== */
-
-  if (type === "braid") {
-    return (
-      <>
-        <Back className="left-1/2 top-[0px] h-[43px] w-[67px] -translate-x-1/2 rounded-[48%]" />
-
-        <Crown />
-
-        <Front className="left-[5px] top-[1px] h-[16px] w-[20px] rotate-[13deg] rounded-b-[75%]" />
-        <Front className="right-[5px] top-[1px] h-[16px] w-[20px] -rotate-[13deg] rounded-b-[75%]" />
-
-        {[22, 35, 48, 61].map(
-          (top, index) => (
-            <Back
-              key={`l-${top}`}
-              className="left-[-6px] h-[16px] w-[15px] rounded-full"
-            />
-          )
-        )}
-
-        {[22, 35, 48, 61].map(
-          (top, index) => (
-            <Back
-              key={`r-${top}`}
-              className="right-[-6px] h-[16px] w-[15px] rounded-full"
-            />
-          )
-        )}
-      </>
-    );
-  }
-
-  /* ======================================================
-     SPIKE
-  ====================================================== */
-
-  if (type === "spike") {
-    return (
-      <div className="pointer-events-none absolute left-1/2 top-[-17px] z-[22] flex w-[60px] -translate-x-1/2 items-end justify-center gap-[1px]">
-        {[22, 32, 40, 34, 24].map(
-          (height, index) => (
-            <span
-              key={index}
-              className="w-[12px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
-              style={{
-                height,
-                backgroundColor:
-                  hairColor,
-              }}
-            />
-          )
-        )}
+      <div
+        className="absolute inset-0"
+        style={
+          mirror
+            ? { transform: "scaleX(-1)" }
+            : undefined
+        }
+      >
+        {content}
       </div>
     );
   }
 
-  /* ======================================================
-     LONG
-  ====================================================== */
+  /* =====================================================
+     뒷모습 (direction === "up")
+  ===================================================== */
+  if (back) {
+    return (
+      <>
+        <Cap top={-14} width={64} height={46} />
 
+        {(type === "bob" ||
+          type === "curly" ||
+          type === "long" ||
+          type === "braid") && (
+          <>
+            <SidePanel
+              side="left"
+              top={10}
+              width={18}
+              height={type === "long" ? 62 : 40}
+            />
+
+            <SidePanel
+              side="right"
+              top={10}
+              width={18}
+              height={type === "long" ? 62 : 40}
+            />
+          </>
+        )}
+
+        {type === "ponytail" && (
+          <Ponytail toward="back" />
+        )}
+
+        {type === "bun" && <Bun top={-24} />}
+
+        {type === "braid" && (
+          <Braids spanTop={18} count={4} />
+        )}
+
+        {type === "spike" && (
+          <Spikes heights={[22, 32, 38, 32, 22]} />
+        )}
+      </>
+    );
+  }
+
+  /* =====================================================
+     정면 (direction === "down")
+  ===================================================== */
   return (
     <>
-      {/* 긴 머리는 얼굴 뒤에 큰 한 덩어리로 만든다 */}
-      <Back className="left-1/2 top-[-1px] h-[76px] w-[78px] -translate-x-1/2 rounded-[46%_46%_28%_28%]" />
+      <Cap top={-10} width={60} height={32} />
 
-      <Crown />
+      {type === "short" && (
+        <>
+          <Fringe side="left" top={4} width={16} height={15} rotate={16} />
+          <Fringe side="right" top={4} width={16} height={14} rotate={-15} />
+        </>
+      )}
 
-      {/* 이마만 살짝 덮는 앞머리 */}
-      <Front className="left-[4px] top-[1px] h-[17px] w-[21px] rotate-[14deg] rounded-b-[75%]" />
+      {type === "side" && (
+        <>
+          <Fringe side="left" top={-2} width={26} height={24} rotate={-20} />
+          <Fringe side="right" top={4} width={16} height={15} rotate={-12} />
+        </>
+      )}
 
-      <Front className="right-[4px] top-[1px] h-[17px] w-[21px] -rotate-[14deg] rounded-b-[75%]" />
+      {type === "middle" && (
+        <>
+          <Fringe side="left" top={0} width={20} height={22} rotate={12} />
+          <Fringe side="right" top={0} width={20} height={22} rotate={-12} />
+          <div
+            className="absolute left-1/2 top-[-2px] h-[18px] w-[2px] -translate-x-1/2 rounded-full"
+            style={{ backgroundColor: shine }}
+          />
+        </>
+      )}
+
+      {(type === "bob" ||
+        type === "curly" ||
+        type === "long") && (
+        <>
+          <SidePanel
+            side="left"
+            top={16}
+            width={20}
+            height={
+              type === "long"
+                ? 62
+                : type === "curly"
+                  ? 46
+                  : 40
+            }
+          />
+
+          <SidePanel
+            side="right"
+            top={16}
+            width={20}
+            height={
+              type === "long"
+                ? 62
+                : type === "curly"
+                  ? 46
+                  : 40
+            }
+          />
+
+          <Fringe side="left" top={2} width={16} height={15} rotate={16} />
+          <Fringe side="right" top={2} width={16} height={14} rotate={-15} />
+        </>
+      )}
+
+      {type === "ponytail" && (
+        <>
+          <Fringe side="left" top={2} width={16} height={15} rotate={16} />
+          <Fringe side="right" top={2} width={16} height={14} rotate={-15} />
+          <Ponytail toward="side" />
+        </>
+      )}
+
+      {type === "bun" && (
+        <>
+          <Fringe side="left" top={2} width={15} height={15} rotate={14} />
+          <Fringe side="right" top={2} width={15} height={15} rotate={-14} />
+          <Bun top={-20} />
+        </>
+      )}
+
+      {type === "braid" && (
+        <>
+          <Fringe side="left" top={2} width={15} height={15} rotate={14} />
+          <Fringe side="right" top={2} width={15} height={15} rotate={-14} />
+          <Braids spanTop={18} count={4} />
+        </>
+      )}
+
+      {type === "spike" && (
+        <Spikes heights={[20, 29, 35, 30, 22]} />
+      )}
     </>
   );
 }
-
 /* =========================================================
    Eyes
 ========================================================= */
