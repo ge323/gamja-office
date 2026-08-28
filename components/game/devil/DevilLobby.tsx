@@ -965,40 +965,97 @@ export default function DevilLobby({
                           player.nickname
                         )
                       }
+
                       glasses={
                         player
                           .characterStyle
                           ?.glasses ??
                         "none"
                       }
+
                       hat={
                         player
                           .characterStyle
                           ?.hat ??
                         "none"
                       }
+
                       ribbon={
                         player
                           .characterStyle
                           ?.ribbon ??
                         false
                       }
+
                       tie={
                         player
                           .characterStyle
                           ?.tie ??
                         false
                       }
+
+                      special={
+                        player
+                          .characterStyle
+                          ?.special ??
+                        "none"
+                      }
+
                       color={
                         player
                           .characterStyle
                           ?.color ??
                         "default"
                       }
+
+                      hair={
+                        player
+                          .characterStyle
+                          ?.hair ??
+                        "none"
+                      }
+
+                      hairColor={
+                        player
+                          .characterStyle
+                          ?.hairColor ??
+                        "brown"
+                      }
+
+                      eyes={
+                        player
+                          .characterStyle
+                          ?.eyes ??
+                        "dot"
+                      }
+
+                      mouth={
+                        player
+                          .characterStyle
+                          ?.mouth ??
+                        "default"
+                      }
+
+                      blush={
+                        player
+                          .characterStyle
+                          ?.blush ??
+                        true
+                      }
+
+                      freckles={
+                        player
+                          .characterStyle
+                          ?.freckles ??
+                        false
+                      }
+
                       direction="down"
+
                       moving={
                         false
                       }
+
                       scale={
                         0.9
                       }
