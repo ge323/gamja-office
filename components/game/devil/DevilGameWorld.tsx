@@ -185,6 +185,12 @@ type MeetingResult = {
   number;
 };
 
+type TeamMissionProgress = {
+  completed: number;
+  total: number;
+  percentage: number;
+};
+
 type GameStatePayload = {
   roomId: string;
 
@@ -193,6 +199,13 @@ type GameStatePayload = {
 
   corpses:
   Corpse[];
+
+  /*
+   * 생존자 팀 전체 미션 진행도.
+   * 서버에서 악마를 제외해 계산한 값이다.
+   */
+  missionProgress?:
+  TeamMissionProgress;
 
   meeting?:
   MeetingState | null;
@@ -320,6 +333,38 @@ const REMOTE_TELEPORT_DISTANCE =
  */
 const KILL_SEQUENCE_DURATION =
   2800;
+
+/* =========================================================
+   Mobile / Responsive
+========================================================= */
+
+const MOBILE_BREAKPOINT =
+  768;
+
+const MOBILE_VIEWPORT_PADDING =
+  8;
+
+const MOBILE_PLAYER_SPEED_MULTIPLIER =
+  0.92;
+
+/*
+ * 중앙 회의 테이블 기준 위치.
+ * 현재 맵의 중앙 회의 구역을 기준으로 한다.
+ */
+const EMERGENCY_MEETING_POSITION: Position = {
+  x: 1100,
+  y: 700,
+};
+
+const EMERGENCY_MEETING_DISTANCE =
+  175;
+
+/*
+ * 긴급회의는 남발되지 않도록
+ * 한 플레이어당 게임 중 1회만 요청 가능.
+ */
+const EMERGENCY_MEETING_MAX_USES =
+  1;
 
 /* =========================================================
    Helpers
@@ -559,6 +604,30 @@ export default function DevilGameWorld({
       null
     );
 
+  /*
+   * 모바일 가상 조이스틱.
+   */
+  const joystickVectorRef =
+    useRef<Position>({
+      x: 0,
+      y: 0,
+    });
+
+  const joystickAnimationFrameRef =
+    useRef<number | null>(
+      null
+    );
+
+  const joystickLastFrameRef =
+    useRef<number | null>(
+      null
+    );
+
+  const joystickPointerIdRef =
+    useRef<number | null>(
+      null
+    );
+
   /* ======================================================
      Game identity
   ====================================================== */
@@ -731,6 +800,43 @@ export default function DevilGameWorld({
     );
 
   /* ======================================================
+     Responsive / Mobile
+  ====================================================== */
+
+  const [
+    isMobile,
+    setIsMobile,
+  ] =
+    useState(false);
+
+  const [
+    viewportSize,
+    setViewportSize,
+  ] =
+    useState({
+      width:
+        VIEWPORT_WIDTH,
+
+      height:
+        VIEWPORT_HEIGHT,
+    });
+
+  const [
+    joystickKnob,
+    setJoystickKnob,
+  ] =
+    useState<Position>({
+      x: 0,
+      y: 0,
+    });
+
+  const [
+    emergencyMeetingUses,
+    setEmergencyMeetingUses,
+  ] =
+    useState(0);
+
+  /* ======================================================
      Position
   ====================================================== */
 
@@ -783,8 +889,18 @@ export default function DevilGameWorld({
       null
     );
 
+  const [
+    teamMissionProgress,
+    setTeamMissionProgress,
+  ] =
+    useState<TeamMissionProgress>({
+      completed: 0,
+      total: 0,
+      percentage: 0,
+    });
+
   /* ======================================================
-     Mission Progress
+     Personal Mission Progress
   ====================================================== */
 
   const totalMissionCount =
@@ -904,6 +1020,24 @@ export default function DevilGameWorld({
         ?.corpse ??
       null
       : null;
+
+  const nearEmergencyMeetingTable =
+    playerState ===
+      "alive" &&
+    !meeting &&
+    getDistance(
+      position,
+      EMERGENCY_MEETING_POSITION
+    ) <=
+      EMERGENCY_MEETING_DISTANCE;
+
+  const canCallEmergencyMeeting =
+    nearEmergencyMeetingTable &&
+    emergencyMeetingUses <
+      EMERGENCY_MEETING_MAX_USES &&
+    !activeMission &&
+    !mapOpen &&
+    !deathOverlay;
 
   /* ======================================================
      Nearby kill target
@@ -1082,6 +1216,14 @@ export default function DevilGameWorld({
         state.corpses ?? []
       );
 
+      setTeamMissionProgress(
+        state.missionProgress ?? {
+          completed: 0,
+          total: 0,
+          percentage: 0,
+        }
+      );
+
       if (
         state.meeting?.active
       ) {
@@ -1227,6 +1369,14 @@ export default function DevilGameWorld({
 
         setCorpses(
           state.corpses ?? []
+        );
+
+        setTeamMissionProgress(
+          state.missionProgress ?? {
+            completed: 0,
+            total: 0,
+            percentage: 0,
+          }
         );
 
         if (
@@ -2076,6 +2226,124 @@ export default function DevilGameWorld({
   ]);
 
   /* ======================================================
+     Responsive viewport
+
+     PC에서는 기존 1100 x 650을 유지하고,
+     모바일에서는 실제 visual viewport 크기를 사용한다.
+     그래서 고정 1100px 화면이 휴대폰 밖으로 밀려나지 않는다.
+  ====================================================== */
+
+  useEffect(() => {
+    const updateViewport =
+      () => {
+        const visualViewport =
+          window.visualViewport;
+
+        const rawWidth =
+          visualViewport?.width ??
+          window.innerWidth;
+
+        const rawHeight =
+          visualViewport?.height ??
+          window.innerHeight;
+
+        const mobile =
+          rawWidth <=
+          MOBILE_BREAKPOINT;
+
+        setIsMobile(
+          mobile
+        );
+
+        if (mobile) {
+          setViewportSize({
+            width:
+              Math.max(
+                320,
+                Math.floor(
+                  rawWidth -
+                  MOBILE_VIEWPORT_PADDING
+                )
+              ),
+
+            height:
+              Math.max(
+                480,
+                Math.floor(
+                  rawHeight -
+                  MOBILE_VIEWPORT_PADDING
+                )
+              ),
+          });
+
+          return;
+        }
+
+        setViewportSize({
+          width:
+            Math.min(
+              VIEWPORT_WIDTH,
+              Math.max(
+                720,
+                Math.floor(
+                  rawWidth -
+                  32
+                )
+              )
+            ),
+
+          height:
+            Math.min(
+              VIEWPORT_HEIGHT,
+              Math.max(
+                520,
+                Math.floor(
+                  rawHeight -
+                  32
+                )
+              )
+            ),
+        });
+      };
+
+    updateViewport();
+
+    window.addEventListener(
+      "resize",
+      updateViewport
+    );
+
+    window.addEventListener(
+      "orientationchange",
+      updateViewport
+    );
+
+    window.visualViewport
+      ?.addEventListener(
+        "resize",
+        updateViewport
+      );
+
+    return () => {
+      window.removeEventListener(
+        "resize",
+        updateViewport
+      );
+
+      window.removeEventListener(
+        "orientationchange",
+        updateViewport
+      );
+
+      window.visualViewport
+        ?.removeEventListener(
+          "resize",
+          updateViewport
+        );
+    };
+  }, []);
+
+  /* ======================================================
      Meeting timer
   ====================================================== */
 
@@ -2664,6 +2932,54 @@ export default function DevilGameWorld({
       );
     };
 
+  const requestEmergencyMeeting =
+    () => {
+      if (
+        !canCallEmergencyMeeting ||
+        meeting ||
+        playerState !==
+          "alive"
+      ) {
+        return;
+      }
+
+      stopMovement();
+
+      setCombatMessage(
+        ""
+      );
+
+      socketRef.current?.emit(
+        "devilGame:emergency-meeting",
+        {
+          roomId,
+
+          playerId:
+            myPlayerIdRef.current,
+        },
+        (response: {
+          ok: boolean;
+          message?: string;
+        }) => {
+          if (
+            !response.ok
+          ) {
+            setCombatMessage(
+              response.message ??
+              "긴급회의를 소집하지 못했습니다."
+            );
+
+            return;
+          }
+
+          setEmergencyMeetingUses(
+            (previous) =>
+              previous + 1
+          );
+        }
+      );
+    };
+
   const sendMeetingMessage =
     () => {
       if (
@@ -2977,6 +3293,433 @@ export default function DevilGameWorld({
     !meeting;
 
   /* ======================================================
+     Mobile Joystick
+  ====================================================== */
+
+  const stopJoystick =
+    (
+      notifyServer = true
+    ) => {
+      joystickVectorRef.current = {
+        x: 0,
+        y: 0,
+      };
+
+      joystickLastFrameRef.current =
+        null;
+
+      joystickPointerIdRef.current =
+        null;
+
+      setJoystickKnob({
+        x: 0,
+        y: 0,
+      });
+
+      if (
+        joystickAnimationFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          joystickAnimationFrameRef.current
+        );
+
+        joystickAnimationFrameRef.current =
+          null;
+      }
+
+      setMoving(
+        false
+      );
+
+      if (
+        notifyServer
+      ) {
+        socketRef.current?.emit(
+          "devilGame:move",
+          {
+            ...positionRef.current,
+
+            moving:
+              false,
+          }
+        );
+      }
+    };
+
+  const animateJoystick =
+    (
+      timestamp:
+        number
+    ) => {
+      const vector =
+        joystickVectorRef.current;
+
+      const magnitude =
+        Math.sqrt(
+          vector.x *
+            vector.x +
+          vector.y *
+            vector.y
+        );
+
+      if (
+        magnitude <
+          0.04 ||
+        meeting ||
+        deathOverlay ||
+        activeMission ||
+        mapOpen
+      ) {
+        stopJoystick();
+
+        return;
+      }
+
+      const previousTimestamp =
+        joystickLastFrameRef.current ??
+        timestamp;
+
+      const deltaTime =
+        Math.min(
+          40,
+          timestamp -
+            previousTimestamp
+        ) /
+        1000;
+
+      joystickLastFrameRef.current =
+        timestamp;
+
+      const current =
+        positionRef.current;
+
+      const speed =
+        PLAYER_SPEED *
+        MOBILE_PLAYER_SPEED_MULTIPLIER;
+
+      const desiredX =
+        current.x +
+        vector.x *
+          speed *
+          deltaTime;
+
+      const desiredY =
+        current.y +
+        vector.y *
+          speed *
+          deltaTime;
+
+      let nextX =
+        clamp(
+          desiredX,
+          0,
+          DEVIL_MAP_WIDTH
+        );
+
+      let nextY =
+        clamp(
+          desiredY,
+          0,
+          DEVIL_MAP_HEIGHT
+        );
+
+      /*
+       * 벽에 대각선으로 닿았을 때 완전히 멈추지 않고
+       * 벽을 따라 미끄러지듯 이동하도록 X/Y를 따로 검사한다.
+       */
+      if (
+        playerState !==
+          "ghost" &&
+        !isWalkable(
+          nextX,
+          nextY
+        )
+      ) {
+        const xOnlyWalkable =
+          isWalkable(
+            nextX,
+            current.y
+          );
+
+        const yOnlyWalkable =
+          isWalkable(
+            current.x,
+            nextY
+          );
+
+        if (
+          xOnlyWalkable
+        ) {
+          nextY =
+            current.y;
+        } else if (
+          yOnlyWalkable
+        ) {
+          nextX =
+            current.x;
+        } else {
+          nextX =
+            current.x;
+
+          nextY =
+            current.y;
+        }
+      }
+
+      const nextPosition = {
+        x:
+          nextX,
+
+        y:
+          nextY,
+      };
+
+      positionRef.current =
+        nextPosition;
+
+      setPosition(
+        nextPosition
+      );
+
+      setMoving(
+        true
+      );
+
+      const now =
+        performance.now();
+
+      if (
+        now -
+          lastMoveEmitRef.current >=
+        MOVE_EMIT_INTERVAL
+      ) {
+        lastMoveEmitRef.current =
+          now;
+
+        socketRef.current?.emit(
+          "devilGame:move",
+          {
+            ...nextPosition,
+
+            moving:
+              true,
+          }
+        );
+      }
+
+      joystickAnimationFrameRef.current =
+        requestAnimationFrame(
+          animateJoystick
+        );
+    };
+
+  const updateJoystickFromPointer =
+    (
+      event:
+        React.PointerEvent<HTMLDivElement>
+    ) => {
+      const element =
+        event.currentTarget;
+
+      const rect =
+        element.getBoundingClientRect();
+
+      const centerX =
+        rect.left +
+        rect.width / 2;
+
+      const centerY =
+        rect.top +
+        rect.height / 2;
+
+      const rawX =
+        event.clientX -
+        centerX;
+
+      const rawY =
+        event.clientY -
+        centerY;
+
+      const maxRadius =
+        rect.width *
+        0.34;
+
+      const distance =
+        Math.sqrt(
+          rawX *
+            rawX +
+          rawY *
+            rawY
+        );
+
+      const limitedDistance =
+        Math.min(
+          maxRadius,
+          distance
+        );
+
+      const directionX =
+        distance >
+          0
+          ? rawX /
+            distance
+          : 0;
+
+      const directionY =
+        distance >
+          0
+          ? rawY /
+            distance
+          : 0;
+
+      const knobX =
+        directionX *
+        limitedDistance;
+
+      const knobY =
+        directionY *
+        limitedDistance;
+
+      setJoystickKnob({
+        x:
+          knobX,
+
+        y:
+          knobY,
+      });
+
+      const strength =
+        maxRadius >
+          0
+          ? limitedDistance /
+            maxRadius
+          : 0;
+
+      joystickVectorRef.current = {
+        x:
+          directionX *
+          strength,
+
+        y:
+          directionY *
+          strength,
+      };
+    };
+
+  const startJoystick =
+    (
+      event:
+        React.PointerEvent<HTMLDivElement>
+    ) => {
+      if (
+        !isMobile ||
+        meeting ||
+        deathOverlay ||
+        activeMission ||
+        mapOpen
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      stopMovement(
+        false
+      );
+
+      joystickPointerIdRef.current =
+        event.pointerId;
+
+      event.currentTarget.setPointerCapture(
+        event.pointerId
+      );
+
+      updateJoystickFromPointer(
+        event
+      );
+
+      joystickLastFrameRef.current =
+        null;
+
+      if (
+        joystickAnimationFrameRef.current ===
+        null
+      ) {
+        joystickAnimationFrameRef.current =
+          requestAnimationFrame(
+            animateJoystick
+          );
+      }
+    };
+
+  const moveJoystick =
+    (
+      event:
+        React.PointerEvent<HTMLDivElement>
+    ) => {
+      if (
+        joystickPointerIdRef.current !==
+        event.pointerId
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      updateJoystickFromPointer(
+        event
+      );
+    };
+
+  const endJoystick =
+    (
+      event:
+        React.PointerEvent<HTMLDivElement>
+    ) => {
+      if (
+        joystickPointerIdRef.current !==
+        event.pointerId
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      try {
+        event.currentTarget.releasePointerCapture(
+          event.pointerId
+        );
+      } catch {
+        // 이미 pointer capture가 해제된 경우 무시.
+      }
+
+      stopJoystick();
+    };
+
+  useEffect(() => {
+    if (
+      meeting ||
+      deathOverlay ||
+      activeMission ||
+      mapOpen ||
+      !isMobile
+    ) {
+      stopJoystick();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    meeting,
+    deathOverlay,
+    activeMission,
+    mapOpen,
+    isMobile,
+  ]);
+
+  /* ======================================================
      Keyboard
   ====================================================== */
 
@@ -3115,23 +3858,29 @@ export default function DevilGameWorld({
   const cameraX =
     clamp(
       position.x -
-      VIEWPORT_WIDTH / 2,
+      viewportSize.width / 2,
 
       0,
 
-      DEVIL_MAP_WIDTH -
-      VIEWPORT_WIDTH
+      Math.max(
+        0,
+        DEVIL_MAP_WIDTH -
+        viewportSize.width
+      )
     );
 
   const cameraY =
     clamp(
       position.y -
-      VIEWPORT_HEIGHT / 2,
+      viewportSize.height / 2,
 
       0,
 
-      DEVIL_MAP_HEIGHT -
-      VIEWPORT_HEIGHT
+      Math.max(
+        0,
+        DEVIL_MAP_HEIGHT -
+        viewportSize.height
+      )
     );
 
   const playerScreenX =
@@ -3209,6 +3958,15 @@ export default function DevilGameWorld({
       ) {
         cancelAnimationFrame(
           animationFrameRef.current
+        );
+      }
+
+      if (
+        joystickAnimationFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          joystickAnimationFrameRef.current
         );
       }
     };
@@ -3303,11 +4061,16 @@ export default function DevilGameWorld({
     <div
       className="
         flex
-        min-h-screen
+        min-h-[100dvh]
+        w-full
         items-center
         justify-center
+        overflow-hidden
         bg-zinc-950
         p-4
+        max-[768px]:h-[100dvh]
+        max-[768px]:min-h-0
+        max-[768px]:p-0
       "
     >
       <div
@@ -3320,19 +4083,28 @@ export default function DevilGameWorld({
         className="
           relative
           cursor-pointer
+          touch-none
           overflow-hidden
           rounded-xl
           border-[6px]
           border-zinc-800
           bg-black
           shadow-2xl
+          max-[768px]:rounded-none
+          max-[768px]:border-0
         "
         style={{
           width:
-            VIEWPORT_WIDTH,
+            viewportSize.width,
 
           height:
-            VIEWPORT_HEIGHT,
+            viewportSize.height,
+
+          maxWidth:
+            "100vw",
+
+          maxHeight:
+            "100dvh",
         }}
       >
         {/* =================================================
@@ -3714,6 +4486,11 @@ export default function DevilGameWorld({
             z-[8000]
             w-[190px]
             rounded-xl
+            max-[700px]:left-2
+            max-[700px]:top-2
+            max-[700px]:w-[155px]
+            max-[700px]:px-3
+            max-[700px]:py-2
             border
             border-white/10
             bg-black/80
@@ -3765,44 +4542,53 @@ export default function DevilGameWorld({
               </div>
             )}
 
+          {/* =====================================
+              생존자 팀 전체 미션 진행도
+
+              악마의 미션은 서버 계산에서 제외된다.
+              악마도 이 게이지 자체는 볼 수 있다.
+          ===================================== */}
+
           <div className="mt-3">
             <div
               className="
                 flex
                 items-center
                 justify-between
+                gap-2
                 text-[9px]
               "
             >
               <span
                 className="
+                  truncate
                   font-semibold
-                  text-white/55
+                  text-white/65
                 "
               >
-                업무 진행도
+                🗂 생존팀 업무
               </span>
 
               <span
                 className="
+                  shrink-0
                   font-black
                   text-emerald-300
                 "
               >
-                {
-                  missionProgress
-                }
-                %
+                {teamMissionProgress.percentage}%
               </span>
             </div>
 
             <div
               className="
                 mt-2
-                h-[8px]
+                h-[9px]
                 overflow-hidden
                 rounded-full
                 bg-white/10
+                ring-1
+                ring-white/5
               "
             >
               <div
@@ -3810,52 +4596,65 @@ export default function DevilGameWorld({
                   h-full
                   rounded-full
                   bg-emerald-400
-                  transition-all
+                  transition-[width]
                   duration-500
+                  ease-out
                 "
                 style={{
                   width:
-                    `${missionProgress}%`,
+                    `${teamMissionProgress.percentage}%`,
                 }}
               />
             </div>
 
             <div
               className="
-                mt-2
+                mt-1.5
                 flex
+                items-center
                 justify-between
-                text-[9px]
+                text-[8px]
               "
             >
-              <span className="text-white/40">
-                완료
+              <span className="text-white/35">
+                전체 생존자 기준
               </span>
 
-              <span className="text-amber-300">
-                {
-                  completedMissionCount
-                }
+              <span className="font-bold text-emerald-200/80">
+                {teamMissionProgress.completed}
                 {" / "}
-                {
-                  totalMissionCount
-                }
+                {teamMissionProgress.total}
               </span>
             </div>
 
-            <div
-              className="
-                mt-1
-                text-[9px]
-                text-white/35
-              "
-            >
-              남은 미션{" "}
-              {
-                remainingMissionCount
-              }
-              개
-            </div>
+            {role ===
+              "survivor" && (
+              <div
+                className="
+                  mt-2
+                  border-t
+                  border-white/10
+                  pt-2
+                  text-[8px]
+                "
+              >
+                <div className="flex justify-between gap-2">
+                  <span className="text-white/35">
+                    내 업무
+                  </span>
+
+                  <span className="font-bold text-amber-300">
+                    {completedMissionCount}
+                    {" / "}
+                    {totalMissionCount}
+                  </span>
+                </div>
+
+                <div className="mt-1 text-white/30">
+                  남은 미션 {remainingMissionCount}개
+                </div>
+              </div>
+            )}
           </div>
 
           {role === "devil" &&
@@ -3930,6 +4729,7 @@ export default function DevilGameWorld({
                 transition
                 hover:bg-red-500
                 active:scale-95
+                max-[700px]:hidden
               "
             >
               🚨 {getDisplayName(
@@ -3979,6 +4779,7 @@ export default function DevilGameWorld({
                 text-white
                 shadow-xl
                 disabled:opacity-40
+                max-[700px]:hidden
               "
             >
               <span
@@ -4039,6 +4840,7 @@ export default function DevilGameWorld({
                 font-bold
                 text-white
                 shadow-xl
+                max-[700px]:hidden
               "
             >
               <span
@@ -4089,6 +4891,8 @@ export default function DevilGameWorld({
               right-4
               top-4
               z-[9200]
+              max-[700px]:right-2
+              max-[700px]:top-2
               rounded-xl
               border
               border-red-400/20
@@ -4161,6 +4965,50 @@ export default function DevilGameWorld({
               max-[700px]:gap-1.5
             "
             >
+              {/* 시체 신고 */}
+
+              {nearbyCorpse &&
+                playerState ===
+                  "alive" && (
+                  <ActionButton
+                    label="시체 신고"
+                    icon="🚨"
+                    shortcut=""
+                    variant="danger"
+                    onClick={
+                      reportCorpse
+                    }
+                    active={true}
+                  />
+                )}
+
+              {/* 중앙 회의 테이블 긴급회의 */}
+
+              {nearEmergencyMeetingTable &&
+                playerState ===
+                  "alive" && (
+                  <ActionButton
+                    label={
+                      emergencyMeetingUses >=
+                      EMERGENCY_MEETING_MAX_USES
+                        ? "회의 사용 완료"
+                        : "긴급회의"
+                    }
+                    icon="📣"
+                    shortcut=""
+                    variant="danger"
+                    onClick={
+                      requestEmergencyMeeting
+                    }
+                    disabled={
+                      !canCallEmergencyMeeting
+                    }
+                    active={
+                      canCallEmergencyMeeting
+                    }
+                  />
+                )}
+
               {/* 지도 */}
 
               <ActionButton
@@ -4285,6 +5133,115 @@ export default function DevilGameWorld({
                     />
                   </>
                 )}
+            </div>
+          )}
+
+        {/* =================================================
+            Mobile Joystick
+
+            왼손 엄지로 이동하고 오른쪽 액션 버튼을 누르는 구조.
+        ================================================= */}
+
+        {isMobile &&
+          !deathOverlay &&
+          !meeting &&
+          !activeMission &&
+          !mapOpen && (
+            <div
+              data-no-move
+              className="
+                absolute
+                bottom-[max(18px,env(safe-area-inset-bottom))]
+                left-[max(18px,env(safe-area-inset-left))]
+                z-[9050]
+                flex
+                flex-col
+                items-center
+                gap-1
+              "
+            >
+              <div
+                className="
+                  text-[8px]
+                  font-black
+                  tracking-[0.12em]
+                  text-white/45
+                  drop-shadow
+                "
+              >
+                MOVE
+              </div>
+
+              <div
+                role="application"
+                aria-label="이동 조이스틱"
+                onPointerDown={
+                  startJoystick
+                }
+                onPointerMove={
+                  moveJoystick
+                }
+                onPointerUp={
+                  endJoystick
+                }
+                onPointerCancel={
+                  endJoystick
+                }
+                className="
+                  relative
+                  h-[116px]
+                  w-[116px]
+                  touch-none
+                  select-none
+                  rounded-full
+                  border
+                  border-white/15
+                  bg-black/40
+                  shadow-[0_8px_30px_rgba(0,0,0,0.45)]
+                  backdrop-blur-sm
+                "
+              >
+                <div
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-1/2
+                    top-1/2
+                    h-[46px]
+                    w-[46px]
+                    -translate-x-1/2
+                    -translate-y-1/2
+                    rounded-full
+                    border
+                    border-white/25
+                    bg-white/25
+                    shadow-lg
+                  "
+                  style={{
+                    marginLeft:
+                      joystickKnob.x,
+
+                    marginTop:
+                      joystickKnob.y,
+                  }}
+                />
+
+                <span className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-[10px] text-white/25">
+                  ▲
+                </span>
+
+                <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-white/25">
+                  ▼
+                </span>
+
+                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-white/25">
+                  ◀
+                </span>
+
+                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/25">
+                  ▶
+                </span>
+              </div>
             </div>
           )}
 
@@ -4910,8 +5867,11 @@ export default function DevilGameWorld({
             <div
               className="
                 flex
-                h-[min(720px,94vh)]
+                h-[min(720px,94dvh)]
                 w-full
+                max-[700px]:h-[100dvh]
+                max-[700px]:max-h-[100dvh]
+                max-[700px]:rounded-none
                 max-w-[940px]
                 flex-col
                 overflow-hidden
@@ -4983,6 +5943,7 @@ export default function DevilGameWorld({
                   className="
                     max-h-[250px]
                     overflow-y-auto
+                    max-[700px]:max-h-[190px]
                     border-b
                     border-black/10
                     bg-[#ece8de]
@@ -5393,133 +6354,213 @@ export default function DevilGameWorld({
         )}
 
       {/* =================================================
-          Game Result
+          Victory Celebration
+
+          서버가 winners에 내려준 characterStyle을 그대로 사용한다.
+          즉, 각 유저가 직접 커스텀한 색상 / 안경 / 모자 / 리본 / 넥타이가
+          승리 화면에도 동일하게 표시된다.
       ================================================= */}
 
       {gameResult && (
         <div
           data-no-move
-          className="
-            fixed
-            inset-0
-            z-[70000]
-            flex
-            items-center
-            justify-center
-            bg-black/80
-            p-4
+          className={`
+            fixed inset-0 z-[70000]
+            flex items-center justify-center
+            overflow-hidden p-3
+            text-white
             backdrop-blur-md
-          "
+            ${
+              gameResult.winningTeam === "devil"
+                ? "bg-[radial-gradient(circle_at_center,rgba(127,29,29,0.72),rgba(9,9,11,0.97)_68%)]"
+                : "bg-[radial-gradient(circle_at_center,rgba(5,150,105,0.45),rgba(9,9,11,0.96)_72%)]"
+            }
+          `}
         >
-          <div
-            className="
-              w-full
-              max-w-[520px]
-              overflow-hidden
-              rounded-[30px]
-              border
-              border-white/10
-              bg-zinc-950
-              text-center
-              text-white
-              shadow-[0_30px_100px_rgba(0,0,0,0.7)]
-            "
-          >
-            <div
-              className={
-                gameResult.winningTeam ===
-                  "devil"
-                  ? "bg-red-500/10 px-6 py-8"
-                  : "bg-emerald-500/10 px-6 py-8"
-              }
-            >
-              <div className="text-5xl">
-                {gameResult.winningTeam ===
-                  "devil"
-                  ? "😈"
-                  : "🎉"}
-              </div>
-
-              <div className="mt-4 text-[9px] font-black tracking-[0.28em] text-white/35">
-                GAME OVER
-              </div>
-
-              <div
-                className={
-                  gameResult.winningTeam ===
-                    "devil"
-                    ? "mt-3 text-sm font-black text-red-300"
-                    : "mt-3 text-sm font-black text-emerald-300"
-                }
-              >
-                {gameResult.winningTeam ===
-                  "devil"
-                  ? "- 악마팀 -"
-                  : "- 생존팀 -"}
-              </div>
-
-              <div className="mt-5 text-2xl font-black leading-tight">
-                {gameResult.winners.length >
-                  0
-                  ? `${gameResult.winners
-                    .map((winner) =>
-                      getDisplayName(
-                        winner.nickname
-                      )
-                    )
-                    .join(" · ")} 승리!`
-                  : "승리!"}
-              </div>
-
-              <div className="mt-3 text-[10px] leading-5 text-white/45">
-                {gameResult.reason}
-              </div>
-            </div>
-
-            <div className="p-6">
-              <button
-                type="button"
-                onClick={() => {
-                  const socket =
-                    socketRef.current;
-
-                  if (
-                    !socket ||
-                    !socket.connected
-                  ) {
-                    onReturnToOffice();
-                    return;
-                  }
-
-                  socket.emit(
-                    "devilGame:returnOffice",
-                    {
-                      roomId,
-                      playerId:
-                        myPlayerIdRef.current,
-                    },
-                    () => {
-                      onReturnToOffice();
-                    }
-                  );
+          {/* 배경 장식 */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {Array.from({ length: 24 }).map((_, index) => (
+              <span
+                key={index}
+                className="absolute animate-pulse text-lg opacity-60"
+                style={{
+                  left: `${(index * 37) % 100}%`,
+                  top: `${(index * 53) % 92}%`,
+                  animationDelay: `${(index % 7) * 120}ms`,
+                  animationDuration: `${900 + (index % 5) * 180}ms`,
                 }}
-                className="
-                  w-full
-                  rounded-2xl
-                  bg-white
-                  px-5
-                  py-4
-                  text-[11px]
-                  font-black
-                  text-zinc-950
-                  transition
-                  hover:bg-amber-100
-                "
               >
-                🏢 사무실로 돌아가기
-              </button>
-            </div>
+                {gameResult.winningTeam === "devil"
+                  ? index % 3 === 0
+                    ? "🔥"
+                    : "✦"
+                  : index % 3 === 0
+                    ? "🎊"
+                    : "✨"}
+              </span>
+            ))}
           </div>
+
+          <div className="relative z-10 flex w-full max-w-[900px] flex-col items-center text-center">
+            <div
+              className={`
+                rounded-full border px-4 py-2
+                text-[9px] font-black tracking-[0.32em]
+                ${
+                  gameResult.winningTeam === "devil"
+                    ? "border-red-300/20 bg-red-500/10 text-red-200"
+                    : "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+                }
+              `}
+            >
+              POTATO WAR · VICTORY
+            </div>
+
+            <div
+              className={`
+                mt-5 text-[clamp(30px,7vw,64px)]
+                font-black leading-none tracking-[-0.05em]
+                drop-shadow-[0_8px_25px_rgba(0,0,0,0.55)]
+                ${
+                  gameResult.winningTeam === "devil"
+                    ? "text-red-300"
+                    : "text-emerald-200"
+                }
+              `}
+            >
+              {gameResult.winningTeam === "devil"
+                ? "😈 악마팀 승리!"
+                : "🎉 생존자팀 승리!"}
+            </div>
+
+            <div className="mt-3 max-w-[620px] text-[11px] font-semibold leading-5 text-white/55">
+              {gameResult.reason}
+            </div>
+
+            {/* 실제 승리 유저들의 커스텀 감자 */}
+            <div
+              className="
+                mt-7 flex min-h-[210px] w-full
+                flex-wrap items-end justify-center
+                gap-x-5 gap-y-8
+                max-[700px]:mt-5 max-[700px]:gap-x-2
+              "
+            >
+              {gameResult.winners.length > 0 ? (
+                gameResult.winners.map((winner, index) => {
+                  const winnerStyle = winner.characterStyle;
+
+                  return (
+                    <div
+                      key={winner.id}
+                      className="flex min-w-[120px] flex-col items-center max-[700px]:min-w-[92px]"
+                      style={{
+                        animation: `potatoVictoryBounce 900ms ease-in-out ${index * 110}ms infinite alternate`,
+                      }}
+                    >
+                      <div
+                        className={`
+                          mb-2 rounded-full border px-3 py-1
+                          text-[9px] font-black
+                          ${
+                            gameResult.winningTeam === "devil"
+                              ? "border-red-300/20 bg-red-950/60 text-red-100"
+                              : "border-emerald-300/20 bg-emerald-950/60 text-emerald-100"
+                          }
+                        `}
+                      >
+                        {getDisplayName(winner.nickname)}
+                      </div>
+
+                      <div
+                        className="origin-bottom max-[700px]:scale-[0.82]"
+                        style={{
+                          transform:
+                            index % 2 === 0
+                              ? "rotate(-3deg) scale(1.2)"
+                              : "rotate(3deg) scale(1.2)",
+                        }}
+                      >
+                        <Potato
+                          name=""
+                          glasses={winnerStyle?.glasses ?? "none"}
+                          hat={winnerStyle?.hat ?? "none"}
+                          ribbon={winnerStyle?.ribbon ?? false}
+                          tie={winnerStyle?.tie ?? false}
+                          color={winnerStyle?.color ?? "default"}
+                          moving={true}
+                          ghost={false}
+                          attacking={false}
+                          evil={gameResult.winningTeam === "devil"}
+                          hit={false}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-12 text-sm font-black text-white/70">
+                  승리! 🎉
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 text-[10px] font-semibold text-white/45">
+              {gameResult.winningTeam === "devil"
+                ? "악마 감자들이 사무실을 장악했습니다."
+                : "생존 감자들이 악마의 위협에서 살아남았습니다."}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const socket = socketRef.current;
+
+                if (!socket || !socket.connected) {
+                  onReturnToOffice();
+                  return;
+                }
+
+                socket.emit(
+                  "devilGame:returnOffice",
+                  {
+                    roomId,
+                    playerId: myPlayerIdRef.current,
+                  },
+                  () => {
+                    onReturnToOffice();
+                  }
+                );
+              }}
+              className={`
+                mt-7 min-w-[240px] rounded-2xl
+                px-6 py-4 text-[11px] font-black
+                shadow-xl transition
+                hover:-translate-y-0.5
+                ${
+                  gameResult.winningTeam === "devil"
+                    ? "bg-red-100 text-red-950 hover:bg-red-50"
+                    : "bg-emerald-100 text-emerald-950 hover:bg-emerald-50"
+                }
+              `}
+            >
+              🏢 사무실로 돌아가기
+            </button>
+          </div>
+
+          <style jsx>{`
+            @keyframes potatoVictoryBounce {
+              0% {
+                transform: translateY(0) rotate(-1deg);
+              }
+              45% {
+                transform: translateY(-12px) rotate(1deg);
+              }
+              100% {
+                transform: translateY(-22px) rotate(-1deg);
+              }
+            }
+          `}</style>
         </div>
       )}
 

@@ -133,6 +133,23 @@ const POTATO_WAR_VOTING_MS =
 const POTATO_WAR_VOTE_RESULT_MS =
   3_000;
 
+/*
+ * 수동 긴급회의는 한 플레이어당 게임 중 1회.
+ */
+const POTATO_WAR_EMERGENCY_MEETING_LIMIT =
+  1;
+
+/*
+ * 중앙 회의 테이블 근처에서만 수동 긴급회의 사용 가능.
+ */
+const POTATO_WAR_EMERGENCY_MEETING_DISTANCE =
+  190;
+
+const POTATO_WAR_EMERGENCY_MEETING_POSITION = {
+  x: 1100,
+  y: 700,
+};
+
 /* =========================================================
    Spawn Points
 ========================================================= */
@@ -578,6 +595,12 @@ function createGameRuntime(
         lastKillAt:
           0,
 
+        /*
+         * 수동 긴급회의 사용 횟수.
+         */
+        emergencyMeetingUses:
+          0,
+
         leftGame:
           false,
 
@@ -659,6 +682,14 @@ function getPublicMeeting(
     active:
       true,
 
+    /*
+     * corpse     : 시체 신고로 시작된 회의
+     * emergency  : 중앙 회의 테이블에서 직접 소집한 회의
+     */
+    kind:
+      meeting.kind ??
+      "corpse",
+
     phase:
       meeting.phase,
 
@@ -700,6 +731,86 @@ function getPublicMeeting(
 }
 
 /* =========================================================
+   Survivor Mission Progress
+
+   악마의 미션은 전체 진행도 계산에서 완전히 제외한다.
+   죽은 생존자의 미션은 팀 전체 목표에 계속 포함한다.
+   (유령 상태에서도 미션을 이어가는 규칙과 호환)
+========================================================= */
+
+function getSurvivorMissionProgress(
+  room
+) {
+  const survivors =
+    Object.values(
+      room.gamePlayers ??
+        {}
+    ).filter(
+      player =>
+        player.role ===
+          "survivor" &&
+        player.leftGame !==
+          true
+    );
+
+  const total =
+    survivors.reduce(
+      (sum, player) =>
+        sum +
+        (player.missionIds
+          ?.length ??
+          0),
+      0
+    );
+
+  const completed =
+    survivors.reduce(
+      (sum, player) => {
+        const assigned =
+          new Set(
+            player.missionIds ??
+              []
+          );
+
+        const validCompleted =
+          (
+            player.completedMissionIds ??
+            []
+          ).filter(
+            missionId =>
+              assigned.has(
+                missionId
+              )
+          ).length;
+
+        return (
+          sum +
+          validCompleted
+        );
+      },
+      0
+    );
+
+  const percentage =
+    total === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.round(
+            (completed /
+              total) *
+              100
+          )
+        );
+
+  return {
+    completed,
+    total,
+    percentage,
+  };
+}
+
+/* =========================================================
    Public Game State
 ========================================================= */
 
@@ -728,6 +839,15 @@ function getPublicGameState(
     corpses:
       room.corpses ??
       [],
+
+    /*
+     * 모든 참가자에게 공개되는 생존팀 전체 업무 진행도.
+     * 악마 플레이어의 미션은 계산하지 않는다.
+     */
+    missionProgress:
+      getSurvivorMissionProgress(
+        room
+      ),
 
     meeting:
       getPublicMeeting(
@@ -3090,7 +3210,20 @@ io.on(
             player
               .missionIds
               .length,
+
+          missionProgress:
+            getSurvivorMissionProgress(
+              room
+            ),
         });
+
+        /*
+         * 한 생존자가 미션을 완료하면
+         * 모든 참가자의 팀 진행도 UI를 즉시 갱신한다.
+         */
+        broadcastGameState(
+          room
+        );
       }
     );
 
@@ -3460,6 +3593,9 @@ io.on(
           active:
             true,
 
+          kind:
+            "corpse",
+
           phase:
             "discussion",
 
@@ -3522,6 +3658,11 @@ io.on(
         callback?.({
           ok:
             true,
+
+          meeting:
+            getPublicMeeting(
+              room
+            ),
         });
 
         setTimeout(
@@ -3530,6 +3671,277 @@ io.on(
               devilRooms[
                 room.id
               ],
+              meetingId
+            );
+          },
+          POTATO_WAR_DISCUSSION_MS
+        );
+      }
+    );
+const POTATO_WAR_EMERGENCY_MEETING_LIMIT = 1;
+
+    /* =====================================================
+       Manual Emergency Meeting
+    ===================================================== */
+
+    socket.on(
+      "devilGame:emergency-meeting",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocket(
+            socket.id
+          );
+
+        /* ===============================================
+           진행 중인 게임 확인
+        =============================================== */
+
+        if (
+          !room ||
+          room.status !==
+            "playing"
+        ) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "진행 중인 게임을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        /* ===============================================
+           이미 회의가 진행 중인지 확인
+        =============================================== */
+
+        if (
+          room.meeting?.active
+        ) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "이미 긴급회의가 진행 중입니다.",
+          });
+
+          return;
+        }
+
+        /* ===============================================
+           플레이어 확인
+        =============================================== */
+
+        const reporter =
+          findGamePlayerBySocket(
+            room,
+            socket.id
+          );
+
+        if (
+          !reporter ||
+          reporter.state !==
+            "alive" ||
+          reporter.leftGame ===
+            true
+        ) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "살아있는 감자만 긴급회의를 소집할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        /* ===============================================
+           게임당 1회 제한
+        =============================================== */
+
+        reporter.emergencyMeetingUses ??=
+          0;
+
+        if (
+          reporter.emergencyMeetingUses >=
+          POTATO_WAR_EMERGENCY_MEETING_LIMIT
+        ) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "이번 게임에서는 긴급회의를 이미 사용했습니다.",
+          });
+
+          return;
+        }
+
+        /* ===============================================
+           중앙 회의 테이블 거리 확인
+
+           클라이언트 위치만 믿지 않고 서버에서도 확인.
+        =============================================== */
+
+        const distance =
+          getDistance(
+            reporter,
+            POTATO_WAR_EMERGENCY_MEETING_POSITION
+          );
+
+        if (
+          distance >
+          POTATO_WAR_EMERGENCY_MEETING_DISTANCE
+        ) {
+          callback?.({
+            ok:
+              false,
+
+            message:
+              "중앙 회의 테이블 근처에서만 긴급회의를 소집할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        /* ===============================================
+           회의 사용 처리
+        =============================================== */
+
+        reporter.emergencyMeetingUses +=
+          1;
+
+        const meetingId =
+          createId();
+
+        room.meeting = {
+          id:
+            meetingId,
+
+          active:
+            true,
+
+          kind:
+            "emergency",
+
+          phase:
+            "discussion",
+
+          reporterId:
+            reporter.id,
+
+          reporterNickname:
+            reporter.nickname,
+
+          /*
+           * 수동 긴급회의는 시체 정보가 없다.
+           */
+          corpseId:
+            "",
+
+          victimId:
+            "",
+
+          victimNickname:
+            "",
+
+          messages:
+            [],
+
+          votes:
+            {},
+
+          startedAt:
+            Date.now(),
+
+          phaseEndsAt:
+            Date.now() +
+            POTATO_WAR_DISCUSSION_MS,
+        };
+
+        /* ===============================================
+           회의 시작과 동시에 전원 이동 중지
+        =============================================== */
+
+        Object.values(
+          room.gamePlayers ??
+            {}
+        ).forEach(
+          player => {
+            player.moving =
+              false;
+          }
+        );
+
+        /* ===============================================
+           모든 참가자에게 회의 시작 전송
+        =============================================== */
+
+        const publicMeeting =
+          getPublicMeeting(
+            room
+          );
+
+        io
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilGame:meeting-started",
+            publicMeeting
+          );
+
+        broadcastGameState(
+          room
+        );
+
+        callback?.({
+          ok:
+            true,
+
+          meeting:
+            publicMeeting,
+        });
+
+        /* ===============================================
+           토론 종료 → 투표 시작
+        =============================================== */
+
+        setTimeout(
+          () => {
+            const currentRoom =
+              devilRooms[
+                room.id
+              ];
+
+            if (
+              !currentRoom ||
+              currentRoom.status !==
+                "playing"
+            ) {
+              return;
+            }
+
+            if (
+              !currentRoom.meeting ||
+              currentRoom.meeting.id !==
+                meetingId ||
+              currentRoom.meeting.kind !==
+                "emergency"
+            ) {
+              return;
+            }
+
+            startMeetingVoting(
+              currentRoom,
               meetingId
             );
           },
@@ -4150,6 +4562,10 @@ server.listen(
 
     console.log(
       "🚨 시체 신고 / 긴급회의 / 회의채팅 / 투표 활성화"
+    );
+
+    console.log(
+      `📣 수동 긴급회의: 플레이어당 ${POTATO_WAR_EMERGENCY_MEETING_LIMIT}회`
     );
   }
 );
