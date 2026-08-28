@@ -2395,136 +2395,216 @@ socket.on(
    Create Room
 ===================================================== */
 
+/* =====================================================
+   Create Room
+===================================================== */
+
 socket.on(
   "devilRoom:create",
   (
     options = {},
     callback
   ) => {
-    const player =
-      players[
-        socket.id
-      ];
+    console.log(
+      "🎮 devilRoom:create 요청:",
+      {
+        socketId: socket.id,
+        options,
+        playerExists:
+          Boolean(
+            players[
+              socket.id
+            ]
+          ),
+      }
+    );
 
-    if (!player) {
-      callback?.({
-        ok:
-          false,
+    try {
+      const player =
+        players[
+          socket.id
+        ];
 
-        message:
-          "먼저 사무실에 입장해주세요.",
-      });
+      if (!player) {
+        console.log(
+          "❌ 방 생성 실패: player 없음",
+          socket.id
+        );
 
-      return;
-    }
+        callback?.({
+          ok: false,
+          message:
+            "먼저 사무실에 입장해주세요.",
+        });
 
-    if (
-      findPlayerRoom(
-        socket.id
-      )
-    ) {
-      callback?.({
-        ok:
-          false,
+        return;
+      }
 
-        message:
-          "이미 게임방에 참가 중입니다.",
-      });
+      const existingRoom =
+        findPlayerRoom(
+          socket.id
+        );
 
-      return;
-    }
+      if (existingRoom) {
+        console.log(
+          "❌ 방 생성 실패: 이미 방 참가 중",
+          existingRoom.id
+        );
 
-    let maxPlayers =
-      Number(
-        options?.maxPlayers
+        callback?.({
+          ok: false,
+          message:
+            "이미 게임방에 참가 중입니다.",
+        });
+
+        return;
+      }
+
+      let maxPlayers =
+        Number(
+          options?.maxPlayers
+        );
+
+      if (
+        !Number.isFinite(
+          maxPlayers
+        )
+      ) {
+        maxPlayers =
+          DEVIL_GAME_DEFAULT_MAX_PLAYERS;
+      }
+
+      maxPlayers =
+        Math.max(
+          DEVIL_GAME_MIN_PLAYERS,
+
+          Math.min(
+            DEVIL_GAME_MAX_PLAYERS,
+
+            Math.floor(
+              maxPlayers
+            )
+          )
+        );
+
+      const roomId =
+        createRoomCode();
+
+      const room = {
+        id: roomId,
+
+        hostId:
+          socket.id,
+
+        status:
+          "waiting",
+
+        maxPlayers,
+
+        players: [
+          socket.id,
+        ],
+
+        ready: {
+          [socket.id]:
+            false,
+        },
+
+        roles: {},
+
+        countdownEndsAt:
+          null,
+
+        startedAt:
+          null,
+
+        gamePlayers:
+          null,
+
+        corpses: [],
+
+        meeting:
+          null,
+      };
+
+      devilRooms[
+        roomId
+      ] = room;
+
+      console.log(
+        "✅ 방 데이터 생성:",
+        roomId
       );
 
-    if (
-      !Number.isFinite(
-        maxPlayers
-      )
-    ) {
-      maxPlayers =
-        DEVIL_GAME_DEFAULT_MAX_PLAYERS;
-    }
-
-    maxPlayers =
-      Math.max(
-        DEVIL_GAME_MIN_PLAYERS,
-
-        Math.min(
-          DEVIL_GAME_MAX_PLAYERS,
-
-          Math.floor(
-            maxPlayers
-          )
+      socket.join(
+        getSocketRoomName(
+          roomId
         )
       );
 
-    const roomId =
-      createRoomCode();
+      console.log(
+        "✅ Socket 방 참가:",
+        getSocketRoomName(
+          roomId
+        )
+      );
 
-    const room = {
-      id:
-        roomId,
-
-      hostId:
-        socket.id,
-
-      status:
-        "waiting",
-
-      maxPlayers,
-
-      players: [
-        socket.id,
-      ],
-
-      ready: {
-        [socket.id]:
-          false,
-      },
-
-      roles: {},
-
-      countdownEndsAt:
-        null,
-
-      startedAt:
-        null,
-
-      gamePlayers:
-        null,
-
-      corpses: [],
-
-      meeting:
-        null,
-    };
-
-    devilRooms[
-      roomId
-    ] = room;
-
-    socket.join(
-      getSocketRoomName(
-        roomId
-      )
-    );
-
-    broadcastRoomUpdate(
-      room
-    );
-
-    callback?.({
-      ok:
-        true,
-
-      room:
+      const publicRoom =
         getPublicRoom(
           room
-        ),
-    });
+        );
+
+      console.log(
+        "✅ Public Room 생성:",
+        publicRoom
+      );
+
+      /*
+       * ACK를 먼저 반환한다.
+       *
+       * broadcast 쪽에서 문제가 나더라도
+       * 방을 만든 클라이언트가
+       * 무한 로딩되지 않도록 한다.
+       */
+      callback?.({
+        ok: true,
+        room:
+          publicRoom,
+      });
+
+      console.log(
+        "✅ 방 생성 ACK 전송:",
+        roomId
+      );
+
+      /*
+       * ACK 이후 다른 사용자에게
+       * 방 정보를 전파.
+       */
+      try {
+        broadcastRoomUpdate(
+          room
+        );
+      } catch (
+        broadcastError
+      ) {
+        console.error(
+          "⚠️ 방 생성 후 broadcast 오류:",
+          broadcastError
+        );
+      }
+    } catch (error) {
+      console.error(
+        "❌ devilRoom:create 오류:",
+        error
+      );
+
+      callback?.({
+        ok: false,
+        message:
+          "게임방 생성 중 서버 오류가 발생했습니다.",
+      });
+    }
   }
 );
 
