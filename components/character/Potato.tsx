@@ -3,6 +3,7 @@
 import Accessories, {
   type GlassesType,
   type HatType,
+  type SpecialAccessoryType,
 } from "./Accessories";
 
 /* =========================================================
@@ -68,6 +69,7 @@ type PotatoProps = {
 
   ribbon?: boolean;
   tie?: boolean;
+  special?: SpecialAccessoryType;
 
   moving?: boolean;
 
@@ -173,6 +175,7 @@ export default function Potato({
 
   ribbon = false,
   tie = false,
+  special = "none",
 
   moving = false,
 
@@ -1067,6 +1070,7 @@ export default function Potato({
                     hat={hat}
                     ribbon={ribbon}
                     tie={tie}
+                    special={special}
                     direction={direction}
                   />
                 </>
@@ -1166,6 +1170,7 @@ export default function Potato({
                     hat={hat}
                     ribbon={ribbon}
                     tie={tie}
+                    special={special}
                     direction={direction}
                   />
                 </>
@@ -1231,6 +1236,7 @@ export default function Potato({
                     hat={hat}
                     ribbon={ribbon}
                     tie={tie}
+                    special={special}
                     direction={direction}
                   />
                 </>
@@ -1296,6 +1302,7 @@ export default function Potato({
                     hat={hat}
                     ribbon={ribbon}
                     tie={tie}
+                    special={special}
                     direction={direction}
                   />
                 </>

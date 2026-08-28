@@ -11,6 +11,7 @@ import Potato, {
 import type {
   GlassesType,
   HatType,
+  SpecialAccessoryType,
 } from "@/components/character/Accessories";
 
 /* =========================================================
@@ -22,6 +23,7 @@ export type CharacterStyle = {
   hat: HatType;
   ribbon: boolean;
   tie: boolean;
+  special?: SpecialAccessoryType;
   color: PotatoColor;
 
   /* 새 꾸미기 옵션은 optional로 두어 기존 저장 데이터와 호환 */
@@ -115,6 +117,17 @@ export function createRandomCharacterStyle(): CharacterStyle {
 
     tie:
       Math.random() < 0.25,
+
+    special:
+      Math.random() < 0.28
+        ? pickRandom([
+            "headphones",
+            "sprout",
+            "crown",
+            "tube",
+            "badge",
+          ] as SpecialAccessoryType[])
+        : "none",
 
     color:
       pickRandom(
@@ -320,6 +333,10 @@ export default function CharacterCustomizer({
               }
               tie={
                 style.tie
+              }
+              special={
+                style.special ??
+                "none"
               }
               color={
                 style.color
@@ -964,6 +981,37 @@ export default function CharacterCustomizer({
             >
               👔 넥타이
             </OptionButton>
+
+            {([
+              ["none", "추가 장식 없음"],
+              ["headphones", "🎧 헤드폰"],
+              ["sprout", "🌱 새싹"],
+              ["crown", "👑 왕관"],
+              ["tube", "🛟 튜브"],
+              ["badge", "🪪 사원증"],
+            ] as [
+              SpecialAccessoryType,
+              string,
+            ][]).map(
+              ([value, label]) => (
+                <OptionButton
+                  key={value}
+                  active={
+                    (style.special ??
+                      "none") ===
+                    value
+                  }
+                  onClick={() =>
+                    updateStyle({
+                      special:
+                        value,
+                    })
+                  }
+                >
+                  {label}
+                </OptionButton>
+              )
+            )}
           </OptionSection>
 
           {/* =====================================
@@ -985,6 +1033,9 @@ export default function CharacterCustomizer({
 
                 tie:
                   false,
+
+                special:
+                  "none",
 
                 color:
                   "default",

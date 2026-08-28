@@ -2022,10 +2022,10 @@ const handleToggleDevilReady =
         <div
           data-no-move
           className="
+            pointer-events-none
             absolute
-            right-6
-            top-6
-            z-[12000]
+            inset-0
+            z-[99999]
           "
         >
           <button

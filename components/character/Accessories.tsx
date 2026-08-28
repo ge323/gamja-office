@@ -4,15 +4,23 @@
    Types
 ========================================================= */
 
-type GlassesType =
+export type GlassesType =
   | "none"
   | "round"
   | "sunglasses";
 
-type HatType =
+export type HatType =
   | "none"
   | "cap"
   | "party";
+
+export type SpecialAccessoryType =
+  | "none"
+  | "headphones"
+  | "sprout"
+  | "crown"
+  | "tube"
+  | "badge";
 
 export type AccessoryDirection =
   | "down"
@@ -28,6 +36,8 @@ type AccessoriesProps = {
   ribbon?: boolean;
 
   tie?: boolean;
+
+  special?: SpecialAccessoryType;
 
   /*
    * 캐릭터가 바라보는 방향
@@ -47,6 +57,8 @@ export default function Accessories({
   ribbon = false,
 
   tie = false,
+
+  special = "none",
 
   direction = "down",
 }: AccessoriesProps) {
@@ -820,6 +832,368 @@ export default function Accessories({
         </div>
       )}
 
+
+      {/* =====================================================
+          HEADPHONES
+      ===================================================== */}
+
+      {special === "headphones" && (
+        <div
+          className="
+            pointer-events-none
+            absolute
+            inset-0
+            z-[46]
+          "
+        >
+          {(facingDown || facingUp) && (
+            <>
+              <div
+                className="
+                  absolute
+                  left-1/2
+                  top-[-9px]
+                  h-[30px]
+                  w-[48px]
+                  -translate-x-1/2
+                  rounded-t-[52%]
+                  border-x-[4px]
+                  border-t-[4px]
+                  border-zinc-800
+                "
+              />
+
+              <div
+                className="
+                  absolute
+                  left-[4px]
+                  top-[18px]
+                  h-[23px]
+                  w-[11px]
+                  rounded-[6px]
+                  border-[2px]
+                  border-zinc-900
+                  bg-zinc-700
+                "
+              />
+
+              <div
+                className="
+                  absolute
+                  right-[4px]
+                  top-[18px]
+                  h-[23px]
+                  w-[11px]
+                  rounded-[6px]
+                  border-[2px]
+                  border-zinc-900
+                  bg-zinc-700
+                "
+              />
+            </>
+          )}
+
+          {facingLeft && (
+            <>
+              <div
+                className="
+                  absolute
+                  left-[2px]
+                  top-[18px]
+                  h-[24px]
+                  w-[12px]
+                  rounded-[6px]
+                  border-[2px]
+                  border-zinc-900
+                  bg-zinc-700
+                "
+              />
+              <div
+                className="
+                  absolute
+                  left-[9px]
+                  top-[-8px]
+                  h-[30px]
+                  w-[36px]
+                  rounded-t-[52%]
+                  border-l-[4px]
+                  border-t-[4px]
+                  border-zinc-800
+                "
+              />
+            </>
+          )}
+
+          {facingRight && (
+            <>
+              <div
+                className="
+                  absolute
+                  right-[2px]
+                  top-[18px]
+                  h-[24px]
+                  w-[12px]
+                  rounded-[6px]
+                  border-[2px]
+                  border-zinc-900
+                  bg-zinc-700
+                "
+              />
+              <div
+                className="
+                  absolute
+                  right-[9px]
+                  top-[-8px]
+                  h-[30px]
+                  w-[36px]
+                  rounded-t-[52%]
+                  border-r-[4px]
+                  border-t-[4px]
+                  border-zinc-800
+                "
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* =====================================================
+          SPROUT
+      ===================================================== */}
+
+      {special === "sprout" && (
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-19px]
+            z-[48]
+            h-[30px]
+            w-[32px]
+            -translate-x-1/2
+          "
+        >
+          <div
+            className="
+              absolute
+              bottom-0
+              left-1/2
+              h-[18px]
+              w-[3px]
+              -translate-x-1/2
+              rounded-full
+              bg-emerald-700
+            "
+          />
+
+          <div
+            className="
+              absolute
+              left-[2px]
+              top-[2px]
+              h-[12px]
+              w-[16px]
+              -rotate-[20deg]
+              rounded-[70%_30%_70%_30%]
+              border
+              border-emerald-800
+              bg-emerald-400
+            "
+          />
+
+          <div
+            className="
+              absolute
+              right-[2px]
+              top-[1px]
+              h-[12px]
+              w-[16px]
+              rotate-[20deg]
+              rounded-[30%_70%_30%_70%]
+              border
+              border-emerald-800
+              bg-emerald-500
+            "
+          />
+        </div>
+      )}
+
+      {/* =====================================================
+          CROWN
+      ===================================================== */}
+
+      {special === "crown" && (
+        <div
+          className={`
+            pointer-events-none
+            absolute
+            top-[-18px]
+            z-[48]
+            h-[24px]
+            w-[38px]
+
+            ${
+              facingLeft
+                ? "left-[5px] -rotate-[6deg]"
+                : facingRight
+                  ? "right-[5px] rotate-[6deg]"
+                  : "left-1/2 -translate-x-1/2"
+            }
+          `}
+        >
+          <div
+            className="
+              absolute
+              inset-x-0
+              bottom-0
+              h-[15px]
+              rounded-b-[5px]
+              border-[2px]
+              border-amber-700
+              bg-amber-300
+              [clip-path:polygon(0_35%,18%_0,35%_38%,50%_0,65%_38%,82%_0,100%_35%,92%_100%,8%_100%)]
+            "
+          />
+
+          <div
+            className="
+              absolute
+              left-1/2
+              bottom-[3px]
+              h-[4px]
+              w-[4px]
+              -translate-x-1/2
+              rounded-full
+              bg-rose-500
+            "
+          />
+        </div>
+      )}
+
+      {/* =====================================================
+          SWIM TUBE
+      ===================================================== */}
+
+      {special === "tube" && (
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[47px]
+            z-[34]
+            h-[27px]
+            w-[68px]
+            -translate-x-1/2
+            rounded-[50%]
+            border-[6px]
+            border-cyan-400
+            bg-transparent
+            shadow-[inset_0_0_0_2px_rgba(255,255,255,0.35)]
+          "
+        >
+          <div
+            className="
+              absolute
+              -right-[2px]
+              top-[2px]
+              h-[5px]
+              w-[12px]
+              rotate-[20deg]
+              rounded-full
+              bg-white/60
+            "
+          />
+        </div>
+      )}
+
+      {/* =====================================================
+          EMPLOYEE BADGE
+      ===================================================== */}
+
+      {special === "badge" &&
+        !facingUp && (
+          <div
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              z-[38]
+            "
+          >
+            {facingDown && (
+              <>
+                <div
+                  className="
+                    absolute
+                    left-1/2
+                    top-[48px]
+                    h-[15px]
+                    w-[2px]
+                    -translate-x-1/2
+                    bg-sky-700
+                  "
+                />
+
+                <div
+                  className="
+                    absolute
+                    left-1/2
+                    top-[58px]
+                    h-[15px]
+                    w-[13px]
+                    -translate-x-1/2
+                    rounded-[2px]
+                    border
+                    border-sky-900
+                    bg-white
+                    shadow-sm
+                  "
+                >
+                  <div className="mx-auto mt-[2px] h-[4px] w-[4px] rounded-full bg-sky-400" />
+                  <div className="mx-auto mt-[1px] h-[1px] w-[7px] rounded-full bg-zinc-300" />
+                  <div className="mx-auto mt-[1px] h-[1px] w-[6px] rounded-full bg-zinc-300" />
+                </div>
+              </>
+            )}
+
+            {facingLeft && (
+              <div
+                className="
+                  absolute
+                  left-[17px]
+                  top-[56px]
+                  h-[14px]
+                  w-[10px]
+                  -rotate-[5deg]
+                  rounded-[2px]
+                  border
+                  border-sky-900
+                  bg-white
+                "
+              />
+            )}
+
+            {facingRight && (
+              <div
+                className="
+                  absolute
+                  right-[17px]
+                  top-[56px]
+                  h-[14px]
+                  w-[10px]
+                  rotate-[5deg]
+                  rounded-[2px]
+                  border
+                  border-sky-900
+                  bg-white
+                "
+              />
+            )}
+          </div>
+        )}
+
       {/* =====================================================
           TIE
 
@@ -948,12 +1322,3 @@ export default function Accessories({
     </>
   );
 }
-
-/* =========================================================
-   Exports
-========================================================= */
-
-export type {
-  GlassesType,
-  HatType,
-};
