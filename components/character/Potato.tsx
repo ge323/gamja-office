@@ -1877,13 +1877,7 @@ function BackHairLayer({
   direction,
   ghost,
 }: HairLayerProps) {
-  if (
-    type === "none" ||
-    type === "short" ||
-    type === "side" ||
-    type === "middle" ||
-    type === "spike"
-  ) {
+  if (type === "none") {
     return null;
   }
 
@@ -1959,6 +1953,182 @@ function BackHairLayer({
       />
     </div>
   );
+
+  /* ======================================================
+     SHORT
+
+     짧은 머리도 뒤통수는 반드시 채운다.
+     정면에서는 몸통 뒤로 살짝 보이고,
+     뒷모습에서는 머리 전체가 자연스럽게 보인다.
+  ====================================================== */
+
+  if (type === "short") {
+    return (
+      <>
+        <HairMass
+          top={5}
+          width={
+            sideView
+              ? 58
+              : 64
+          }
+          height={
+            backView
+              ? 39
+              : 35
+          }
+          radius="48% 48% 40% 40% / 42% 42% 58% 58%"
+        />
+
+        {backView && (
+          <>
+            <div
+              className={`${common} left-[7px] top-[7px] z-[3] h-[19px] w-[17px] rotate-[13deg] rounded-b-[75%]`}
+              style={{
+                backgroundColor:
+                  fill,
+              }}
+            />
+
+            <div
+              className={`${common} right-[7px] top-[7px] z-[3] h-[19px] w-[17px] -rotate-[13deg] rounded-b-[75%]`}
+              style={{
+                backgroundColor:
+                  fill,
+              }}
+            />
+          </>
+        )}
+      </>
+    );
+  }
+
+  /* ======================================================
+     SIDE PART
+
+     앞에서만 가르마가 보이고 뒤에서는 짧은 뒤통수가 보인다.
+  ====================================================== */
+
+  if (type === "side") {
+    return (
+      <>
+        <HairMass
+          top={4}
+          width={
+            sideView
+              ? 60
+              : 66
+          }
+          height={
+            backView
+              ? 42
+              : 37
+          }
+          radius="48% 48% 38% 38% / 40% 40% 60% 60%"
+        />
+
+        {backView && (
+          <div
+            className={`${common} left-[8px] top-[9px] z-[3] h-[24px] w-[42px] -rotate-[5deg] rounded-[60%_40%_55%_45%]`}
+            style={{
+              backgroundColor:
+                fill,
+              boxShadow:
+                `inset 0 -3px 0 ${shadow}`,
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  /* ======================================================
+     MIDDLE PART
+  ====================================================== */
+
+  if (type === "middle") {
+    return (
+      <>
+        <HairMass
+          top={4}
+          width={
+            sideView
+              ? 60
+              : 66
+          }
+          height={
+            backView
+              ? 43
+              : 38
+          }
+          radius="48% 48% 38% 38% / 40% 40% 60% 60%"
+        />
+
+        {backView && (
+          <div
+            className={`${common} left-1/2 top-[5px] z-[3] h-[33px] w-[2px] -translate-x-1/2 rounded-full`}
+            style={{
+              backgroundColor:
+                shadow,
+              opacity:
+                0.45,
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  /* ======================================================
+     SPIKE
+
+     스파이크도 두피/뒤통수 베이스를 먼저 채운 뒤
+     앞 레이어의 뾰족한 가닥이 위에 올라간다.
+  ====================================================== */
+
+  if (type === "spike") {
+    return (
+      <>
+        <HairMass
+          top={5}
+          width={
+            sideView
+              ? 57
+              : 62
+          }
+          height={
+            backView
+              ? 34
+              : 30
+          }
+          radius="48% 48% 40% 40% / 44% 44% 56% 56%"
+        />
+
+        {backView && (
+          <div className={`${common} left-1/2 top-[-7px] z-[3] flex w-[62px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
+            {[14, 22, 27, 23, 15].map(
+              (
+                height,
+                index
+              ) => (
+                <span
+                  key={
+                    index
+                  }
+                  className="w-[12px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+                  style={{
+                    height,
+                    backgroundColor:
+                      fill,
+                  }}
+                />
+              )
+            )}
+          </div>
+        )}
+      </>
+    );
+  }
 
   /* ======================================================
      C-CURL BOB
@@ -2162,7 +2332,7 @@ function BackHairLayer({
         />
 
         <div
-          className={`${common} right-[-9px] top-[20px] z-[3] h-[57px] w-[27px] rotate-[13deg] rounded-[65%_35%_75%_25%]`}
+          className={`${common} right-[-7px] top-[25px] z-[3] h-[48px] w-[22px] rotate-[25deg] rounded-[65%_35%_75%_25%]`}
           style={{
             backgroundColor:
               fill,
@@ -2436,15 +2606,30 @@ function FrontHairLayer({
   );
 
   if (backView) {
+    /*
+     * 뒷모습에서는 앞머리를 보여주지 않고
+     * 정수리 연결부만 얕게 덮는다.
+     * 실제 뒤통수/길이는 BackHairLayer가 담당한다.
+     */
     return (
       <Crown
         width={
           type ===
           "long"
             ? 64
-            : 60
+            : type ===
+                "bob" ||
+              type ===
+                "curly"
+              ? 62
+              : 60
         }
-        height={27}
+        height={
+          type ===
+            "spike"
+            ? 18
+            : 22
+        }
       />
     );
   }
