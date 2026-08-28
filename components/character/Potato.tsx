@@ -2605,30 +2605,337 @@ function FrontHairLayer({
     </>
   );
 
-  if (backView) {
-    /*
-     * 뒷모습에서는 앞머리를 보여주지 않고
-     * 정수리 연결부만 얕게 덮는다.
-     * 실제 뒤통수/길이는 BackHairLayer가 담당한다.
-     */
+if (backView) {
+  /*
+   * 뒷모습에서는 얼굴이 없으므로
+   * 머리 길이에 맞게 몸통 위를 머리색으로 덮는다.
+   */
+
+  if (type === "long") {
     return (
-      <Crown
-        width={
-          type ===
-          "long"
-            ? 64
-            : type ===
-                "bob" ||
-              type ===
-                "curly"
-              ? 62
-              : 60
-        }
-        height={22}
+      <>
+        {/* 긴 생머리 뒤통수 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-11px]
+            z-[26]
+
+            h-[68px]
+            w-[64px]
+
+            -translate-x-1/2
+
+            rounded-[50%_50%_32%_32%/35%_35%_65%_65%]
+          "
+          style={{
+            backgroundColor: fill,
+            boxShadow: `inset 0 -5px 0 ${shadow}`,
+          }}
+        />
+
+        {/* 머리 윤기 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-[12px]
+            top-[-3px]
+            z-[27]
+
+            h-[3px]
+            w-[21px]
+
+            -rotate-[8deg]
+            rounded-full
+          "
+          style={{
+            backgroundColor: shine,
+          }}
+        />
+      </>
+    );
+  }
+
+  if (type === "curly") {
+    return (
+      <>
+        {/* 웨이브 뒷머리 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-10px]
+            z-[26]
+
+            h-[60px]
+            w-[64px]
+
+            -translate-x-1/2
+
+            rounded-[50%_50%_38%_38%]
+          "
+          style={{
+            backgroundColor: fill,
+            boxShadow: `inset 0 -5px 0 ${shadow}`,
+          }}
+        />
+
+        {/* 웨이브 끝 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -left-[4px]
+            top-[38px]
+            z-[27]
+
+            h-[22px]
+            w-[20px]
+
+            rotate-[15deg]
+            rounded-[60%_40%_65%_35%]
+          "
+          style={{
+            backgroundColor: fill,
+          }}
+        />
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            -right-[4px]
+            top-[38px]
+            z-[27]
+
+            h-[22px]
+            w-[20px]
+
+            -rotate-[15deg]
+            rounded-[40%_60%_35%_65%]
+          "
+          style={{
+            backgroundColor: fill,
+          }}
+        />
+      </>
+    );
+  }
+
+  if (type === "bob") {
+    return (
+      <div
+        className="
+          pointer-events-none
+          absolute
+          left-1/2
+          top-[-10px]
+          z-[26]
+
+          h-[47px]
+          w-[63px]
+
+          -translate-x-1/2
+
+          rounded-[50%_50%_42%_42%]
+        "
+        style={{
+          backgroundColor: fill,
+          boxShadow: `inset 0 -4px 0 ${shadow}`,
+        }}
       />
     );
   }
 
+  if (type === "ponytail") {
+    return (
+      <>
+        {/* 뒤통수 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-10px]
+            z-[26]
+
+            h-[42px]
+            w-[62px]
+
+            -translate-x-1/2
+            rounded-[50%]
+          "
+          style={{
+            backgroundColor: fill,
+          }}
+        />
+
+        {/* 묶은 머리 */}
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[25px]
+            z-[27]
+
+            h-[43px]
+            w-[21px]
+
+            -translate-x-1/2
+
+            rotate-[5deg]
+            rounded-[45%_55%_70%_30%]
+          "
+          style={{
+            backgroundColor: fill,
+            boxShadow: `inset -3px -3px 0 ${shadow}`,
+          }}
+        />
+      </>
+    );
+  }
+
+  if (type === "bun") {
+    return (
+      <>
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-10px]
+            z-[26]
+
+            h-[41px]
+            w-[62px]
+
+            -translate-x-1/2
+            rounded-[50%]
+          "
+          style={{
+            backgroundColor: fill,
+          }}
+        />
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-28px]
+            z-[27]
+
+            h-[29px]
+            w-[31px]
+
+            -translate-x-1/2
+            rounded-full
+          "
+          style={{
+            backgroundColor: fill,
+            boxShadow: `inset 0 -3px 0 ${shadow}`,
+          }}
+        />
+      </>
+    );
+  }
+
+  if (type === "braid") {
+    return (
+      <>
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-10px]
+            z-[26]
+
+            h-[42px]
+            w-[62px]
+
+            -translate-x-1/2
+            rounded-[50%]
+          "
+          style={{
+            backgroundColor: fill,
+          }}
+        />
+
+        {[26, 38, 50, 62].map((top, index) => (
+          <div
+            key={`back-braid-left-${top}`}
+            className="
+              pointer-events-none
+              absolute
+              left-[-4px]
+              z-[27]
+              rounded-full
+            "
+            style={{
+              top,
+              width: 14 - index,
+              height: 15 - index,
+              backgroundColor: fill,
+              border: `1px solid ${shadow}`,
+            }}
+          />
+        ))}
+
+        {[26, 38, 50, 62].map((top, index) => (
+          <div
+            key={`back-braid-right-${top}`}
+            className="
+              pointer-events-none
+              absolute
+              right-[-4px]
+              z-[27]
+              rounded-full
+            "
+            style={{
+              top,
+              width: 14 - index,
+              height: 15 - index,
+              backgroundColor: fill,
+              border: `1px solid ${shadow}`,
+            }}
+          />
+        ))}
+      </>
+    );
+  }
+
+  /*
+   * 숏컷 / 옆가르마 / 가운데가르마
+   */
+  return (
+    <div
+      className="
+        pointer-events-none
+        absolute
+        left-1/2
+        top-[-10px]
+        z-[26]
+
+        h-[35px]
+        w-[61px]
+
+        -translate-x-1/2
+
+        rounded-[50%_50%_43%_43%]
+      "
+      style={{
+        backgroundColor: fill,
+        boxShadow: `inset 0 -4px 0 ${shadow}`,
+      }}
+    />
+  );
+}
   /* ======================================================
      SHORT
   ====================================================== */
