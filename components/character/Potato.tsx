@@ -26,8 +26,12 @@ export type HairType =
   | "none"
   | "short"
   | "side"
+  | "middle"
   | "bob"
   | "curly"
+  | "ponytail"
+  | "bun"
+  | "braid"
   | "spike"
   | "long";
 
@@ -43,12 +47,16 @@ export type EyeType =
   | "round"
   | "smile"
   | "sleepy"
-  | "sparkle";
+  | "sparkle"
+  | "wink"
+  | "puppy";
 
 export type MouthType =
   | "default"
   | "smile"
+  | "open"
   | "cat"
+  | "pout"
   | "flat";
 
 type PotatoProps = {
@@ -1811,31 +1819,81 @@ function HairLayer({
   }
 
   const hairColor = ghost
-    ? "rgba(67, 107, 128, 0.7)"
+    ? "rgba(67, 107, 128, 0.72)"
     : color;
 
-  const base = "pointer-events-none absolute z-[26]";
+  const hairShadow = ghost
+    ? "rgba(33, 74, 94, 0.20)"
+    : "rgba(0, 0, 0, 0.15)";
 
-  if (direction === "up") {
-    return (
+  const hairHighlight = ghost
+    ? "rgba(220, 246, 255, 0.16)"
+    : "rgba(255, 255, 255, 0.17)";
+
+  const base =
+    "pointer-events-none absolute z-[26]";
+
+  const Crown = ({
+    className = "",
+  }: {
+    className?: string;
+  }) => (
+    <div
+      className={`${base} left-1/2 top-[-7px] h-[25px] w-[53px] -translate-x-1/2 rounded-[62%_62%_34%_34%] ${className}`}
+      style={{
+        backgroundColor: hairColor,
+        boxShadow: `inset 0 -4px 0 ${hairShadow}`,
+      }}
+    >
       <div
-        className={`${base} left-1/2 top-[-5px] h-[25px] w-[52px] -translate-x-1/2 rounded-t-[55%]`}
-        style={{ backgroundColor: hairColor }}
+        className="absolute left-[12px] top-[4px] h-[3px] w-[19px] -rotate-[10deg] rounded-full"
+        style={{ backgroundColor: hairHighlight }}
       />
+    </div>
+  );
+
+  /* 뒷모습 */
+  if (direction === "up") {
+    if (type === "spike") {
+      return (
+        <div className={`${base} left-1/2 top-[-15px] flex w-[54px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
+          {[20, 29, 35, 30, 22].map((height, index) => (
+            <span
+              key={index}
+              className="w-[11px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+              style={{ height, backgroundColor: hairColor }}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <Crown />
+        {(type === "bob" || type === "long" || type === "curly" || type === "braid") && (
+          <>
+            <div className={`${base} left-[1px] top-[8px] h-[48px] w-[15px] rounded-full`} style={{ backgroundColor: hairColor }} />
+            <div className={`${base} right-[1px] top-[8px] h-[48px] w-[15px] rounded-full`} style={{ backgroundColor: hairColor }} />
+          </>
+        )}
+        {type === "ponytail" && (
+          <div className={`${base} right-[-8px] top-[13px] h-[42px] w-[20px] rotate-[13deg] rounded-[65%_45%_70%_35%]`} style={{ backgroundColor: hairColor }} />
+        )}
+        {type === "bun" && (
+          <div className={`${base} left-1/2 top-[-18px] h-[25px] w-[27px] -translate-x-1/2 rounded-full border-[2px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
+        )}
+      </>
     );
   }
 
   if (type === "short") {
     return (
       <>
-        <div
-          className={`${base} left-1/2 top-[-5px] h-[20px] w-[48px] -translate-x-1/2 rounded-[60%_60%_35%_35%]`}
-          style={{ backgroundColor: hairColor }}
-        />
-        <div
-          className={`${base} left-[7px] top-[5px] h-[18px] w-[13px] rotate-[18deg] rounded-full`}
-          style={{ backgroundColor: hairColor }}
-        />
+        <Crown />
+        <div className={`${base} left-[7px] top-[5px] h-[18px] w-[15px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[20px] top-[6px] h-[15px] w-[14px] rotate-[6deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[8px] top-[4px] h-[17px] w-[14px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       </>
     );
   }
@@ -1843,14 +1901,20 @@ function HairLayer({
   if (type === "side") {
     return (
       <>
-        <div
-          className={`${base} left-1/2 top-[-6px] h-[20px] w-[50px] -translate-x-1/2 rounded-t-[60%]`}
-          style={{ backgroundColor: hairColor }}
-        />
-        <div
-          className={`${base} left-[6px] top-[4px] h-[32px] w-[18px] -rotate-[18deg] rounded-full`}
-          style={{ backgroundColor: hairColor }}
-        />
+        <Crown />
+        <div className={`${base} left-[5px] top-[0px] h-[35px] w-[22px] -rotate-[24deg] rounded-[70%_35%_75%_35%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[20px] top-[8px] h-[18px] w-[22px] -rotate-[13deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+      </>
+    );
+  }
+
+  if (type === "middle") {
+    return (
+      <>
+        <Crown />
+        <div className={`${base} left-[4px] top-[4px] h-[29px] w-[22px] rotate-[10deg] rounded-[65%_35%_70%_40%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[4px] top-[4px] h-[29px] w-[22px] -rotate-[10deg] rounded-[35%_65%_40%_70%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-1/2 top-[-3px] h-[20px] w-[3px] -translate-x-1/2 rotate-[2deg] rounded-full`} style={{ backgroundColor: hairHighlight }} />
       </>
     );
   }
@@ -1858,40 +1922,93 @@ function HairLayer({
   if (type === "bob") {
     return (
       <>
-        <div
-          className={`${base} left-1/2 top-[-6px] h-[23px] w-[53px] -translate-x-1/2 rounded-t-[65%]`}
-          style={{ backgroundColor: hairColor }}
-        />
-        <div
-          className={`${base} left-[3px] top-[8px] h-[43px] w-[13px] rounded-full`}
-          style={{ backgroundColor: hairColor }}
-        />
-        <div
-          className={`${base} right-[3px] top-[8px] h-[43px] w-[13px] rounded-full`}
-          style={{ backgroundColor: hairColor }}
-        />
+        <Crown />
+        <div className={`${base} left-[1px] top-[7px] h-[45px] w-[16px] rounded-[60%_35%_55%_75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[1px] top-[7px] h-[45px] w-[16px] rounded-[35%_60%_75%_55%]`} style={{ backgroundColor: hairColor }} />
+        {[12, 21, 30, 39].map((left, index) => (
+          <div
+            key={left}
+            className={`${base} top-[7px] h-[15px] w-[7px] rounded-b-full`}
+            style={{ left, backgroundColor: hairColor, transform: `rotate(${index % 2 ? 5 : -5}deg)` }}
+          />
+        ))}
       </>
     );
   }
 
+  /* curly = 둥근 뽀글이 대신 자연스러운 웨이브 */
   if (type === "curly") {
     return (
-      <div className={`${base} left-1/2 top-[-8px] flex w-[56px] -translate-x-1/2 flex-wrap justify-center gap-[-2px]`}>
-        {Array.from({ length: 7 }).map((_, index) => (
-          <span
+      <>
+        <Crown />
+        <div className={`${base} left-[-2px] top-[8px] h-[54px] w-[18px] rounded-[65%_35%_60%_40%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[-2px] top-[8px] h-[54px] w-[18px] rounded-[35%_65%_40%_60%]`} style={{ backgroundColor: hairColor }} />
+        {[
+          [0, 23, -18],
+          [1, 39, 16],
+          [44, 22, 18],
+          [43, 40, -16],
+        ].map(([left, top, rotate], index) => (
+          <div
             key={index}
-            className="-m-[1px] h-[17px] w-[17px] rounded-full"
-            style={{ backgroundColor: hairColor }}
+            className={`${base} h-[18px] w-[20px] rounded-[65%_35%_65%_35%] border-b-[3px]`}
+            style={{
+              left,
+              top,
+              transform: `rotate(${rotate}deg)`,
+              backgroundColor: hairColor,
+              borderColor: hairShadow,
+            }}
           />
         ))}
-      </div>
+        <div className={`${base} left-[8px] top-[4px] h-[22px] w-[17px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[8px] top-[5px] h-[21px] w-[17px] -rotate-[17deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+      </>
+    );
+  }
+
+  if (type === "ponytail") {
+    return (
+      <>
+        <Crown />
+        <div className={`${base} left-[7px] top-[4px] h-[26px] w-[19px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[-10px] top-[15px] h-[47px] w-[22px] rotate-[12deg] rounded-[65%_40%_75%_35%] border-l-[3px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
+        <div className={`${base} right-[2px] top-[11px] h-[11px] w-[11px] rounded-full`} style={{ backgroundColor: hairShadow }} />
+      </>
+    );
+  }
+
+  if (type === "bun") {
+    return (
+      <>
+        <Crown />
+        <div className={`${base} left-1/2 top-[-20px] h-[28px] w-[29px] -translate-x-1/2 rounded-full border-[2px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
+        <div className={`${base} left-[8px] top-[5px] h-[23px] w-[18px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[8px] top-[5px] h-[23px] w-[18px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+      </>
+    );
+  }
+
+  if (type === "braid") {
+    return (
+      <>
+        <Crown />
+        <div className={`${base} left-[5px] top-[4px] h-[24px] w-[18px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[5px] top-[4px] h-[24px] w-[18px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        {[22, 32, 42, 52].map((top, index) => (
+          <div key={`l-${top}`} className={`${base} left-[0px] h-[13px] w-[12px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? -12 : 12}deg)` }} />
+        ))}
+        {[22, 32, 42, 52].map((top, index) => (
+          <div key={`r-${top}`} className={`${base} right-[0px] h-[13px] w-[12px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? 12 : -12}deg)` }} />
+        ))}
+      </>
     );
   }
 
   if (type === "spike") {
     return (
-      <div className={`${base} left-1/2 top-[-13px] flex w-[52px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
-        {[20, 27, 33, 26, 20].map((height, index) => (
+      <div className={`${base} left-1/2 top-[-15px] flex w-[54px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
+        {[20, 30, 36, 31, 22].map((height, index) => (
           <span
             key={index}
             className="w-[11px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
@@ -1902,20 +2019,14 @@ function HairLayer({
     );
   }
 
+  /* long */
   return (
     <>
-      <div
-        className={`${base} left-1/2 top-[-6px] h-[24px] w-[53px] -translate-x-1/2 rounded-t-[65%]`}
-        style={{ backgroundColor: hairColor }}
-      />
-      <div
-        className={`${base} left-[1px] top-[8px] h-[55px] w-[14px] rounded-full`}
-        style={{ backgroundColor: hairColor }}
-      />
-      <div
-        className={`${base} right-[1px] top-[8px] h-[55px] w-[14px] rounded-full`}
-        style={{ backgroundColor: hairColor }}
-      />
+      <Crown />
+      <div className={`${base} left-[-2px] top-[7px] h-[59px] w-[17px] rounded-[65%_30%_55%_45%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} right-[-2px] top-[7px] h-[59px] w-[17px] rounded-[30%_65%_45%_55%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} left-[9px] top-[5px] h-[21px] w-[17px] rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} right-[9px] top-[5px] h-[21px] w-[17px] -rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
     </>
   );
 }
@@ -1939,71 +2050,82 @@ function EyePair({
     ? "#315c73"
     : "#18181b";
 
-  if (direction === "left" || direction === "right") {
-    const sideClass = direction === "left"
-      ? "left-[10px]"
-      : "right-[10px]";
+  const shine = ghost
+    ? "#d8f4ff"
+    : "#ffffff";
+
+  const side =
+    direction === "left" ||
+    direction === "right";
+
+  if (side) {
+    const sideClass =
+      direction === "left"
+        ? "left-[10px]"
+        : "right-[10px]";
 
     if (type === "sleepy") {
-      return <div className={`absolute ${sideClass} top-[33px] h-[3px] w-[8px] rounded-full`} style={{ backgroundColor: color }} />;
+      return <div className={`absolute ${sideClass} top-[33px] h-[3px] w-[9px] rounded-full`} style={{ backgroundColor: color }} />;
     }
 
-    if (type === "smile") {
-      return <div className={`absolute ${sideClass} top-[30px] h-[7px] w-[8px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
+    if (type === "smile" || type === "wink") {
+      return <div className={`absolute ${sideClass} top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]`} style={{ borderColor: color }} />;
     }
 
-    return <div className={`absolute ${sideClass} top-[31px] h-[7px] w-[7px] rounded-full`} style={{ backgroundColor: color }} />;
-  }
+    if (type === "sparkle") {
+      return <div className={`absolute ${sideClass} top-[27px] text-[13px] font-black leading-none`} style={{ color }}>✦</div>;
+    }
 
-  const positions = ["left-[12px]", "right-[12px]"];
-
-  if (type === "sleepy") {
     return (
-      <>
-        {positions.map((position) => (
-          <div key={position} className={`absolute ${position} top-[33px] h-[3px] w-[8px] rounded-full`} style={{ backgroundColor: color }} />
-        ))}
-      </>
+      <div className={`absolute ${sideClass} top-[29px] h-[9px] w-[8px] rounded-full`} style={{ backgroundColor: type === "round" ? "transparent" : color, border: type === "round" ? `2px solid ${color}` : undefined }}>
+        <div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} />
+      </div>
     );
   }
 
+  const positions = ["left-[11px]", "right-[11px]"];
+
+  if (type === "sleepy") {
+    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[33px] h-[3px] w-[9px] rounded-full`} style={{ backgroundColor: color }} />)}</>;
+  }
+
   if (type === "smile") {
+    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]`} style={{ borderColor: color }} />)}</>;
+  }
+
+  if (type === "wink") {
     return (
       <>
-        {positions.map((position) => (
-          <div key={position} className={`absolute ${position} top-[29px] h-[8px] w-[9px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />
-        ))}
+        <div className="absolute left-[11px] top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]" style={{ borderColor: color }} />
+        <div className="absolute right-[12px] top-[29px] h-[9px] w-[7px] rounded-full" style={{ backgroundColor: color }}>
+          <div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} />
+        </div>
       </>
     );
   }
 
   if (type === "sparkle") {
+    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[27px] text-[13px] font-black leading-none`} style={{ color }}>✦</div>)}</>;
+  }
+
+  if (type === "puppy") {
     return (
       <>
-        {positions.map((position) => (
-          <div key={position} className={`absolute ${position} top-[28px] text-[12px] font-black leading-none`} style={{ color }}>✦</div>
+        {positions.map(position => (
+          <div key={position} className={`absolute ${position} top-[27px] h-[12px] w-[9px] rounded-[50%_50%_55%_55%]`} style={{ backgroundColor: color }}>
+            <div className="absolute left-[2px] top-[1px] h-[3px] w-[3px] rounded-full" style={{ backgroundColor: shine }} />
+            <div className="absolute bottom-[1px] left-1/2 h-[3px] w-[5px] -translate-x-1/2 rounded-full bg-white/20" />
+          </div>
         ))}
       </>
     );
   }
 
   if (type === "round") {
-    return (
-      <>
-        {positions.map((position) => (
-          <div key={position} className={`absolute ${position} top-[29px] h-[8px] w-[8px] rounded-full border-[2px]`} style={{ borderColor: color }} />
-        ))}
-      </>
-    );
+    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[28px] h-[10px] w-[9px] rounded-full border-[2px]`} style={{ borderColor: color }}><div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} /></div>)}</>;
   }
 
-  return (
-    <>
-      {positions.map((position) => (
-        <div key={position} className={`absolute ${position} top-[30px] h-[6px] w-[6px] rounded-[1px]`} style={{ backgroundColor: color }} />
-      ))}
-    </>
-  );
+  return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[30px] h-[7px] w-[6px] rounded-full`} style={{ backgroundColor: color }}><div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} /></div>)}</>;
 }
 
 /* =========================================================
@@ -2025,83 +2147,56 @@ function MouthFace({
     ? "#315c73"
     : "#18181b";
 
-  if (direction === "left" || direction === "right") {
-    const sideClass = direction === "left"
-      ? "left-[9px]"
-      : "right-[9px]";
+  const lipColor = ghost
+    ? "#79a9bb"
+    : "#d96b78";
 
-    if (type === "flat") {
-      return (
-        <div
-          className={`absolute ${sideClass} top-[49px] h-[2px] w-[9px] rounded-full`}
-          style={{ backgroundColor: color }}
-        />
-      );
-    }
+  const side =
+    direction === "left" ||
+    direction === "right";
 
-    if (type === "cat") {
-      return (
-        <div
-          className={`absolute ${sideClass} top-[46px] text-[11px] font-black leading-none`}
-          style={{ color }}
-        >
-          ᵕ
-        </div>
-      );
-    }
-
-    if (type === "smile") {
-      return (
-        <div
-          className={`absolute ${sideClass} top-[46px] h-[5px] w-[10px] rounded-b-full border-b-[3px]`}
-          style={{ borderColor: color }}
-        />
-      );
-    }
-
-    return (
-      <div
-        className={`absolute ${sideClass} top-[48px] h-[3px] w-[9px] border-b-[3px]`}
-        style={{ borderColor: color }}
-      />
-    );
+  if (side) {
+    const sideClass = direction === "left" ? "left-[9px]" : "right-[9px]";
+    if (type === "flat") return <div className={`absolute ${sideClass} top-[49px] h-[2px] w-[10px] rounded-full`} style={{ backgroundColor: color }} />;
+    if (type === "pout") return <div className={`absolute ${sideClass} top-[47px] h-[6px] w-[8px] rounded-t-full border-t-[2px]`} style={{ borderColor: color }} />;
+    if (type === "open") return <div className={`absolute ${sideClass} top-[45px] h-[8px] w-[10px] rounded-full border-[2px]`} style={{ borderColor: color, backgroundColor: lipColor }} />;
+    if (type === "cat") return <div className={`absolute ${sideClass} top-[45px] h-[9px] w-[12px]`}><div className="absolute left-[1px] bottom-0 h-[6px] w-[6px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} /><div className="absolute right-[1px] bottom-0 h-[6px] w-[6px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} /></div>;
+    if (type === "smile") return <div className={`absolute ${sideClass} top-[45px] h-[7px] w-[11px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
+    return <div className={`absolute ${sideClass} top-[47px] h-[4px] w-[9px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
   }
 
   if (type === "flat") {
+    return <div className="absolute left-1/2 top-[48px] h-[2px] w-[12px] -translate-x-1/2 rounded-full" style={{ backgroundColor: color }} />;
+  }
+
+  if (type === "pout") {
+    return <div className="absolute left-1/2 top-[47px] h-[7px] w-[10px] -translate-x-1/2 rounded-t-full border-t-[2px]" style={{ borderColor: color }} />;
+  }
+
+  if (type === "open") {
     return (
-      <div
-        className="absolute left-1/2 top-[48px] h-[2px] w-[12px] -translate-x-1/2 rounded-full"
-        style={{ backgroundColor: color }}
-      />
+      <div className="absolute left-1/2 top-[43px] h-[11px] w-[14px] -translate-x-1/2 overflow-hidden rounded-full border-[2px]" style={{ borderColor: color, backgroundColor: color }}>
+        <div className="absolute bottom-0 left-1/2 h-[4px] w-[9px] -translate-x-1/2 rounded-t-full" style={{ backgroundColor: lipColor }} />
+        <div className="absolute left-[2px] top-[1px] h-[2px] w-[8px] rounded-full bg-white/90" />
+      </div>
     );
   }
 
   if (type === "cat") {
     return (
-      <div
-        className="absolute left-1/2 top-[43px] -translate-x-1/2 text-[13px] font-black leading-none"
-        style={{ color }}
-      >
-        ㅅ
+      <div className="absolute left-1/2 top-[43px] h-[12px] w-[18px] -translate-x-1/2">
+        <div className="absolute left-1/2 top-[1px] h-[4px] w-[4px] -translate-x-1/2 rotate-45 rounded-[1px]" style={{ backgroundColor: color }} />
+        <div className="absolute bottom-[1px] left-[1px] h-[7px] w-[9px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} />
+        <div className="absolute bottom-[1px] right-[1px] h-[7px] w-[9px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} />
       </div>
     );
   }
 
   if (type === "smile") {
-    return (
-      <div
-        className="absolute left-1/2 top-[43px] h-[8px] w-[15px] -translate-x-1/2 rounded-b-full border-b-[3px]"
-        style={{ borderColor: color }}
-      />
-    );
+    return <div className="absolute left-1/2 top-[42px] h-[10px] w-[17px] -translate-x-1/2 rounded-b-full border-b-[3px]" style={{ borderColor: color }} />;
   }
 
-  return (
-    <div
-      className="absolute left-1/2 top-[44px] h-[5px] w-[12px] -translate-x-1/2 border-b-[3px]"
-      style={{ borderColor: color }}
-    />
-  );
+  return <div className="absolute left-1/2 top-[44px] h-[5px] w-[12px] -translate-x-1/2 rounded-b-full border-b-[3px]" style={{ borderColor: color }} />;
 }
 
 /* =========================================================

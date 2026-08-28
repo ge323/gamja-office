@@ -45,8 +45,12 @@ const HAIR_TYPES: HairType[] = [
   "none",
   "short",
   "side",
+  "middle",
   "bob",
   "curly",
+  "ponytail",
+  "bun",
+  "braid",
   "spike",
   "long",
 ];
@@ -65,12 +69,16 @@ const EYE_TYPES: EyeType[] = [
   "smile",
   "sleepy",
   "sparkle",
+  "wink",
+  "puppy",
 ];
 
 const MOUTH_TYPES: MouthType[] = [
   "default",
   "smile",
+  "open",
   "cat",
+  "pout",
   "flat",
 ];
 
@@ -652,12 +660,16 @@ export default function CharacterCustomizer({
           <OptionSection title="헤어 스타일">
             {([
               ["none", "없음"],
-              ["short", "짧은머리"],
-              ["side", "가르마"],
-              ["bob", "단발"],
-              ["curly", "곱슬"],
-              ["spike", "뾰족"],
-              ["long", "긴머리"],
+              ["short", "숏컷"],
+              ["side", "옆가르마"],
+              ["middle", "가운데가르마"],
+              ["bob", "C컬 단발"],
+              ["curly", "웨이브"],
+              ["ponytail", "포니테일"],
+              ["bun", "올림머리"],
+              ["braid", "양갈래 땋기"],
+              ["spike", "스파이크"],
+              ["long", "긴 생머리"],
             ] as [HairType, string][]).map(
               ([value, label]) => (
                 <OptionButton
@@ -726,6 +738,8 @@ export default function CharacterCustomizer({
               ["smile", "웃는 눈"],
               ["sleepy", "졸린 눈"],
               ["sparkle", "반짝 눈"],
+              ["wink", "윙크"],
+              ["puppy", "초롱 눈"],
             ] as [EyeType, string][]).map(
               ([value, label]) => (
                 <OptionButton
@@ -754,7 +768,9 @@ export default function CharacterCustomizer({
             {([
               ["default", "기본"],
               ["smile", "미소"],
-              ["cat", "ㅅ 모양"],
+              ["open", "활짝 웃음"],
+              ["cat", "고양이 입"],
+              ["pout", "삐죽"],
               ["flat", "무표정"],
             ] as [MouthType, string][]).map(
               ([value, label]) => (
