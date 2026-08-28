@@ -2068,13 +2068,27 @@ function BackHairLayer({
                   }
                   className={`${common} z-[3] h-[23px] w-[22px] rounded-[65%_35%_65%_35%]`}
                   style={{
-                    ...item,
+                    left:
+                      "left" in item
+                        ? item.left
+                        : undefined,
+
+                    right:
+                      "right" in item
+                        ? item.right
+                        : undefined,
+
+                    top:
+                      item.top,
 
                     backgroundColor:
                       fill,
 
                     boxShadow:
                       `inset 0 -3px 0 ${shadow}`,
+
+                    transform:
+                      `rotate(${item.rotate}deg)`,
                   }}
                 />
               )
@@ -2612,7 +2626,15 @@ function FrontHairLayer({
               }
               className={`${base} top-[2px] h-[14px] w-[12px] rounded-b-[85%]`}
               style={{
-                ...item,
+                left:
+                  "left" in item
+                    ? item.left
+                    : undefined,
+
+                right:
+                  "right" in item
+                    ? item.right
+                    : undefined,
 
                 backgroundColor:
                   fill,
