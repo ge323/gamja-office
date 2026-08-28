@@ -11,7 +11,9 @@ import {
   type Socket,
 } from "socket.io-client";
 
-import Potato from "@/components/character/Potato";
+import Potato, {
+  type PotatoDirection,
+} from "@/components/character/Potato";
 
 import type {
   CharacterStyle,
@@ -68,6 +70,12 @@ type GamePlayer = {
    * 다른 플레이어의 걷기 모션을 자연스럽게 보여주기 위해 사용한다.
    */
   moving?: boolean;
+
+  /*
+   * 감자가 현재 바라보는 방향.
+   * 서버에 direction이 없더라도 클라이언트에서 좌표 변화로 계산해 유지한다.
+   */
+  direction?: PotatoDirection;
 
   missionIds?: string[];
 
@@ -513,6 +521,41 @@ function getDisplayName(
   return `${cleaned} 감자`;
 }
 
+/*
+ * 이동 벡터를 기준으로 감자의 상/하/좌/우 방향을 정한다.
+ * 대각선 이동은 변화량이 더 큰 축을 우선한다.
+ */
+function getMoveDirection(
+  dx: number,
+  dy: number,
+  fallback: PotatoDirection = "down"
+): PotatoDirection {
+  const absX =
+    Math.abs(dx);
+
+  const absY =
+    Math.abs(dy);
+
+  if (
+    absX < 0.001 &&
+    absY < 0.001
+  ) {
+    return fallback;
+  }
+
+  if (
+    absX >= absY
+  ) {
+    return dx >= 0
+      ? "right"
+      : "left";
+  }
+
+  return dy >= 0
+    ? "down"
+    : "up";
+}
+
 /* =========================================================
    DevilGameWorld
 ========================================================= */
@@ -576,6 +619,11 @@ export default function DevilGameWorld({
       x: 1100,
       y: 700,
     });
+
+  const directionRef =
+    useRef<PotatoDirection>(
+      "down"
+    );
 
   const targetPositionRef =
     useRef<Position | null>(
@@ -854,6 +902,14 @@ export default function DevilGameWorld({
     setMoving,
   ] =
     useState(false);
+
+  const [
+    direction,
+    setDirection,
+  ] =
+    useState<PotatoDirection>(
+      "down"
+    );
 
   /* ======================================================
      Map / blackout
@@ -1206,6 +1262,9 @@ export default function DevilGameWorld({
                     Boolean(
                       player.moving
                     ),
+                  direction:
+                    player.direction ??
+                    "down",
                   lastUpdateAt:
                     performance.now(),
                 };
@@ -1222,6 +1281,10 @@ export default function DevilGameWorld({
                   Boolean(
                     player.moving
                   ),
+                direction:
+                  before.direction ??
+                  player.direction ??
+                  "down",
                 lastUpdateAt:
                   performance.now(),
               };
@@ -1394,6 +1457,17 @@ export default function DevilGameWorld({
               response.self.state
             );
 
+            const initialDirection =
+              response.self.direction ??
+              "down";
+
+            directionRef.current =
+              initialDirection;
+
+            setDirection(
+              initialDirection
+            );
+
             const assignedMissionIds =
               response.self.missionIds ??
               [];
@@ -1545,6 +1619,17 @@ export default function DevilGameWorld({
           setPlayerState(
             nextSelf.state
           );
+
+          if (
+            nextSelf.direction
+          ) {
+            directionRef.current =
+              nextSelf.direction;
+
+            setDirection(
+              nextSelf.direction
+            );
+          }
         } else {
           console.warn(
             "⚠️ self player missing from game state",
@@ -1570,6 +1655,7 @@ export default function DevilGameWorld({
         y: number;
 
         moving?: boolean;
+        direction?: PotatoDirection;
       }) => {
         setOtherPlayers(
           (previous) =>
@@ -1600,6 +1686,17 @@ export default function DevilGameWorld({
                   distance >
                   REMOTE_TELEPORT_DISTANCE;
 
+                const nextDirection =
+                  data.direction ??
+                  getMoveDirection(
+                    data.x -
+                      player.x,
+                    data.y -
+                      player.y,
+                    player.direction ??
+                      "down"
+                  );
+
                 return {
                   ...player,
 
@@ -1628,6 +1725,9 @@ export default function DevilGameWorld({
                   moving:
                     data.moving ??
                     true,
+
+                  direction:
+                    nextDirection,
 
                   lastUpdateAt:
                     performance.now(),
@@ -2614,6 +2714,8 @@ export default function DevilGameWorld({
             ...positionRef.current,
             moving:
               false,
+            direction:
+              directionRef.current,
           }
         );
       }
@@ -2678,6 +2780,25 @@ export default function DevilGameWorld({
         dy * dy
       );
 
+    const nextDirection =
+      getMoveDirection(
+        dx,
+        dy,
+        directionRef.current
+      );
+
+    if (
+      nextDirection !==
+      directionRef.current
+    ) {
+      directionRef.current =
+        nextDirection;
+
+      setDirection(
+        nextDirection
+      );
+    }
+
     if (
       distance <=
       ARRIVAL_DISTANCE
@@ -2703,6 +2824,8 @@ export default function DevilGameWorld({
           ...finalPosition,
           moving:
             false,
+          direction:
+            directionRef.current,
         }
       );
 
@@ -2795,6 +2918,8 @@ export default function DevilGameWorld({
           ...nextPosition,
           moving:
             true,
+          direction:
+            directionRef.current,
         }
       );
     }
@@ -2865,6 +2990,22 @@ export default function DevilGameWorld({
         return;
       }
     }
+
+    const nextDirection =
+      getMoveDirection(
+        finalTarget.x -
+          current.x,
+        finalTarget.y -
+          current.y,
+        directionRef.current
+      );
+
+    directionRef.current =
+      nextDirection;
+
+    setDirection(
+      nextDirection
+    );
 
     if (
       animationFrameRef.current !==
@@ -3476,6 +3617,9 @@ export default function DevilGameWorld({
 
             moving:
               false,
+
+            direction:
+              directionRef.current,
           }
         );
       }
@@ -3609,6 +3753,33 @@ export default function DevilGameWorld({
           nextY,
       };
 
+      const moveDx =
+        nextPosition.x -
+        current.x;
+
+      const moveDy =
+        nextPosition.y -
+        current.y;
+
+      const nextDirection =
+        getMoveDirection(
+          moveDx,
+          moveDy,
+          directionRef.current
+        );
+
+      if (
+        nextDirection !==
+        directionRef.current
+      ) {
+        directionRef.current =
+          nextDirection;
+
+        setDirection(
+          nextDirection
+        );
+      }
+
       positionRef.current =
         nextPosition;
 
@@ -3638,6 +3809,9 @@ export default function DevilGameWorld({
 
             moving:
               true,
+
+            direction:
+              directionRef.current,
           }
         );
       }
@@ -4452,6 +4626,12 @@ export default function DevilGameWorld({
                       ?.tie ??
                     false
                   }
+                  special={
+                    player
+                      .characterStyle
+                      ?.special ??
+                    "none"
+                  }
                   color={
                     player
                       .characterStyle
@@ -4468,6 +4648,10 @@ export default function DevilGameWorld({
                     Boolean(
                       player.moving
                     )
+                  }
+                  direction={
+                    player.direction ??
+                    "down"
                   }
                   ghost={
                     player.state ===
@@ -4555,6 +4739,14 @@ export default function DevilGameWorld({
                 ?.tie ??
               false
             }
+            special={
+              selfPlayer
+                ?.characterStyle
+                ?.special ??
+              characterStyle
+                ?.special ??
+              "none"
+            }
             color={
               selfPlayer
                 ?.characterStyle
@@ -4571,6 +4763,9 @@ export default function DevilGameWorld({
             freckles={selfPlayer?.characterStyle?.freckles ?? characterStyle?.freckles ?? false}
             moving={
               moving
+            }
+            direction={
+              direction
             }
             ghost={
               playerState ===
@@ -6686,7 +6881,7 @@ export default function DevilGameWorld({
                 }
 
                 socket.emit(
-                  "devilGame:returnOffice",
+                  "devilGame:return-office",
                   {
                     roomId,
                     playerId: myPlayerIdRef.current,
