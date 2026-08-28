@@ -2624,12 +2624,7 @@ function FrontHairLayer({
               ? 62
               : 60
         }
-        height={
-          type ===
-            "spike"
-            ? 18
-            : 22
-        }
+        height={22}
       />
     );
   }
