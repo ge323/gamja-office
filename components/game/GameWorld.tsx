@@ -2022,15 +2022,20 @@ const handleToggleDevilReady =
         <div
           data-no-move
           className="
-            pointer-events-none
             absolute
-            inset-0
-            z-[99999]
+            right-6
+            top-6
+            z-[12000]
           "
+          onClick={(event) => {
+            event.stopPropagation();
+          }}
         >
           <button
             type="button"
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
+
               setGameMenuOpen(
                 previous =>
                   !previous
@@ -2073,6 +2078,9 @@ const handleToggleDevilReady =
         !currentDevilRoom && (
           <div
             data-no-move
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
             className="
               absolute
               right-6
