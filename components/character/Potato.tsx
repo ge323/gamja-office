@@ -922,8 +922,8 @@ export default function Potato({
 
                   {!evil && blush && (
                     <>
-                      <div className="absolute left-[7px] top-[40px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
-                      <div className="absolute right-[7px] top-[40px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                      <div className="absolute z-[33] left-[7px] top-[40px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                      <div className="absolute z-[33] right-[7px] top-[40px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
                     </>
                   )}
 
@@ -1171,7 +1171,7 @@ export default function Potato({
                   )}
 
                   {!evil && blush && (
-                    <div className="absolute left-[7px] top-[41px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                    <div className="absolute z-[33] left-[7px] top-[41px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
                   )}
 
                   {!evil && freckles && (
@@ -1233,7 +1233,7 @@ export default function Potato({
                   )}
 
                   {!evil && blush && (
-                    <div className="absolute right-[7px] top-[41px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                    <div className="absolute z-[33] right-[7px] top-[41px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
                   )}
 
                   {!evil && freckles && (
@@ -1831,7 +1831,7 @@ function HairLayer({
     : "rgba(255, 255, 255, 0.17)";
 
   const base =
-    "pointer-events-none absolute z-[26]";
+    "pointer-events-none absolute z-[18]";
 
   const Crown = ({
     className = "",
@@ -1839,7 +1839,7 @@ function HairLayer({
     className?: string;
   }) => (
     <div
-      className={`${base} left-1/2 top-[-9px] h-[21px] w-[53px] -translate-x-1/2 rounded-[62%_62%_34%_34%] ${className}`}
+      className={`${base} left-1/2 top-[-12px] h-[27px] w-[62px] -translate-x-1/2 rounded-[62%_62%_38%_38%] ${className}`}
       style={{
         backgroundColor: hairColor,
         boxShadow: `inset 0 -4px 0 ${hairShadow}`,
@@ -1902,8 +1902,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[5px] top-[-2px] h-[23px] w-[20px] -rotate-[24deg] rounded-[70%_35%_75%_35%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} left-[20px] top-[5px] h-[13px] w-[21px] -rotate-[13deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[2px] top-[-3px] h-[25px] w-[25px] -rotate-[24deg] rounded-[70%_35%_75%_35%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[18px] top-[3px] h-[15px] w-[25px] -rotate-[13deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       </>
     );
   }
@@ -1912,8 +1912,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[4px] top-[1px] h-[20px] w-[21px] rotate-[10deg] rounded-[65%_35%_70%_40%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[4px] top-[1px] h-[20px] w-[21px] -rotate-[10deg] rounded-[35%_65%_40%_70%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[1px] top-[-1px] h-[23px] w-[25px] rotate-[10deg] rounded-[65%_35%_70%_40%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[1px] top-[-1px] h-[23px] w-[25px] -rotate-[10deg] rounded-[35%_65%_40%_70%]`} style={{ backgroundColor: hairColor }} />
         <div className={`${base} left-1/2 top-[-3px] h-[20px] w-[3px] -translate-x-1/2 rotate-[2deg] rounded-full`} style={{ backgroundColor: hairHighlight }} />
       </>
     );
@@ -1923,8 +1923,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[1px] top-[7px] h-[45px] w-[16px] rounded-[60%_35%_55%_75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[1px] top-[7px] h-[45px] w-[16px] rounded-[35%_60%_75%_55%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[-5px] top-[7px] h-[50px] w-[21px] rounded-[60%_35%_55%_75%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[-5px] top-[7px] h-[50px] w-[21px] rounded-[35%_60%_75%_55%]`} style={{ backgroundColor: hairColor }} />
         {[12, 21, 30, 39].map((left, index) => (
           <div
             key={left}
@@ -1941,8 +1941,8 @@ function HairLayer({
     return (
       <>
         <Crown />
-        <div className={`${base} left-[-2px] top-[8px] h-[54px] w-[18px] rounded-[65%_35%_60%_40%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[-2px] top-[8px] h-[54px] w-[18px] rounded-[35%_65%_40%_60%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} left-[-7px] top-[7px] h-[59px] w-[23px] rounded-[65%_35%_60%_40%]`} style={{ backgroundColor: hairColor }} />
+        <div className={`${base} right-[-7px] top-[7px] h-[59px] w-[23px] rounded-[35%_65%_40%_60%]`} style={{ backgroundColor: hairColor }} />
         {[
           [0, 23, -18],
           [1, 39, 16],
@@ -1972,7 +1972,7 @@ function HairLayer({
       <>
         <Crown />
         <div className={`${base} left-[7px] top-[1px] h-[18px] w-[18px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[-10px] top-[15px] h-[47px] w-[22px] rotate-[12deg] rounded-[65%_40%_75%_35%] border-l-[3px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
+        <div className={`${base} right-[-15px] top-[12px] h-[54px] w-[27px] rotate-[12deg] rounded-[65%_40%_75%_35%] border-l-[3px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
         <div className={`${base} right-[2px] top-[11px] h-[11px] w-[11px] rounded-full`} style={{ backgroundColor: hairShadow }} />
       </>
     );
@@ -1996,10 +1996,10 @@ function HairLayer({
         <div className={`${base} left-[5px] top-[1px] h-[17px] w-[17px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
         <div className={`${base} right-[5px] top-[1px] h-[17px] w-[17px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
         {[22, 32, 42, 52].map((top, index) => (
-          <div key={`l-${top}`} className={`${base} left-[0px] h-[13px] w-[12px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? -12 : 12}deg)` }} />
+          <div key={`l-${top}`} className={`${base} left-[-4px] h-[15px] w-[14px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? -12 : 12}deg)` }} />
         ))}
         {[22, 32, 42, 52].map((top, index) => (
-          <div key={`r-${top}`} className={`${base} right-[0px] h-[13px] w-[12px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? 12 : -12}deg)` }} />
+          <div key={`r-${top}`} className={`${base} right-[-4px] h-[15px] w-[14px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? 12 : -12}deg)` }} />
         ))}
       </>
     );
@@ -2023,8 +2023,8 @@ function HairLayer({
   return (
     <>
       <Crown />
-      <div className={`${base} left-[-2px] top-[7px] h-[59px] w-[17px] rounded-[65%_30%_55%_45%]`} style={{ backgroundColor: hairColor }} />
-      <div className={`${base} right-[-2px] top-[7px] h-[59px] w-[17px] rounded-[30%_65%_45%_55%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} left-[-7px] top-[5px] h-[64px] w-[22px] rounded-[65%_30%_55%_45%]`} style={{ backgroundColor: hairColor }} />
+      <div className={`${base} right-[-7px] top-[5px] h-[64px] w-[22px] rounded-[30%_65%_45%_55%]`} style={{ backgroundColor: hairColor }} />
       <div className={`${base} left-[9px] top-[1px] h-[14px] w-[16px] rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
       <div className={`${base} right-[9px] top-[1px] h-[14px] w-[16px] -rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
     </>
@@ -2065,19 +2065,19 @@ function EyePair({
         : "right-[10px]";
 
     if (type === "sleepy") {
-      return <div className={`absolute ${sideClass} top-[33px] h-[3px] w-[9px] rounded-full`} style={{ backgroundColor: color }} />;
+      return <div className={`absolute z-[35] ${sideClass} top-[33px] h-[3px] w-[9px] rounded-full`} style={{ backgroundColor: color }} />;
     }
 
     if (type === "smile" || type === "wink") {
-      return <div className={`absolute ${sideClass} top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]`} style={{ borderColor: color }} />;
+      return <div className={`absolute z-[35] ${sideClass} top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]`} style={{ borderColor: color }} />;
     }
 
     if (type === "sparkle") {
-      return <div className={`absolute ${sideClass} top-[27px] text-[13px] font-black leading-none`} style={{ color }}>✦</div>;
+      return <div className={`absolute z-[35] ${sideClass} top-[27px] text-[13px] font-black leading-none`} style={{ color }}>✦</div>;
     }
 
     return (
-      <div className={`absolute ${sideClass} top-[29px] h-[9px] w-[8px] rounded-full`} style={{ backgroundColor: type === "round" ? "transparent" : color, border: type === "round" ? `2px solid ${color}` : undefined }}>
+      <div className={`absolute z-[35] ${sideClass} top-[29px] h-[9px] w-[8px] rounded-full`} style={{ backgroundColor: type === "round" ? "transparent" : color, border: type === "round" ? `2px solid ${color}` : undefined }}>
         <div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} />
       </div>
     );
@@ -2086,18 +2086,18 @@ function EyePair({
   const positions = ["left-[11px]", "right-[11px]"];
 
   if (type === "sleepy") {
-    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[33px] h-[3px] w-[9px] rounded-full`} style={{ backgroundColor: color }} />)}</>;
+    return <>{positions.map(position => <div key={position} className={`absolute z-[35] ${position} top-[33px] h-[3px] w-[9px] rounded-full`} style={{ backgroundColor: color }} />)}</>;
   }
 
   if (type === "smile") {
-    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]`} style={{ borderColor: color }} />)}</>;
+    return <>{positions.map(position => <div key={position} className={`absolute z-[35] ${position} top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]`} style={{ borderColor: color }} />)}</>;
   }
 
   if (type === "wink") {
     return (
       <>
-        <div className="absolute left-[11px] top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]" style={{ borderColor: color }} />
-        <div className="absolute right-[12px] top-[29px] h-[9px] w-[7px] rounded-full" style={{ backgroundColor: color }}>
+        <div className="absolute z-[35] left-[11px] top-[31px] h-[7px] w-[10px] rounded-t-full border-t-[3px]" style={{ borderColor: color }} />
+        <div className="absolute z-[35] right-[12px] top-[29px] h-[9px] w-[7px] rounded-full" style={{ backgroundColor: color }}>
           <div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} />
         </div>
       </>
@@ -2105,14 +2105,14 @@ function EyePair({
   }
 
   if (type === "sparkle") {
-    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[27px] text-[13px] font-black leading-none`} style={{ color }}>✦</div>)}</>;
+    return <>{positions.map(position => <div key={position} className={`absolute z-[35] ${position} top-[27px] text-[13px] font-black leading-none`} style={{ color }}>✦</div>)}</>;
   }
 
   if (type === "puppy") {
     return (
       <>
         {positions.map(position => (
-          <div key={position} className={`absolute ${position} top-[27px] h-[12px] w-[9px] rounded-[50%_50%_55%_55%]`} style={{ backgroundColor: color }}>
+          <div key={position} className={`absolute z-[35] ${position} top-[27px] h-[12px] w-[9px] rounded-[50%_50%_55%_55%]`} style={{ backgroundColor: color }}>
             <div className="absolute left-[2px] top-[1px] h-[3px] w-[3px] rounded-full" style={{ backgroundColor: shine }} />
             <div className="absolute bottom-[1px] left-1/2 h-[3px] w-[5px] -translate-x-1/2 rounded-full bg-white/20" />
           </div>
@@ -2122,10 +2122,10 @@ function EyePair({
   }
 
   if (type === "round") {
-    return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[28px] h-[10px] w-[9px] rounded-full border-[2px]`} style={{ borderColor: color }}><div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} /></div>)}</>;
+    return <>{positions.map(position => <div key={position} className={`absolute z-[35] ${position} top-[28px] h-[10px] w-[9px] rounded-full border-[2px]`} style={{ borderColor: color }}><div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} /></div>)}</>;
   }
 
-  return <>{positions.map(position => <div key={position} className={`absolute ${position} top-[30px] h-[7px] w-[6px] rounded-full`} style={{ backgroundColor: color }}><div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} /></div>)}</>;
+  return <>{positions.map(position => <div key={position} className={`absolute z-[35] ${position} top-[30px] h-[7px] w-[6px] rounded-full`} style={{ backgroundColor: color }}><div className="absolute right-[1px] top-[1px] h-[2px] w-[2px] rounded-full" style={{ backgroundColor: shine }} /></div>)}</>;
 }
 
 /* =========================================================
@@ -2157,25 +2157,25 @@ function MouthFace({
 
   if (side) {
     const sideClass = direction === "left" ? "left-[9px]" : "right-[9px]";
-    if (type === "flat") return <div className={`absolute ${sideClass} top-[49px] h-[2px] w-[10px] rounded-full`} style={{ backgroundColor: color }} />;
-    if (type === "pout") return <div className={`absolute ${sideClass} top-[47px] h-[6px] w-[8px] rounded-t-full border-t-[2px]`} style={{ borderColor: color }} />;
-    if (type === "open") return <div className={`absolute ${sideClass} top-[45px] h-[8px] w-[10px] rounded-full border-[2px]`} style={{ borderColor: color, backgroundColor: lipColor }} />;
-    if (type === "cat") return <div className={`absolute ${sideClass} top-[45px] h-[9px] w-[12px]`}><div className="absolute left-[1px] bottom-0 h-[6px] w-[6px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} /><div className="absolute right-[1px] bottom-0 h-[6px] w-[6px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} /></div>;
-    if (type === "smile") return <div className={`absolute ${sideClass} top-[45px] h-[7px] w-[11px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
-    return <div className={`absolute ${sideClass} top-[47px] h-[4px] w-[9px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
+    if (type === "flat") return <div className={`absolute z-[35] ${sideClass} top-[49px] h-[2px] w-[10px] rounded-full`} style={{ backgroundColor: color }} />;
+    if (type === "pout") return <div className={`absolute z-[35] ${sideClass} top-[47px] h-[6px] w-[8px] rounded-t-full border-t-[2px]`} style={{ borderColor: color }} />;
+    if (type === "open") return <div className={`absolute z-[35] ${sideClass} top-[45px] h-[8px] w-[10px] rounded-full border-[2px]`} style={{ borderColor: color, backgroundColor: lipColor }} />;
+    if (type === "cat") return <div className={`absolute z-[35] ${sideClass} top-[45px] h-[9px] w-[12px]`}><div className="absolute left-[1px] bottom-0 h-[6px] w-[6px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} /><div className="absolute right-[1px] bottom-0 h-[6px] w-[6px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} /></div>;
+    if (type === "smile") return <div className={`absolute z-[35] ${sideClass} top-[45px] h-[7px] w-[11px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
+    return <div className={`absolute z-[35] ${sideClass} top-[47px] h-[4px] w-[9px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
   }
 
   if (type === "flat") {
-    return <div className="absolute left-1/2 top-[48px] h-[2px] w-[12px] -translate-x-1/2 rounded-full" style={{ backgroundColor: color }} />;
+    return <div className="absolute z-[35] left-1/2 top-[48px] h-[2px] w-[12px] -translate-x-1/2 rounded-full" style={{ backgroundColor: color }} />;
   }
 
   if (type === "pout") {
-    return <div className="absolute left-1/2 top-[47px] h-[7px] w-[10px] -translate-x-1/2 rounded-t-full border-t-[2px]" style={{ borderColor: color }} />;
+    return <div className="absolute z-[35] left-1/2 top-[47px] h-[7px] w-[10px] -translate-x-1/2 rounded-t-full border-t-[2px]" style={{ borderColor: color }} />;
   }
 
   if (type === "open") {
     return (
-      <div className="absolute left-1/2 top-[43px] h-[11px] w-[14px] -translate-x-1/2 overflow-hidden rounded-full border-[2px]" style={{ borderColor: color, backgroundColor: color }}>
+      <div className="absolute z-[35] left-1/2 top-[43px] h-[11px] w-[14px] -translate-x-1/2 overflow-hidden rounded-full border-[2px]" style={{ borderColor: color, backgroundColor: color }}>
         <div className="absolute bottom-0 left-1/2 h-[4px] w-[9px] -translate-x-1/2 rounded-t-full" style={{ backgroundColor: lipColor }} />
         <div className="absolute left-[2px] top-[1px] h-[2px] w-[8px] rounded-full bg-white/90" />
       </div>
@@ -2184,7 +2184,7 @@ function MouthFace({
 
   if (type === "cat") {
     return (
-      <div className="absolute left-1/2 top-[43px] h-[12px] w-[18px] -translate-x-1/2">
+      <div className="absolute z-[35] left-1/2 top-[43px] h-[12px] w-[18px] -translate-x-1/2">
         <div className="absolute left-1/2 top-[1px] h-[4px] w-[4px] -translate-x-1/2 rotate-45 rounded-[1px]" style={{ backgroundColor: color }} />
         <div className="absolute bottom-[1px] left-[1px] h-[7px] w-[9px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} />
         <div className="absolute bottom-[1px] right-[1px] h-[7px] w-[9px] rounded-b-full border-b-[2px]" style={{ borderColor: color }} />
@@ -2193,10 +2193,10 @@ function MouthFace({
   }
 
   if (type === "smile") {
-    return <div className="absolute left-1/2 top-[42px] h-[10px] w-[17px] -translate-x-1/2 rounded-b-full border-b-[3px]" style={{ borderColor: color }} />;
+    return <div className="absolute z-[35] left-1/2 top-[42px] h-[10px] w-[17px] -translate-x-1/2 rounded-b-full border-b-[3px]" style={{ borderColor: color }} />;
   }
 
-  return <div className="absolute left-1/2 top-[44px] h-[5px] w-[12px] -translate-x-1/2 rounded-b-full border-b-[3px]" style={{ borderColor: color }} />;
+  return <div className="absolute z-[35] left-1/2 top-[44px] h-[5px] w-[12px] -translate-x-1/2 rounded-b-full border-b-[3px]" style={{ borderColor: color }} />;
 }
 
 /* =========================================================
@@ -2218,7 +2218,7 @@ function Freckles({
 
   if (direction === "left") {
     return (
-      <div className="pointer-events-none absolute left-[7px] top-[39px] flex gap-[2px]">
+      <div className="pointer-events-none absolute z-[34] left-[7px] top-[39px] flex gap-[2px]">
         {[0, 1, 2].map((index) => (
           <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
         ))}
@@ -2228,7 +2228,7 @@ function Freckles({
 
   if (direction === "right") {
     return (
-      <div className="pointer-events-none absolute right-[7px] top-[39px] flex gap-[2px]">
+      <div className="pointer-events-none absolute z-[34] right-[7px] top-[39px] flex gap-[2px]">
         {[0, 1, 2].map((index) => (
           <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
         ))}
@@ -2238,12 +2238,12 @@ function Freckles({
 
   return (
     <>
-      <div className="pointer-events-none absolute left-[7px] top-[39px] flex gap-[2px]">
+      <div className="pointer-events-none absolute z-[34] left-[7px] top-[39px] flex gap-[2px]">
         {[0, 1, 2].map((index) => (
           <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
         ))}
       </div>
-      <div className="pointer-events-none absolute right-[7px] top-[39px] flex gap-[2px]">
+      <div className="pointer-events-none absolute z-[34] right-[7px] top-[39px] flex gap-[2px]">
         {[0, 1, 2].map((index) => (
           <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
         ))}
