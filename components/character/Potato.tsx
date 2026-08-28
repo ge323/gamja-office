@@ -935,7 +935,9 @@ export default function Potato({
                       Normal eyes
                   ===================================== */}
 
-                  {!evil && (
+                  {!evil &&
+                    glasses !==
+                      "sunglasses" && (
                     <EyePair
                       type={eyes}
                       direction="down"
@@ -1161,11 +1163,14 @@ export default function Potato({
               facingLeft && (
                 <>
                   {!evil ? (
-                    <EyePair
-                      type={eyes}
-                      direction="left"
-                      ghost={ghost}
-                    />
+                    glasses !==
+                    "sunglasses" ? (
+                      <EyePair
+                        type={eyes}
+                        direction="left"
+                        ghost={ghost}
+                      />
+                    ) : null
                   ) : (
                     <div className="absolute left-[10px] top-[31px] h-[7px] w-[6px] rounded-[2px] bg-red-800" />
                   )}
@@ -1223,11 +1228,14 @@ export default function Potato({
               facingRight && (
                 <>
                   {!evil ? (
-                    <EyePair
-                      type={eyes}
-                      direction="right"
-                      ghost={ghost}
-                    />
+                    glasses !==
+                    "sunglasses" ? (
+                      <EyePair
+                        type={eyes}
+                        direction="right"
+                        ghost={ghost}
+                      />
+                    ) : null
                   ) : (
                     <div className="absolute right-[10px] top-[31px] h-[7px] w-[6px] rounded-[2px] bg-red-800" />
                   )}
@@ -1818,52 +1826,105 @@ function HairLayer({
     return null;
   }
 
-  const hairColor = ghost
-    ? "rgba(67, 107, 128, 0.72)"
-    : color;
+  const hairColor =
+    ghost
+      ? "rgba(67, 107, 128, 0.72)"
+      : color;
 
-  const hairShadow = ghost
-    ? "rgba(33, 74, 94, 0.20)"
-    : "rgba(0, 0, 0, 0.15)";
+  const shadow =
+    ghost
+      ? "rgba(33, 74, 94, 0.22)"
+      : "rgba(0, 0, 0, 0.17)";
 
-  const hairHighlight = ghost
-    ? "rgba(220, 246, 255, 0.16)"
-    : "rgba(255, 255, 255, 0.17)";
+  const shine =
+    ghost
+      ? "rgba(220, 246, 255, 0.16)"
+      : "rgba(255, 255, 255, 0.18)";
 
-  const base =
-    "pointer-events-none absolute z-[18]";
-
-  const Crown = ({
+  /*
+   * 머리 구조를 3단계로 나눈다.
+   *
+   * back  : 얼굴 뒤로 내려오는 머리
+   * crown : 정수리 볼륨
+   * bang  : 이마까지만 내려오는 앞머리
+   *
+   * 눈 영역(top 약 27~39px)은 비워 둔다.
+   */
+  const Back = ({
     className = "",
   }: {
     className?: string;
   }) => (
     <div
-      className={`${base} left-1/2 top-[-12px] h-[27px] w-[62px] -translate-x-1/2 rounded-[62%_62%_38%_38%] ${className}`}
+      className={`pointer-events-none absolute z-[12] ${className}`}
       style={{
-        backgroundColor: hairColor,
-        boxShadow: `inset 0 -4px 0 ${hairShadow}`,
+        backgroundColor:
+          hairColor,
+        boxShadow:
+          `inset 0 -4px 0 ${shadow}`,
       }}
-    >
-      <div
-        className="absolute left-[12px] top-[4px] h-[3px] w-[19px] -rotate-[10deg] rounded-full"
-        style={{ backgroundColor: hairHighlight }}
-      />
-    </div>
+    />
   );
 
-  /* 뒷모습 */
+  const Front = ({
+    className = "",
+  }: {
+    className?: string;
+  }) => (
+    <div
+      className={`pointer-events-none absolute z-[24] ${className}`}
+      style={{
+        backgroundColor:
+          hairColor,
+      }}
+    />
+  );
+
+  const Crown = () => (
+    <>
+      <Front className="left-1/2 top-[-13px] h-[29px] w-[64px] -translate-x-1/2 rounded-[60%_60%_36%_36%]" />
+
+      <div
+        className="
+          pointer-events-none
+          absolute
+          left-[12px]
+          top-[-5px]
+          z-[25]
+          h-[3px]
+          w-[24px]
+          -rotate-[9deg]
+          rounded-full
+        "
+        style={{
+          backgroundColor:
+            shine,
+        }}
+      />
+    </>
+  );
+
+  /* ======================================================
+     BACK VIEW
+  ====================================================== */
+
   if (direction === "up") {
     if (type === "spike") {
       return (
-        <div className={`${base} left-1/2 top-[-15px] flex w-[54px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
-          {[20, 29, 35, 30, 22].map((height, index) => (
-            <span
-              key={index}
-              className="w-[11px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
-              style={{ height, backgroundColor: hairColor }}
-            />
-          ))}
+        <div className="pointer-events-none absolute left-1/2 top-[-16px] z-[18] flex w-[58px] -translate-x-1/2 items-end justify-center gap-[1px]">
+          {[21, 31, 38, 32, 23].map(
+            (height, index) => (
+              <span
+                key={index}
+                className="w-[12px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+                style={{
+                  height,
+                  backgroundColor:
+                    hairColor,
+                }}
+              />
+            )
+          )}
         </div>
       );
     }
@@ -1871,162 +1932,305 @@ function HairLayer({
     return (
       <>
         <Crown />
-        {(type === "bob" || type === "long" || type === "curly" || type === "braid") && (
+
+        {(type === "bob" ||
+          type === "curly" ||
+          type === "long") && (
+          <Back className="left-1/2 top-[2px] h-[62px] w-[72px] -translate-x-1/2 rounded-[45%_45%_32%_32%]" />
+        )}
+
+        {type === "ponytail" && (
           <>
-            <div className={`${base} left-[1px] top-[8px] h-[48px] w-[15px] rounded-full`} style={{ backgroundColor: hairColor }} />
-            <div className={`${base} right-[1px] top-[8px] h-[48px] w-[15px] rounded-full`} style={{ backgroundColor: hairColor }} />
+            <Back className="left-1/2 top-[1px] h-[45px] w-[66px] -translate-x-1/2 rounded-[48%]" />
+            <Back className="right-[-15px] top-[14px] h-[52px] w-[28px] rotate-[13deg] rounded-[70%_35%_70%_35%]" />
           </>
         )}
-        {type === "ponytail" && (
-          <div className={`${base} right-[-8px] top-[13px] h-[42px] w-[20px] rotate-[13deg] rounded-[65%_45%_70%_35%]`} style={{ backgroundColor: hairColor }} />
-        )}
+
         {type === "bun" && (
-          <div className={`${base} left-1/2 top-[-18px] h-[25px] w-[27px] -translate-x-1/2 rounded-full border-[2px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
+          <>
+            <Back className="left-1/2 top-[0px] h-[40px] w-[65px] -translate-x-1/2 rounded-[50%]" />
+            <Back className="left-1/2 top-[-25px] h-[31px] w-[33px] -translate-x-1/2 rounded-full" />
+          </>
+        )}
+
+        {type === "braid" && (
+          <>
+            <Back className="left-1/2 top-[0px] h-[40px] w-[65px] -translate-x-1/2 rounded-[50%]" />
+
+            {[23, 36, 49].map(
+              (top, index) => (
+                <Back
+                  key={`back-l-${top}`}
+                  className="left-[-5px] h-[16px] w-[15px] rounded-full"
+                />
+              )
+            )}
+
+            {[23, 36, 49].map(
+              top => (
+                <Back
+                  key={`back-r-${top}`}
+                  className="right-[-5px] h-[16px] w-[15px] rounded-full"
+                />
+              )
+            )}
+          </>
+        )}
+
+        {type !== "bob" &&
+          type !== "curly" &&
+          type !== "long" &&
+          type !== "ponytail" &&
+          type !== "bun" &&
+          type !== "braid" && (
+          <Back className="left-1/2 top-[0px] h-[38px] w-[66px] -translate-x-1/2 rounded-[50%]" />
         )}
       </>
     );
   }
+
+  /* ======================================================
+     SHORT
+  ====================================================== */
 
   if (type === "short") {
     return (
       <>
         <Crown />
-        <div className={`${base} left-[7px] top-[3px] h-[14px] w-[15px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} left-[20px] top-[4px] h-[12px] w-[14px] rotate-[6deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[8px] top-[3px] h-[13px] w-[14px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+
+        <Front className="left-[5px] top-[3px] h-[15px] w-[18px] rotate-[18deg] rounded-b-[75%]" />
+        <Front className="left-[20px] top-[3px] h-[13px] w-[17px] rotate-[5deg] rounded-b-[75%]" />
+        <Front className="right-[6px] top-[2px] h-[15px] w-[17px] -rotate-[16deg] rounded-b-[75%]" />
       </>
     );
   }
+
+  /* ======================================================
+     SIDE PART
+  ====================================================== */
 
   if (type === "side") {
     return (
       <>
         <Crown />
-        <div className={`${base} left-[2px] top-[-3px] h-[25px] w-[25px] -rotate-[24deg] rounded-[70%_35%_75%_35%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} left-[18px] top-[3px] h-[15px] w-[25px] -rotate-[13deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+
+        <Front className="left-[1px] top-[-1px] h-[23px] w-[29px] -rotate-[20deg] rounded-[70%_35%_72%_35%]" />
+
+        <Front className="left-[19px] top-[2px] h-[15px] w-[27px] -rotate-[9deg] rounded-b-[75%]" />
       </>
     );
   }
+
+  /* ======================================================
+     MIDDLE PART
+  ====================================================== */
 
   if (type === "middle") {
     return (
       <>
         <Crown />
-        <div className={`${base} left-[1px] top-[-1px] h-[23px] w-[25px] rotate-[10deg] rounded-[65%_35%_70%_40%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[1px] top-[-1px] h-[23px] w-[25px] -rotate-[10deg] rounded-[35%_65%_40%_70%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} left-1/2 top-[-3px] h-[20px] w-[3px] -translate-x-1/2 rotate-[2deg] rounded-full`} style={{ backgroundColor: hairHighlight }} />
+
+        <Front className="left-[0px] top-[0px] h-[21px] w-[27px] rotate-[11deg] rounded-[65%_35%_70%_40%]" />
+
+        <Front className="right-[0px] top-[0px] h-[21px] w-[27px] -rotate-[11deg] rounded-[35%_65%_40%_70%]" />
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            left-1/2
+            top-[-7px]
+            z-[26]
+            h-[19px]
+            w-[2px]
+            -translate-x-1/2
+            rounded-full
+          "
+          style={{
+            backgroundColor:
+              shine,
+          }}
+        />
       </>
     );
   }
+
+  /* ======================================================
+     BOB
+  ====================================================== */
 
   if (type === "bob") {
     return (
       <>
+        <Back className="left-1/2 top-[2px] h-[57px] w-[72px] -translate-x-1/2 rounded-[45%_45%_38%_38%]" />
+
         <Crown />
-        <div className={`${base} left-[-5px] top-[7px] h-[50px] w-[21px] rounded-[60%_35%_55%_75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[-5px] top-[7px] h-[50px] w-[21px] rounded-[35%_60%_75%_55%]`} style={{ backgroundColor: hairColor }} />
-        {[12, 21, 30, 39].map((left, index) => (
-          <div
-            key={left}
-            className={`${base} top-[5px] h-[11px] w-[7px] rounded-b-full`}
-            style={{ left, backgroundColor: hairColor, transform: `rotate(${index % 2 ? 5 : -5}deg)` }}
-          />
-        ))}
+
+        <Front className="left-[5px] top-[3px] h-[16px] w-[17px] rotate-[12deg] rounded-b-[80%]" />
+        <Front className="left-[19px] top-[3px] h-[14px] w-[13px] rotate-[4deg] rounded-b-[80%]" />
+        <Front className="right-[19px] top-[3px] h-[14px] w-[13px] -rotate-[4deg] rounded-b-[80%]" />
+        <Front className="right-[5px] top-[3px] h-[16px] w-[17px] -rotate-[12deg] rounded-b-[80%]" />
       </>
     );
   }
 
-  /* curly = 둥근 뽀글이 대신 자연스러운 웨이브 */
+  /* ======================================================
+     WAVE
+  ====================================================== */
+
   if (type === "curly") {
     return (
       <>
+        {/* 하나의 큰 뒷머리 실루엣 */}
+        <Back className="left-1/2 top-[0px] h-[69px] w-[78px] -translate-x-1/2 rounded-[45%_45%_32%_32%]" />
+
+        {/* 옆 웨이브는 얼굴 바깥으로만 */}
+        <Back className="left-[-10px] top-[25px] h-[25px] w-[24px] -rotate-[16deg] rounded-[65%_35%_65%_35%]" />
+        <Back className="left-[-7px] top-[45px] h-[24px] w-[23px] rotate-[12deg] rounded-[35%_65%_35%_65%]" />
+
+        <Back className="right-[-10px] top-[25px] h-[25px] w-[24px] rotate-[16deg] rounded-[35%_65%_35%_65%]" />
+        <Back className="right-[-7px] top-[45px] h-[24px] w-[23px] -rotate-[12deg] rounded-[65%_35%_65%_35%]" />
+
         <Crown />
-        <div className={`${base} left-[-7px] top-[7px] h-[59px] w-[23px] rounded-[65%_35%_60%_40%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[-7px] top-[7px] h-[59px] w-[23px] rounded-[35%_65%_40%_60%]`} style={{ backgroundColor: hairColor }} />
-        {[
-          [0, 23, -18],
-          [1, 39, 16],
-          [44, 22, 18],
-          [43, 40, -16],
-        ].map(([left, top, rotate], index) => (
-          <div
-            key={index}
-            className={`${base} h-[18px] w-[20px] rounded-[65%_35%_65%_35%] border-b-[3px]`}
-            style={{
-              left,
-              top,
-              transform: `rotate(${rotate}deg)`,
-              backgroundColor: hairColor,
-              borderColor: hairShadow,
-            }}
-          />
-        ))}
-        <div className={`${base} left-[8px] top-[1px] h-[15px] w-[16px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[8px] top-[2px] h-[15px] w-[16px] -rotate-[17deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+
+        {/* 앞머리는 눈 위에서 끝남 */}
+        <Front className="left-[5px] top-[1px] h-[17px] w-[20px] rotate-[14deg] rounded-b-[75%]" />
+        <Front className="right-[5px] top-[1px] h-[17px] w-[20px] -rotate-[14deg] rounded-b-[75%]" />
       </>
     );
   }
+
+  /* ======================================================
+     PONYTAIL
+  ====================================================== */
 
   if (type === "ponytail") {
     return (
       <>
+        <Back className="left-1/2 top-[1px] h-[43px] w-[67px] -translate-x-1/2 rounded-[48%]" />
+
+        <Back className="right-[-17px] top-[13px] h-[57px] w-[30px] rotate-[13deg] rounded-[65%_35%_72%_35%]" />
+
         <Crown />
-        <div className={`${base} left-[7px] top-[1px] h-[18px] w-[18px] rotate-[18deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[-15px] top-[12px] h-[54px] w-[27px] rotate-[12deg] rounded-[65%_40%_75%_35%] border-l-[3px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
-        <div className={`${base} right-[2px] top-[11px] h-[11px] w-[11px] rounded-full`} style={{ backgroundColor: hairShadow }} />
+
+        <Front className="left-[5px] top-[1px] h-[17px] w-[21px] rotate-[14deg] rounded-b-[75%]" />
+
+        <Front className="right-[8px] top-[2px] h-[15px] w-[18px] -rotate-[9deg] rounded-b-[75%]" />
+
+        <div
+          className="
+            pointer-events-none
+            absolute
+            right-[-1px]
+            top-[9px]
+            z-[27]
+            h-[11px]
+            w-[11px]
+            rounded-full
+          "
+          style={{
+            backgroundColor:
+              shadow,
+          }}
+        />
       </>
     );
   }
+
+  /* ======================================================
+     BUN
+  ====================================================== */
 
   if (type === "bun") {
     return (
       <>
+        <Back className="left-1/2 top-[0px] h-[43px] w-[67px] -translate-x-1/2 rounded-[48%]" />
+
+        <Back className="left-1/2 top-[-27px] h-[33px] w-[35px] -translate-x-1/2 rounded-full" />
+
         <Crown />
-        <div className={`${base} left-1/2 top-[-20px] h-[28px] w-[29px] -translate-x-1/2 rounded-full border-[2px]`} style={{ backgroundColor: hairColor, borderColor: hairShadow }} />
-        <div className={`${base} left-[8px] top-[2px] h-[16px] w-[17px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[8px] top-[2px] h-[16px] w-[17px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+
+        <Front className="left-[5px] top-[1px] h-[17px] w-[20px] rotate-[13deg] rounded-b-[75%]" />
+
+        <Front className="right-[5px] top-[1px] h-[17px] w-[20px] -rotate-[13deg] rounded-b-[75%]" />
       </>
     );
   }
+
+  /* ======================================================
+     BRAID
+  ====================================================== */
 
   if (type === "braid") {
     return (
       <>
+        <Back className="left-1/2 top-[0px] h-[43px] w-[67px] -translate-x-1/2 rounded-[48%]" />
+
         <Crown />
-        <div className={`${base} left-[5px] top-[1px] h-[17px] w-[17px] rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        <div className={`${base} right-[5px] top-[1px] h-[17px] w-[17px] -rotate-[15deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-        {[22, 32, 42, 52].map((top, index) => (
-          <div key={`l-${top}`} className={`${base} left-[-4px] h-[15px] w-[14px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? -12 : 12}deg)` }} />
-        ))}
-        {[22, 32, 42, 52].map((top, index) => (
-          <div key={`r-${top}`} className={`${base} right-[-4px] h-[15px] w-[14px] rounded-full`} style={{ top, backgroundColor: hairColor, border: `1px solid ${hairShadow}`, transform: `rotate(${index % 2 ? 12 : -12}deg)` }} />
-        ))}
+
+        <Front className="left-[5px] top-[1px] h-[16px] w-[20px] rotate-[13deg] rounded-b-[75%]" />
+        <Front className="right-[5px] top-[1px] h-[16px] w-[20px] -rotate-[13deg] rounded-b-[75%]" />
+
+        {[22, 35, 48, 61].map(
+          (top, index) => (
+            <Back
+              key={`l-${top}`}
+              className="left-[-6px] h-[16px] w-[15px] rounded-full"
+            />
+          )
+        )}
+
+        {[22, 35, 48, 61].map(
+          (top, index) => (
+            <Back
+              key={`r-${top}`}
+              className="right-[-6px] h-[16px] w-[15px] rounded-full"
+            />
+          )
+        )}
       </>
     );
   }
 
+  /* ======================================================
+     SPIKE
+  ====================================================== */
+
   if (type === "spike") {
     return (
-      <div className={`${base} left-1/2 top-[-15px] flex w-[54px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
-        {[20, 30, 36, 31, 22].map((height, index) => (
-          <span
-            key={index}
-            className="w-[11px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
-            style={{ height, backgroundColor: hairColor }}
-          />
-        ))}
+      <div className="pointer-events-none absolute left-1/2 top-[-17px] z-[22] flex w-[60px] -translate-x-1/2 items-end justify-center gap-[1px]">
+        {[22, 32, 40, 34, 24].map(
+          (height, index) => (
+            <span
+              key={index}
+              className="w-[12px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+              style={{
+                height,
+                backgroundColor:
+                  hairColor,
+              }}
+            />
+          )
+        )}
       </div>
     );
   }
 
-  /* long */
+  /* ======================================================
+     LONG
+  ====================================================== */
+
   return (
     <>
+      {/* 긴 머리는 얼굴 뒤에 큰 한 덩어리로 만든다 */}
+      <Back className="left-1/2 top-[-1px] h-[76px] w-[78px] -translate-x-1/2 rounded-[46%_46%_28%_28%]" />
+
       <Crown />
-      <div className={`${base} left-[-7px] top-[5px] h-[64px] w-[22px] rounded-[65%_30%_55%_45%]`} style={{ backgroundColor: hairColor }} />
-      <div className={`${base} right-[-7px] top-[5px] h-[64px] w-[22px] rounded-[30%_65%_45%_55%]`} style={{ backgroundColor: hairColor }} />
-      <div className={`${base} left-[9px] top-[1px] h-[14px] w-[16px] rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
-      <div className={`${base} right-[9px] top-[1px] h-[14px] w-[16px] -rotate-[16deg] rounded-b-[75%]`} style={{ backgroundColor: hairColor }} />
+
+      {/* 이마만 살짝 덮는 앞머리 */}
+      <Front className="left-[4px] top-[1px] h-[17px] w-[21px] rotate-[14deg] rounded-b-[75%]" />
+
+      <Front className="right-[4px] top-[1px] h-[17px] w-[21px] -rotate-[14deg] rounded-b-[75%]" />
     </>
   );
 }
