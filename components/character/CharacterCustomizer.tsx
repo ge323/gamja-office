@@ -1,6 +1,10 @@
 "use client";
 
 import Potato, {
+  type EyeType,
+  type HairColor,
+  type HairType,
+  type MouthType,
   type PotatoColor,
 } from "@/components/character/Potato";
 
@@ -19,7 +23,122 @@ export type CharacterStyle = {
   ribbon: boolean;
   tie: boolean;
   color: PotatoColor;
+
+  /* 새 꾸미기 옵션은 optional로 두어 기존 저장 데이터와 호환 */
+  hair?: HairType;
+  hairColor?: HairColor;
+  eyes?: EyeType;
+  mouth?: MouthType;
+  blush?: boolean;
+  freckles?: boolean;
 };
+
+const POTATO_COLORS: PotatoColor[] = [
+  "default",
+  "gold",
+  "sweet",
+  "purple",
+  "burnt",
+];
+
+const HAIR_TYPES: HairType[] = [
+  "none",
+  "short",
+  "side",
+  "bob",
+  "curly",
+  "spike",
+  "long",
+];
+
+const HAIR_COLORS: HairColor[] = [
+  "black",
+  "brown",
+  "blonde",
+  "pink",
+  "blue",
+];
+
+const EYE_TYPES: EyeType[] = [
+  "dot",
+  "round",
+  "smile",
+  "sleepy",
+  "sparkle",
+];
+
+const MOUTH_TYPES: MouthType[] = [
+  "default",
+  "smile",
+  "cat",
+  "flat",
+];
+
+function pickRandom<T>(items: T[]): T {
+  return items[
+    Math.floor(
+      Math.random() *
+        items.length
+    )
+  ];
+}
+
+export function createRandomCharacterStyle(): CharacterStyle {
+  return {
+    glasses:
+      Math.random() < 0.35
+        ? pickRandom([
+            "round",
+            "sunglasses",
+          ] as GlassesType[])
+        : "none",
+
+    hat:
+      Math.random() < 0.25
+        ? pickRandom([
+            "cap",
+            "party",
+          ] as HatType[])
+        : "none",
+
+    ribbon:
+      Math.random() < 0.25,
+
+    tie:
+      Math.random() < 0.25,
+
+    color:
+      pickRandom(
+        POTATO_COLORS
+      ),
+
+    hair:
+      pickRandom(
+        HAIR_TYPES
+      ),
+
+    hairColor:
+      pickRandom(
+        HAIR_COLORS
+      ),
+
+    eyes:
+      pickRandom(
+        EYE_TYPES
+      ),
+
+    mouth:
+      pickRandom(
+        MOUTH_TYPES
+      ),
+
+    blush:
+      Math.random() < 0.65,
+
+    freckles:
+      Math.random() < 0.3,
+  };
+}
 
 /* =========================================================
    Props
@@ -196,6 +315,30 @@ export default function CharacterCustomizer({
               color={
                 style.color
               }
+              hair={
+                style.hair ??
+                "none"
+              }
+              hairColor={
+                style.hairColor ??
+                "brown"
+              }
+              eyes={
+                style.eyes ??
+                "dot"
+              }
+              mouth={
+                style.mouth ??
+                "default"
+              }
+              blush={
+                style.blush ??
+                true
+              }
+              freckles={
+                style.freckles ??
+                false
+              }
             />
           </div>
 
@@ -257,6 +400,31 @@ export default function CharacterCustomizer({
           >
             닉네임과 캐릭터를 설정하고 입장하세요.
           </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setStyle(
+                createRandomCharacterStyle()
+              )
+            }
+            className="
+              mt-4
+              rounded-xl
+              border
+              border-zinc-200
+              bg-zinc-50
+              px-4
+              py-2.5
+              text-xs
+              font-semibold
+              text-zinc-700
+              transition
+              hover:bg-zinc-100
+            "
+          >
+            🎲 랜덤으로 꾸미기
+          </button>
 
           {/* =====================================
               닉네임
@@ -478,6 +646,173 @@ export default function CharacterCustomizer({
           </OptionSection>
 
           {/* =====================================
+              헤어 스타일
+          ===================================== */}
+
+          <OptionSection title="헤어 스타일">
+            {([
+              ["none", "없음"],
+              ["short", "짧은머리"],
+              ["side", "가르마"],
+              ["bob", "단발"],
+              ["curly", "곱슬"],
+              ["spike", "뾰족"],
+              ["long", "긴머리"],
+            ] as [HairType, string][]).map(
+              ([value, label]) => (
+                <OptionButton
+                  key={value}
+                  active={
+                    (style.hair ?? "none") ===
+                    value
+                  }
+                  onClick={() =>
+                    updateStyle({
+                      hair: value,
+                    })
+                  }
+                >
+                  {label}
+                </OptionButton>
+              )
+            )}
+          </OptionSection>
+
+          {/* =====================================
+              머리색
+          ===================================== */}
+
+          <OptionSection title="머리색">
+            <ColorButton
+              label="검정"
+              color="#27272a"
+              active={(style.hairColor ?? "brown") === "black"}
+              onClick={() => updateStyle({ hairColor: "black" })}
+            />
+            <ColorButton
+              label="갈색"
+              color="#6b4423"
+              active={(style.hairColor ?? "brown") === "brown"}
+              onClick={() => updateStyle({ hairColor: "brown" })}
+            />
+            <ColorButton
+              label="금발"
+              color="#e7c56a"
+              active={(style.hairColor ?? "brown") === "blonde"}
+              onClick={() => updateStyle({ hairColor: "blonde" })}
+            />
+            <ColorButton
+              label="핑크"
+              color="#d66d8f"
+              active={(style.hairColor ?? "brown") === "pink"}
+              onClick={() => updateStyle({ hairColor: "pink" })}
+            />
+            <ColorButton
+              label="블루"
+              color="#5f78b8"
+              active={(style.hairColor ?? "brown") === "blue"}
+              onClick={() => updateStyle({ hairColor: "blue" })}
+            />
+          </OptionSection>
+
+          {/* =====================================
+              눈 모양
+          ===================================== */}
+
+          <OptionSection title="눈 모양">
+            {([
+              ["dot", "기본"],
+              ["round", "동그란 눈"],
+              ["smile", "웃는 눈"],
+              ["sleepy", "졸린 눈"],
+              ["sparkle", "반짝 눈"],
+            ] as [EyeType, string][]).map(
+              ([value, label]) => (
+                <OptionButton
+                  key={value}
+                  active={
+                    (style.eyes ?? "dot") ===
+                    value
+                  }
+                  onClick={() =>
+                    updateStyle({
+                      eyes: value,
+                    })
+                  }
+                >
+                  {label}
+                </OptionButton>
+              )
+            )}
+          </OptionSection>
+
+          {/* =====================================
+              입 모양
+          ===================================== */}
+
+          <OptionSection title="입 모양">
+            {([
+              ["default", "기본"],
+              ["smile", "미소"],
+              ["cat", "ㅅ 모양"],
+              ["flat", "무표정"],
+            ] as [MouthType, string][]).map(
+              ([value, label]) => (
+                <OptionButton
+                  key={value}
+                  active={
+                    (style.mouth ?? "default") ===
+                    value
+                  }
+                  onClick={() =>
+                    updateStyle({
+                      mouth: value,
+                    })
+                  }
+                >
+                  {label}
+                </OptionButton>
+              )
+            )}
+          </OptionSection>
+
+          {/* =====================================
+              얼굴 포인트
+          ===================================== */}
+
+          <OptionSection title="얼굴 포인트">
+            <OptionButton
+              active={
+                style.blush ??
+                true
+              }
+              onClick={() =>
+                updateStyle({
+                  blush:
+                    !(style.blush ?? true),
+                })
+              }
+            >
+              😊 볼터치
+            </OptionButton>
+
+            <OptionButton
+              active={
+                style.freckles ??
+                false
+              }
+              onClick={() =>
+                updateStyle({
+                  freckles:
+                    !(style.freckles ?? false),
+                })
+              }
+            >
+              ·· 주근깨
+            </OptionButton>
+          </OptionSection>
+
+          {/* =====================================
               안경
           ===================================== */}
 
@@ -635,6 +970,24 @@ export default function CharacterCustomizer({
 
                 color:
                   "default",
+
+                hair:
+                  "none",
+
+                hairColor:
+                  "brown",
+
+                eyes:
+                  "dot",
+
+                mouth:
+                  "default",
+
+                blush:
+                  true,
+
+                freckles:
+                  false,
               })
             }
             className="

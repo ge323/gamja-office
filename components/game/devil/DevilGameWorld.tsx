@@ -4458,6 +4458,12 @@ export default function DevilGameWorld({
                       ?.color ??
                     "default"
                   }
+                  hair={player.characterStyle?.hair ?? "none"}
+                  hairColor={player.characterStyle?.hairColor ?? "brown"}
+                  eyes={player.characterStyle?.eyes ?? "dot"}
+                  mouth={player.characterStyle?.mouth ?? "default"}
+                  blush={player.characterStyle?.blush ?? true}
+                  freckles={player.characterStyle?.freckles ?? false}
                   moving={
                     Boolean(
                       player.moving
@@ -4557,6 +4563,12 @@ export default function DevilGameWorld({
                 ?.color ??
               "default"
             }
+            hair={selfPlayer?.characterStyle?.hair ?? characterStyle?.hair ?? "none"}
+            hairColor={selfPlayer?.characterStyle?.hairColor ?? characterStyle?.hairColor ?? "brown"}
+            eyes={selfPlayer?.characterStyle?.eyes ?? characterStyle?.eyes ?? "dot"}
+            mouth={selfPlayer?.characterStyle?.mouth ?? characterStyle?.mouth ?? "default"}
+            blush={selfPlayer?.characterStyle?.blush ?? characterStyle?.blush ?? true}
+            freckles={selfPlayer?.characterStyle?.freckles ?? characterStyle?.freckles ?? false}
             moving={
               moving
             }
@@ -5602,6 +5614,12 @@ export default function DevilGameWorld({
                           ?.color ??
                         "default"
                       }
+                      hair={cinematicKiller.characterStyle?.hair ?? "none"}
+                      hairColor={cinematicKiller.characterStyle?.hairColor ?? "brown"}
+                      eyes={cinematicKiller.characterStyle?.eyes ?? "dot"}
+                      mouth={cinematicKiller.characterStyle?.mouth ?? "default"}
+                      blush={cinematicKiller.characterStyle?.blush ?? true}
+                      freckles={cinematicKiller.characterStyle?.freckles ?? false}
                       moving={false}
                       ghost={false}
                       attacking={true}
@@ -5677,6 +5695,12 @@ export default function DevilGameWorld({
                           ?.color ??
                         "default"
                       }
+                      hair={cinematicVictim.characterStyle?.hair ?? "none"}
+                      hairColor={cinematicVictim.characterStyle?.hairColor ?? "brown"}
+                      eyes={cinematicVictim.characterStyle?.eyes ?? "dot"}
+                      mouth={cinematicVictim.characterStyle?.mouth ?? "default"}
+                      blush={cinematicVictim.characterStyle?.blush ?? true}
+                      freckles={cinematicVictim.characterStyle?.freckles ?? false}
                       moving={false}
                       ghost={false}
                       attacking={false}
@@ -6622,6 +6646,12 @@ export default function DevilGameWorld({
                           ribbon={winnerStyle?.ribbon ?? false}
                           tie={winnerStyle?.tie ?? false}
                           color={winnerStyle?.color ?? "default"}
+                          hair={winnerStyle?.hair ?? "none"}
+                          hairColor={winnerStyle?.hairColor ?? "brown"}
+                          eyes={winnerStyle?.eyes ?? "dot"}
+                          mouth={winnerStyle?.mouth ?? "default"}
+                          blush={winnerStyle?.blush ?? true}
+                          freckles={winnerStyle?.freckles ?? false}
                           moving={true}
                           ghost={false}
                           attacking={false}
@@ -6933,6 +6963,12 @@ function CorpseView({
                 ?.color ??
               "default"
             }
+            hair={corpseStyle?.hair ?? "none"}
+            hairColor={corpseStyle?.hairColor ?? "brown"}
+            eyes={corpseStyle?.eyes ?? "dot"}
+            mouth={corpseStyle?.mouth ?? "default"}
+            blush={corpseStyle?.blush ?? true}
+            freckles={corpseStyle?.freckles ?? false}
             moving={false}
             ghost={false}
             attacking={false}

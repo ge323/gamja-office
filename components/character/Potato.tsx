@@ -22,6 +22,35 @@ export type PotatoDirection =
   | "left"
   | "right";
 
+export type HairType =
+  | "none"
+  | "short"
+  | "side"
+  | "bob"
+  | "curly"
+  | "spike"
+  | "long";
+
+export type HairColor =
+  | "black"
+  | "brown"
+  | "blonde"
+  | "pink"
+  | "blue";
+
+export type EyeType =
+  | "dot"
+  | "round"
+  | "smile"
+  | "sleepy"
+  | "sparkle";
+
+export type MouthType =
+  | "default"
+  | "smile"
+  | "cat"
+  | "flat";
+
 type PotatoProps = {
   name?: string;
 
@@ -36,6 +65,13 @@ type PotatoProps = {
   direction?: PotatoDirection;
 
   color?: PotatoColor;
+
+  hair?: HairType;
+  hairColor?: HairColor;
+  eyes?: EyeType;
+  mouth?: MouthType;
+  blush?: boolean;
+  freckles?: boolean;
 
   /*
    * 로비 등에서 캐릭터 크기를 조절할 때 사용
@@ -68,6 +104,14 @@ type PotatoProps = {
 /* =========================================================
    Colors
 ========================================================= */
+
+const HAIR_COLORS: Record<HairColor, string> = {
+  black: "#27272a",
+  brown: "#6b4423",
+  blonde: "#e7c56a",
+  pink: "#d66d8f",
+  blue: "#5f78b8",
+};
 
 const POTATO_COLORS: Record<
   PotatoColor,
@@ -127,6 +171,13 @@ export default function Potato({
 
   color = "default",
 
+  hair = "none",
+  hairColor = "brown",
+  eyes = "dot",
+  mouth = "default",
+  blush = true,
+  freckles = false,
+
   scale = 1,
 
   ghost = false,
@@ -136,6 +187,9 @@ export default function Potato({
 }: PotatoProps) {
   const potatoColor =
     POTATO_COLORS[color];
+
+  const resolvedHairColor =
+    HAIR_COLORS[hairColor];
 
   const facingDown =
     direction === "down";
@@ -700,6 +754,13 @@ export default function Potato({
               }
             />
 
+            <HairLayer
+              type={hair}
+              color={resolvedHairColor}
+              direction={direction}
+              ghost={ghost}
+            />
+
             {/* =============================================
                 HIT FACE
 
@@ -849,42 +910,17 @@ export default function Potato({
             {!hit &&
               facingDown && (
                 <>
-                  {/* Cheeks */}
+                  {/* Face points */}
 
-                  {!evil && (
+                  {!evil && blush && (
                     <>
-                      <div
-                        className="
-                          absolute
-
-                          left-[7px]
-                          top-[40px]
-
-                          h-[5px]
-                          w-[7px]
-
-                          rounded-full
-
-                          bg-rose-300/60
-                        "
-                      />
-
-                      <div
-                        className="
-                          absolute
-
-                          right-[7px]
-                          top-[40px]
-
-                          h-[5px]
-                          w-[7px]
-
-                          rounded-full
-
-                          bg-rose-300/60
-                        "
-                      />
+                      <div className="absolute left-[7px] top-[40px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                      <div className="absolute right-[7px] top-[40px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
                     </>
+                  )}
+
+                  {!evil && freckles && (
+                    <Freckles direction="down" ghost={ghost} />
                   )}
 
                   {/* =====================================
@@ -892,39 +928,11 @@ export default function Potato({
                   ===================================== */}
 
                   {!evil && (
-                    <>
-                      <div
-                        className="
-                          absolute
-
-                          left-[12px]
-                          top-[30px]
-
-                          h-[6px]
-                          w-[6px]
-
-                          rounded-[1px]
-
-                          bg-zinc-900
-                        "
-                      />
-
-                      <div
-                        className="
-                          absolute
-
-                          right-[12px]
-                          top-[30px]
-
-                          h-[6px]
-                          w-[6px]
-
-                          rounded-[1px]
-
-                          bg-zinc-900
-                        "
-                      />
-                    </>
+                    <EyePair
+                      type={eyes}
+                      direction="down"
+                      ghost={ghost}
+                    />
                   )}
 
                   {/* =====================================
@@ -1007,73 +1015,24 @@ export default function Potato({
                     <div
                       className="
                         absolute
-
                         left-1/2
                         top-[45px]
-
                         h-[9px]
                         w-[18px]
-
                         -translate-x-1/2
-
                         rounded-b-full
-
                         border-b-[3px]
                         border-zinc-950
                       "
                     >
-                      <div
-                        className="
-                          absolute
-
-                          bottom-[-2px]
-                          left-[3px]
-
-                          h-[5px]
-                          w-[4px]
-
-                          rotate-[12deg]
-
-                          bg-white
-
-                          [clip-path:polygon(0_0,100%_0,50%_100%)]
-                        "
-                      />
-
-                      <div
-                        className="
-                          absolute
-
-                          bottom-[-2px]
-                          right-[3px]
-
-                          h-[5px]
-                          w-[4px]
-
-                          -rotate-[12deg]
-
-                          bg-white
-
-                          [clip-path:polygon(0_0,100%_0,50%_100%)]
-                        "
-                      />
+                      <div className="absolute bottom-[-2px] left-[3px] h-[5px] w-[4px] rotate-[12deg] bg-white [clip-path:polygon(0_0,100%_0,50%_100%)]" />
+                      <div className="absolute bottom-[-2px] right-[3px] h-[5px] w-[4px] -rotate-[12deg] bg-white [clip-path:polygon(0_0,100%_0,50%_100%)]" />
                     </div>
                   ) : (
-                    <div
-                      className="
-                        absolute
-
-                        left-1/2
-                        top-[44px]
-
-                        h-[5px]
-                        w-[12px]
-
-                        -translate-x-1/2
-
-                        border-b-[3px]
-                        border-zinc-900
-                      "
+                    <MouthFace
+                      type={mouth}
+                      direction="down"
+                      ghost={ghost}
                     />
                   )}
 
@@ -1193,63 +1152,29 @@ export default function Potato({
             {!hit &&
               facingLeft && (
                 <>
-                  <div
-                    className={`
-                      absolute
-
-                      left-[10px]
-                      top-[31px]
-
-                      h-[7px]
-                      w-[6px]
-
-                      rounded-[2px]
-
-                      ${
-                        evil
-                          ? "bg-red-800"
-                          : "bg-zinc-900"
-                      }
-                    `}
-                  />
-
-                  {!evil && (
-                    <div
-                      className="
-                        absolute
-
-                        left-[7px]
-                        top-[41px]
-
-                        h-[5px]
-                        w-[7px]
-
-                        rounded-full
-
-                        bg-rose-300/60
-                      "
+                  {!evil ? (
+                    <EyePair
+                      type={eyes}
+                      direction="left"
+                      ghost={ghost}
                     />
+                  ) : (
+                    <div className="absolute left-[10px] top-[31px] h-[7px] w-[6px] rounded-[2px] bg-red-800" />
                   )}
 
-                  <div
-                    className={`
-                      absolute
+                  {!evil && blush && (
+                    <div className="absolute left-[7px] top-[41px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                  )}
 
-                      left-[9px]
-                      top-[48px]
+                  {!evil && freckles && (
+                    <Freckles direction="left" ghost={ghost} />
+                  )}
 
-                      h-[3px]
-                      w-[9px]
-
-                      border-b-[3px]
-
-                      ${
-                        evil
-                          ? "border-red-900"
-                          : "border-zinc-900"
-                      }
-                    `}
-                  />
+                  {evil ? (
+                    <div className="absolute left-[9px] top-[48px] h-[3px] w-[9px] border-b-[3px] border-red-900" />
+                  ) : (
+                    <MouthFace type={mouth} direction="left" ghost={ghost} />
+                  )}
 
                   {evil &&
                     !ghost && (
@@ -1289,63 +1214,29 @@ export default function Potato({
             {!hit &&
               facingRight && (
                 <>
-                  <div
-                    className={`
-                      absolute
-
-                      right-[10px]
-                      top-[31px]
-
-                      h-[7px]
-                      w-[6px]
-
-                      rounded-[2px]
-
-                      ${
-                        evil
-                          ? "bg-red-800"
-                          : "bg-zinc-900"
-                      }
-                    `}
-                  />
-
-                  {!evil && (
-                    <div
-                      className="
-                        absolute
-
-                        right-[7px]
-                        top-[41px]
-
-                        h-[5px]
-                        w-[7px]
-
-                        rounded-full
-
-                        bg-rose-300/60
-                      "
+                  {!evil ? (
+                    <EyePair
+                      type={eyes}
+                      direction="right"
+                      ghost={ghost}
                     />
+                  ) : (
+                    <div className="absolute right-[10px] top-[31px] h-[7px] w-[6px] rounded-[2px] bg-red-800" />
                   )}
 
-                  <div
-                    className={`
-                      absolute
+                  {!evil && blush && (
+                    <div className="absolute right-[7px] top-[41px] h-[5px] w-[7px] rounded-full bg-rose-300/60" />
+                  )}
 
-                      right-[9px]
-                      top-[48px]
+                  {!evil && freckles && (
+                    <Freckles direction="right" ghost={ghost} />
+                  )}
 
-                      h-[3px]
-                      w-[9px]
-
-                      border-b-[3px]
-
-                      ${
-                        evil
-                          ? "border-red-900"
-                          : "border-zinc-900"
-                      }
-                    `}
-                  />
+                  {evil ? (
+                    <div className="absolute right-[9px] top-[48px] h-[3px] w-[9px] border-b-[3px] border-red-900" />
+                  ) : (
+                    <MouthFace type={mouth} direction="right" ghost={ghost} />
+                  )}
 
                   {evil &&
                     !ghost && (
@@ -1895,6 +1786,374 @@ export default function Potato({
         }
       `}</style>
     </div>
+  );
+}
+
+/* =========================================================
+   Hair
+========================================================= */
+
+type HairLayerProps = {
+  type: HairType;
+  color: string;
+  direction: PotatoDirection;
+  ghost: boolean;
+};
+
+function HairLayer({
+  type,
+  color,
+  direction,
+  ghost,
+}: HairLayerProps) {
+  if (type === "none") {
+    return null;
+  }
+
+  const hairColor = ghost
+    ? "rgba(67, 107, 128, 0.7)"
+    : color;
+
+  const base = "pointer-events-none absolute z-[26]";
+
+  if (direction === "up") {
+    return (
+      <div
+        className={`${base} left-1/2 top-[-5px] h-[25px] w-[52px] -translate-x-1/2 rounded-t-[55%]`}
+        style={{ backgroundColor: hairColor }}
+      />
+    );
+  }
+
+  if (type === "short") {
+    return (
+      <>
+        <div
+          className={`${base} left-1/2 top-[-5px] h-[20px] w-[48px] -translate-x-1/2 rounded-[60%_60%_35%_35%]`}
+          style={{ backgroundColor: hairColor }}
+        />
+        <div
+          className={`${base} left-[7px] top-[5px] h-[18px] w-[13px] rotate-[18deg] rounded-full`}
+          style={{ backgroundColor: hairColor }}
+        />
+      </>
+    );
+  }
+
+  if (type === "side") {
+    return (
+      <>
+        <div
+          className={`${base} left-1/2 top-[-6px] h-[20px] w-[50px] -translate-x-1/2 rounded-t-[60%]`}
+          style={{ backgroundColor: hairColor }}
+        />
+        <div
+          className={`${base} left-[6px] top-[4px] h-[32px] w-[18px] -rotate-[18deg] rounded-full`}
+          style={{ backgroundColor: hairColor }}
+        />
+      </>
+    );
+  }
+
+  if (type === "bob") {
+    return (
+      <>
+        <div
+          className={`${base} left-1/2 top-[-6px] h-[23px] w-[53px] -translate-x-1/2 rounded-t-[65%]`}
+          style={{ backgroundColor: hairColor }}
+        />
+        <div
+          className={`${base} left-[3px] top-[8px] h-[43px] w-[13px] rounded-full`}
+          style={{ backgroundColor: hairColor }}
+        />
+        <div
+          className={`${base} right-[3px] top-[8px] h-[43px] w-[13px] rounded-full`}
+          style={{ backgroundColor: hairColor }}
+        />
+      </>
+    );
+  }
+
+  if (type === "curly") {
+    return (
+      <div className={`${base} left-1/2 top-[-8px] flex w-[56px] -translate-x-1/2 flex-wrap justify-center gap-[-2px]`}>
+        {Array.from({ length: 7 }).map((_, index) => (
+          <span
+            key={index}
+            className="-m-[1px] h-[17px] w-[17px] rounded-full"
+            style={{ backgroundColor: hairColor }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (type === "spike") {
+    return (
+      <div className={`${base} left-1/2 top-[-13px] flex w-[52px] -translate-x-1/2 items-end justify-center gap-[1px]`}>
+        {[20, 27, 33, 26, 20].map((height, index) => (
+          <span
+            key={index}
+            className="w-[11px] [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+            style={{ height, backgroundColor: hairColor }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className={`${base} left-1/2 top-[-6px] h-[24px] w-[53px] -translate-x-1/2 rounded-t-[65%]`}
+        style={{ backgroundColor: hairColor }}
+      />
+      <div
+        className={`${base} left-[1px] top-[8px] h-[55px] w-[14px] rounded-full`}
+        style={{ backgroundColor: hairColor }}
+      />
+      <div
+        className={`${base} right-[1px] top-[8px] h-[55px] w-[14px] rounded-full`}
+        style={{ backgroundColor: hairColor }}
+      />
+    </>
+  );
+}
+
+/* =========================================================
+   Eyes
+========================================================= */
+
+type EyePairProps = {
+  type: EyeType;
+  direction: "down" | "left" | "right";
+  ghost: boolean;
+};
+
+function EyePair({
+  type,
+  direction,
+  ghost,
+}: EyePairProps) {
+  const color = ghost
+    ? "#315c73"
+    : "#18181b";
+
+  if (direction === "left" || direction === "right") {
+    const sideClass = direction === "left"
+      ? "left-[10px]"
+      : "right-[10px]";
+
+    if (type === "sleepy") {
+      return <div className={`absolute ${sideClass} top-[33px] h-[3px] w-[8px] rounded-full`} style={{ backgroundColor: color }} />;
+    }
+
+    if (type === "smile") {
+      return <div className={`absolute ${sideClass} top-[30px] h-[7px] w-[8px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />;
+    }
+
+    return <div className={`absolute ${sideClass} top-[31px] h-[7px] w-[7px] rounded-full`} style={{ backgroundColor: color }} />;
+  }
+
+  const positions = ["left-[12px]", "right-[12px]"];
+
+  if (type === "sleepy") {
+    return (
+      <>
+        {positions.map((position) => (
+          <div key={position} className={`absolute ${position} top-[33px] h-[3px] w-[8px] rounded-full`} style={{ backgroundColor: color }} />
+        ))}
+      </>
+    );
+  }
+
+  if (type === "smile") {
+    return (
+      <>
+        {positions.map((position) => (
+          <div key={position} className={`absolute ${position} top-[29px] h-[8px] w-[9px] rounded-b-full border-b-[3px]`} style={{ borderColor: color }} />
+        ))}
+      </>
+    );
+  }
+
+  if (type === "sparkle") {
+    return (
+      <>
+        {positions.map((position) => (
+          <div key={position} className={`absolute ${position} top-[28px] text-[12px] font-black leading-none`} style={{ color }}>✦</div>
+        ))}
+      </>
+    );
+  }
+
+  if (type === "round") {
+    return (
+      <>
+        {positions.map((position) => (
+          <div key={position} className={`absolute ${position} top-[29px] h-[8px] w-[8px] rounded-full border-[2px]`} style={{ borderColor: color }} />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {positions.map((position) => (
+        <div key={position} className={`absolute ${position} top-[30px] h-[6px] w-[6px] rounded-[1px]`} style={{ backgroundColor: color }} />
+      ))}
+    </>
+  );
+}
+
+/* =========================================================
+   Mouth
+========================================================= */
+
+type MouthFaceProps = {
+  type: MouthType;
+  direction: "down" | "left" | "right";
+  ghost: boolean;
+};
+
+function MouthFace({
+  type,
+  direction,
+  ghost,
+}: MouthFaceProps) {
+  const color = ghost
+    ? "#315c73"
+    : "#18181b";
+
+  if (direction === "left" || direction === "right") {
+    const sideClass = direction === "left"
+      ? "left-[9px]"
+      : "right-[9px]";
+
+    if (type === "flat") {
+      return (
+        <div
+          className={`absolute ${sideClass} top-[49px] h-[2px] w-[9px] rounded-full`}
+          style={{ backgroundColor: color }}
+        />
+      );
+    }
+
+    if (type === "cat") {
+      return (
+        <div
+          className={`absolute ${sideClass} top-[46px] text-[11px] font-black leading-none`}
+          style={{ color }}
+        >
+          ᵕ
+        </div>
+      );
+    }
+
+    if (type === "smile") {
+      return (
+        <div
+          className={`absolute ${sideClass} top-[46px] h-[5px] w-[10px] rounded-b-full border-b-[3px]`}
+          style={{ borderColor: color }}
+        />
+      );
+    }
+
+    return (
+      <div
+        className={`absolute ${sideClass} top-[48px] h-[3px] w-[9px] border-b-[3px]`}
+        style={{ borderColor: color }}
+      />
+    );
+  }
+
+  if (type === "flat") {
+    return (
+      <div
+        className="absolute left-1/2 top-[48px] h-[2px] w-[12px] -translate-x-1/2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+    );
+  }
+
+  if (type === "cat") {
+    return (
+      <div
+        className="absolute left-1/2 top-[43px] -translate-x-1/2 text-[13px] font-black leading-none"
+        style={{ color }}
+      >
+        ㅅ
+      </div>
+    );
+  }
+
+  if (type === "smile") {
+    return (
+      <div
+        className="absolute left-1/2 top-[43px] h-[8px] w-[15px] -translate-x-1/2 rounded-b-full border-b-[3px]"
+        style={{ borderColor: color }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="absolute left-1/2 top-[44px] h-[5px] w-[12px] -translate-x-1/2 border-b-[3px]"
+      style={{ borderColor: color }}
+    />
+  );
+}
+
+/* =========================================================
+   Freckles
+========================================================= */
+
+type FrecklesProps = {
+  direction: "down" | "left" | "right";
+  ghost: boolean;
+};
+
+function Freckles({
+  direction,
+  ghost,
+}: FrecklesProps) {
+  const color = ghost
+    ? "#5f8fa5"
+    : "#8b5e34";
+
+  if (direction === "left") {
+    return (
+      <div className="pointer-events-none absolute left-[7px] top-[39px] flex gap-[2px]">
+        {[0, 1, 2].map((index) => (
+          <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
+        ))}
+      </div>
+    );
+  }
+
+  if (direction === "right") {
+    return (
+      <div className="pointer-events-none absolute right-[7px] top-[39px] flex gap-[2px]">
+        {[0, 1, 2].map((index) => (
+          <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="pointer-events-none absolute left-[7px] top-[39px] flex gap-[2px]">
+        {[0, 1, 2].map((index) => (
+          <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
+        ))}
+      </div>
+      <div className="pointer-events-none absolute right-[7px] top-[39px] flex gap-[2px]">
+        {[0, 1, 2].map((index) => (
+          <span key={index} className="h-[2px] w-[2px] rounded-full" style={{ backgroundColor: color }} />
+        ))}
+      </div>
+    </>
   );
 }
 

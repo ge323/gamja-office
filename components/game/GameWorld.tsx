@@ -30,10 +30,7 @@ import ChatPanel, {
   type ChatMessage,
 } from "@/components/game/ChatPanel";
 
-import DevilLobby, {
-  type DevilLobbyRoom,
-  type DevilLobbyChatMessage,
-} from "@/components/game/devil/DevilLobby";
+import DevilLobby from "@/components/game/devil/DevilLobby";
 
 import type {
   DevilRole,
@@ -46,6 +43,33 @@ import type {
 type Position = {
   x: number;
   y: number;
+};
+
+/*
+ * DevilLobby에서 타입을 import하지 않고 여기서 직접 정의한다.
+ * DevilLobby 파일의 export 상태와 무관하게 GameWorld의 타입 추론을 안정적으로 유지한다.
+ */
+type DevilLobbyPlayer = {
+  id: string;
+  nickname: string;
+  characterStyle?: CharacterStyle;
+  ready?: boolean;
+};
+
+type DevilLobbyRoom = {
+  id: string;
+  hostId: string;
+  status: "waiting" | "countdown" | "playing";
+  maxPlayers: number;
+  players: DevilLobbyPlayer[];
+  countdownEndsAt?: number | null;
+};
+
+type DevilLobbyChatMessage = {
+  id: string;
+  nickname: string;
+  message: string;
+  createdAt?: number;
 };
 
 /*
@@ -848,7 +872,7 @@ const [
          * 새로운 방 목록 내용으로 갱신
          */
         setCurrentDevilRoom(
-          previous => {
+          (previous: DevilLobbyRoom | null) => {
             if (!previous) {
               return null;
             }
@@ -890,10 +914,10 @@ const [
         );
 
         setDevilRooms(
-          previous => {
+          (previous: DevilLobbyRoom[]) => {
             const exists =
               previous.some(
-                item =>
+                (item: DevilLobbyRoom) =>
                   item.id ===
                   room.id
               );
@@ -906,7 +930,7 @@ const [
             }
 
             return previous.map(
-              item =>
+              (item: DevilLobbyRoom) =>
                 item.id ===
                 room.id
                   ? room
@@ -930,11 +954,13 @@ const [
         setDevilLobbyMessages(
           previous => {
             const exists =
-              previous.some(
-                item =>
-                  item.id ===
-                  message.id
-              );
+            previous.some(
+              (
+                item: DevilLobbyChatMessage
+              ) =>
+                item.id ===
+                message.id
+            );
 
             if (exists) {
               return previous;
@@ -2646,6 +2672,42 @@ const handleToggleDevilReady =
                       ?.color ??
                     "default"
                   }
+                  hair={
+                    player
+                      .characterStyle
+                      ?.hair ??
+                    "none"
+                  }
+                  hairColor={
+                    player
+                      .characterStyle
+                      ?.hairColor ??
+                    "brown"
+                  }
+                  eyes={
+                    player
+                      .characterStyle
+                      ?.eyes ??
+                    "dot"
+                  }
+                  mouth={
+                    player
+                      .characterStyle
+                      ?.mouth ??
+                    "default"
+                  }
+                  blush={
+                    player
+                      .characterStyle
+                      ?.blush ??
+                    true
+                  }
+                  freckles={
+                    player
+                      .characterStyle
+                      ?.freckles ??
+                    false
+                  }
                   moving={
                     player.moving ??
                     false
@@ -2738,6 +2800,30 @@ const handleToggleDevilReady =
               }
               color={
                 characterStyle.color
+              }
+              hair={
+                characterStyle.hair ??
+                "none"
+              }
+              hairColor={
+                characterStyle.hairColor ??
+                "brown"
+              }
+              eyes={
+                characterStyle.eyes ??
+                "dot"
+              }
+              mouth={
+                characterStyle.mouth ??
+                "default"
+              }
+              blush={
+                characterStyle.blush ??
+                true
+              }
+              freckles={
+                characterStyle.freckles ??
+                false
               }
               moving={
                 moving
