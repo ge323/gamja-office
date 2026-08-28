@@ -124,7 +124,6 @@ export function createRandomCharacterStyle(): CharacterStyle {
             "headphones",
             "sprout",
             "crown",
-            "tube",
             "badge",
           ] as SpecialAccessoryType[])
         : "none",
@@ -987,7 +986,6 @@ export default function CharacterCustomizer({
               ["headphones", "🎧 헤드폰"],
               ["sprout", "🌱 새싹"],
               ["crown", "👑 왕관"],
-              ["tube", "🛟 튜브"],
               ["badge", "🪪 사원증"],
             ] as [
               SpecialAccessoryType,

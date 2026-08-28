@@ -19,7 +19,6 @@ export type SpecialAccessoryType =
   | "headphones"
   | "sprout"
   | "crown"
-  | "tube"
   | "badge";
 
 export type AccessoryDirection =
@@ -1066,43 +1065,6 @@ export default function Accessories({
               -translate-x-1/2
               rounded-full
               bg-rose-500
-            "
-          />
-        </div>
-      )}
-
-      {/* =====================================================
-          SWIM TUBE
-      ===================================================== */}
-
-      {special === "tube" && (
-        <div
-          className="
-            pointer-events-none
-            absolute
-            left-1/2
-            top-[47px]
-            z-[34]
-            h-[27px]
-            w-[68px]
-            -translate-x-1/2
-            rounded-[50%]
-            border-[6px]
-            border-cyan-400
-            bg-transparent
-            shadow-[inset_0_0_0_2px_rgba(255,255,255,0.35)]
-          "
-        >
-          <div
-            className="
-              absolute
-              -right-[2px]
-              top-[2px]
-              h-[5px]
-              w-[12px]
-              rotate-[20deg]
-              rounded-full
-              bg-white/60
             "
           />
         </div>
