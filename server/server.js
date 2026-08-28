@@ -426,6 +426,59 @@ function getPublicRooms() {
 }
 
 /* =========================================================
+   Public Office Players
+
+   감자전쟁이 실제로 진행 중인 플레이어는
+   일반 사무실 플레이어 목록에서 제외한다.
+
+   대기실(waiting/countdown) 참가자는 사무실에 보여도 되지만,
+   room.status === "playing" 인 순간부터 사무실에서는 숨긴다.
+========================================================= */
+
+function getPublicOfficePlayers() {
+  return Object.values(
+    players
+  ).filter(
+    player => {
+      const isPlaying =
+        Object.values(
+          devilRooms
+        ).some(
+          room => {
+            if (
+              room.status !==
+                "playing" ||
+              !room.gamePlayers
+            ) {
+              return false;
+            }
+
+            /*
+             * 게임 시작 당시 고정 playerId와
+             * 현재 연결된 Socket ID를 모두 검사한다.
+             */
+            return Object.values(
+              room.gamePlayers
+            ).some(
+              gamePlayer =>
+                gamePlayer.leftGame !==
+                  true &&
+                (
+                  gamePlayer.id ===
+                    player.id ||
+                  gamePlayer.connectedSocketId ===
+                    player.id
+                )
+            );
+          }
+        );
+
+      return !isPlaying;
+    }
+  );
+}
+
+/* =========================================================
    Broadcast Lobby
 ========================================================= */
 
@@ -1612,6 +1665,14 @@ function beginPotatoWar(
   room.status =
     "playing";
 
+  /*
+   * 게임 시작 참가자를 사무실 목록에서 즉시 숨긴다.
+   */
+  io.emit(
+    "players:update",
+    getPublicOfficePlayers()
+  );
+
   room.startedAt =
     Date.now();
 
@@ -2170,11 +2231,9 @@ io.on(
         );
 
         io.emit(
-          "players:update",
-          Object.values(
-            players
-          )
-        );
+      "players:update",
+      getPublicOfficePlayers()
+    );
 
         const message = {
           id:
@@ -2284,9 +2343,7 @@ socket.on(
 
     io.emit(
       "players:update",
-      Object.values(
-        players
-      )
+      getPublicOfficePlayers()
     );
 
     const room =
@@ -4740,6 +4797,15 @@ socket.on(
     gamePlayer.connectedSocketId =
       null;
 
+    /*
+     * 게임에서 명시적으로 나간 플레이어를
+     * 사무실 목록에 다시 반영한다.
+     */
+    io.emit(
+      "players:update",
+      getPublicOfficePlayers()
+    );
+
     gamePlayer.disconnectedAt =
       Date.now();
 
@@ -4921,11 +4987,9 @@ socket.on(
       ];
 
       io.emit(
-        "players:update",
-        Object.values(
-          players
-        )
-      );
+      "players:update",
+      getPublicOfficePlayers()
+    );
 
       /*
        * 재접속 유예시간 이후에도
@@ -5141,9 +5205,7 @@ socket.on(
 
     io.emit(
       "players:update",
-      Object.values(
-        players
-      )
+      getPublicOfficePlayers()
     );
   }
 );
