@@ -46,7 +46,6 @@ export type HairColor =
 
 export type EyeType =
   | "dot"
-  | "round"
   | "smile"
   | "sleepy"
   | "sparkle"

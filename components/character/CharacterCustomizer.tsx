@@ -68,7 +68,6 @@ const HAIR_COLORS: HairColor[] = [
 
 const EYE_TYPES: EyeType[] = [
   "dot",
-  "round",
   "smile",
   "sleepy",
   "sparkle",
@@ -752,7 +751,6 @@ export default function CharacterCustomizer({
           <OptionSection title="눈 모양">
             {([
               ["dot", "기본"],
-              ["round", "동그란 눈"],
               ["smile", "웃는 눈"],
               ["sleepy", "졸린 눈"],
               ["sparkle", "반짝 눈"],
