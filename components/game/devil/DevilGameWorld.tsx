@@ -374,7 +374,7 @@ const MOBILE_JOYSTICK_SIZE =
   108;
 
 const MOBILE_LANDSCAPE_JOYSTICK_SIZE =
-  92;
+  118;
 
 /*
  * 중앙 회의 테이블 기준 위치.
@@ -2667,6 +2667,51 @@ export default function DevilGameWorld({
   }, []);
 
   /* ======================================================
+     Mobile viewport lock
+
+     모바일 가로모드에서 브라우저 스크롤/당겨서 새로고침/
+     텍스트 선택이 게임 조작을 방해하지 않도록 잠근다.
+  ====================================================== */
+
+  useEffect(() => {
+    if (!isMobile) {
+      return;
+    }
+
+    const body = document.body;
+    const root = document.documentElement;
+
+    const previousBodyOverflow =
+      body.style.overflow;
+    const previousBodyTouchAction =
+      body.style.touchAction;
+    const previousBodyUserSelect =
+      body.style.userSelect;
+    const previousRootOverscroll =
+      root.style.overscrollBehavior;
+
+    body.style.overflow =
+      "hidden";
+    body.style.touchAction =
+      "none";
+    body.style.userSelect =
+      "none";
+    root.style.overscrollBehavior =
+      "none";
+
+    return () => {
+      body.style.overflow =
+        previousBodyOverflow;
+      body.style.touchAction =
+        previousBodyTouchAction;
+      body.style.userSelect =
+        previousBodyUserSelect;
+      root.style.overscrollBehavior =
+        previousRootOverscroll;
+    };
+  }, [isMobile]);
+
+  /* ======================================================
      Meeting timer
   ====================================================== */
 
@@ -4484,6 +4529,11 @@ export default function DevilGameWorld({
         onClick={
           handleWorldClick
         }
+        onContextMenu={(event) => {
+          if (isMobile) {
+            event.preventDefault();
+          }
+        }}
         className={`
           relative
           cursor-pointer
@@ -5399,7 +5449,7 @@ export default function DevilGameWorld({
 
                 ${
                   isLandscapeMobile
-                    ? "bottom-2 right-2 gap-1"
+                    ? "bottom-[max(10px,env(safe-area-inset-bottom))] right-[max(10px,env(safe-area-inset-right))] grid grid-cols-2 gap-1.5"
                     : isMobile
                       ? "bottom-3 right-3 gap-1.5"
                       : "bottom-4 right-4 gap-2"
@@ -5426,7 +5476,8 @@ export default function DevilGameWorld({
 
               {/* 중앙 회의 테이블 긴급회의 */}
 
-              {nearEmergencyMeetingTable &&
+              {(isMobile ||
+                nearEmergencyMeetingTable) &&
                 playerState ===
                   "alive" && (
                   <ActionButton
@@ -5668,8 +5719,6 @@ export default function DevilGameWorld({
                     absolute
                     left-1/2
                     top-1/2
-                    h-[46px]
-                    w-[46px]
                     -translate-x-1/2
                     -translate-y-1/2
                     rounded-full
@@ -5679,6 +5728,14 @@ export default function DevilGameWorld({
                     shadow-lg
                   "
                   style={{
+                    width:
+                      isLandscapeMobile
+                        ? 54
+                        : 46,
+                    height:
+                      isLandscapeMobile
+                        ? 54
+                        : 46,
                     marginLeft:
                       joystickKnob.x,
 
@@ -7138,7 +7195,7 @@ function ActionButton({
 
         ${
           compact
-            ? "min-h-[44px] min-w-[90px] gap-1.5 rounded-xl px-2 py-1.5 text-[9px]"
+            ? "min-h-[46px] min-w-[88px] gap-1.5 rounded-xl px-2 py-1.5 text-[9px]"
             : "min-w-[112px] gap-2 rounded-2xl px-3 py-2.5 text-[10px] max-[700px]:min-w-[94px] max-[700px]:rounded-xl max-[700px]:px-2.5 max-[700px]:py-2 max-[700px]:text-[9px]"
         }
 
