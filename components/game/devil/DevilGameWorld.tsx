@@ -353,11 +353,28 @@ const KILL_SEQUENCE_DURATION =
 const MOBILE_BREAKPOINT =
   768;
 
+/*
+ * 가로모드 휴대폰은 width가 768px을 넘는 경우가 많다.
+ * 예: 844x390, 932x430.
+ * 따라서 width 하나만으로 모바일 여부를 판단하지 않는다.
+ */
+const MOBILE_LANDSCAPE_MAX_WIDTH =
+  1180;
+
+const MOBILE_LANDSCAPE_MAX_HEIGHT =
+  620;
+
 const MOBILE_VIEWPORT_PADDING =
-  8;
+  0;
 
 const MOBILE_PLAYER_SPEED_MULTIPLIER =
   0.92;
+
+const MOBILE_JOYSTICK_SIZE =
+  108;
+
+const MOBILE_LANDSCAPE_JOYSTICK_SIZE =
+  92;
 
 /*
  * 중앙 회의 테이블 기준 위치.
@@ -866,6 +883,12 @@ export default function DevilGameWorld({
   const [
     isMobile,
     setIsMobile,
+  ] =
+    useState(false);
+
+  const [
+    isLandscapeMobile,
+    setIsLandscapeMobile,
   ] =
     useState(false);
 
@@ -2508,19 +2531,58 @@ export default function DevilGameWorld({
           visualViewport?.height ??
           window.innerHeight;
 
+        const coarsePointer =
+          window.matchMedia(
+            "(pointer: coarse)"
+          ).matches;
+
+        const touchCapable =
+          navigator.maxTouchPoints >
+          0;
+
+        const landscapePhone =
+          rawWidth > rawHeight &&
+          rawWidth <=
+            MOBILE_LANDSCAPE_MAX_WIDTH &&
+          rawHeight <=
+            MOBILE_LANDSCAPE_MAX_HEIGHT;
+
+        const touchSizedDevice =
+          (coarsePointer ||
+            touchCapable) &&
+          Math.min(
+            rawWidth,
+            rawHeight
+          ) <= 820;
+
         const mobile =
           rawWidth <=
-          MOBILE_BREAKPOINT;
+            MOBILE_BREAKPOINT ||
+          landscapePhone ||
+          touchSizedDevice;
+
+        const landscape =
+          mobile &&
+          rawWidth > rawHeight;
 
         setIsMobile(
           mobile
         );
 
+        setIsLandscapeMobile(
+          landscape
+        );
+
         if (mobile) {
+          /*
+           * 가로모드에서 390px 높이인데도 최소 480px을 강제하면
+           * 화면이 잘리고 브라우저 스크롤이 생긴다.
+           * 실제 visualViewport 크기를 그대로 사용한다.
+           */
           setViewportSize({
             width:
               Math.max(
-                320,
+                280,
                 Math.floor(
                   rawWidth -
                   MOBILE_VIEWPORT_PADDING
@@ -2529,7 +2591,7 @@ export default function DevilGameWorld({
 
             height:
               Math.max(
-                480,
+                240,
                 Math.floor(
                   rawHeight -
                   MOBILE_VIEWPORT_PADDING
@@ -4403,10 +4465,17 @@ export default function DevilGameWorld({
         overflow-hidden
         bg-zinc-950
         p-4
-        max-[768px]:h-[100dvh]
-        max-[768px]:min-h-0
-        max-[768px]:p-0
       "
+      style={
+        isMobile
+          ? {
+              width: "100vw",
+              height: "100dvh",
+              minHeight: "100dvh",
+              padding: 0,
+            }
+          : undefined
+      }
     >
       <div
         ref={
@@ -4415,19 +4484,20 @@ export default function DevilGameWorld({
         onClick={
           handleWorldClick
         }
-        className="
+        className={`
           relative
           cursor-pointer
           touch-none
           overflow-hidden
-          rounded-xl
-          border-[6px]
-          border-zinc-800
           bg-black
           shadow-2xl
-          max-[768px]:rounded-none
-          max-[768px]:border-0
-        "
+
+          ${
+            isMobile
+              ? "rounded-none border-0"
+              : "rounded-xl border-[6px] border-zinc-800"
+          }
+        `}
         style={{
           width:
             viewportSize.width,
@@ -4847,27 +4917,25 @@ export default function DevilGameWorld({
 
         <div
           data-no-move
-          className="
+          className={`
             absolute
-            left-4
-            top-4
             z-[8000]
-            w-[190px]
             rounded-xl
-            max-[700px]:left-2
-            max-[700px]:top-2
-            max-[700px]:w-[155px]
-            max-[700px]:px-3
-            max-[700px]:py-2
             border
             border-white/10
             bg-black/80
-            px-4
-            py-3
             text-white
             shadow-lg
             backdrop-blur-sm
-          "
+
+            ${
+              isLandscapeMobile
+                ? "left-2 top-2 w-[142px] px-2.5 py-2"
+                : isMobile
+                  ? "left-2 top-2 w-[155px] px-3 py-2"
+                  : "left-4 top-4 w-[190px] px-4 py-3"
+            }
+          `}
         >
           <div
             className={`
@@ -4893,9 +4961,11 @@ export default function DevilGameWorld({
                 : "🥔 생존 감자"}
           </div>
 
-          <div className="mt-1 text-[8px] text-white/45">
-            같은 게임 참가자 {otherPlayers.length + 1}명
-          </div>
+          {!isLandscapeMobile && (
+            <div className="mt-1 text-[8px] text-white/45">
+              같은 게임 참가자 {otherPlayers.length + 1}명
+            </div>
+          )}
 
           {playerState ===
             "ghost" && (
@@ -4985,7 +5055,9 @@ export default function DevilGameWorld({
               "
             >
               <span className="text-white/35">
-                전체 생존자 기준
+                {isLandscapeMobile
+                  ? "전체"
+                  : "전체 생존자 기준"}
               </span>
 
               <span className="font-bold text-emerald-200/80">
@@ -5318,20 +5390,21 @@ export default function DevilGameWorld({
           !meeting && (
             <div
               data-no-move
-              className="
-              absolute
-              bottom-4
-              right-4
-              z-[9000]
-              flex
-              flex-col
-              items-end
-              gap-2
+              className={`
+                absolute
+                z-[9000]
+                flex
+                flex-col
+                items-end
 
-              max-[700px]:bottom-3
-              max-[700px]:right-3
-              max-[700px]:gap-1.5
-            "
+                ${
+                  isLandscapeMobile
+                    ? "bottom-2 right-2 gap-1"
+                    : isMobile
+                      ? "bottom-3 right-3 gap-1.5"
+                      : "bottom-4 right-4 gap-2"
+                }
+              `}
             >
               {/* 시체 신고 */}
 
@@ -5339,6 +5412,7 @@ export default function DevilGameWorld({
                 playerState ===
                   "alive" && (
                   <ActionButton
+                    compact={isLandscapeMobile}
                     label="시체 신고"
                     icon="🚨"
                     shortcut=""
@@ -5356,6 +5430,7 @@ export default function DevilGameWorld({
                 playerState ===
                   "alive" && (
                   <ActionButton
+                    compact={isLandscapeMobile}
                     label={
                       emergencyMeetingUses >=
                       EMERGENCY_MEETING_MAX_USES
@@ -5380,6 +5455,7 @@ export default function DevilGameWorld({
               {/* 지도 */}
 
               <ActionButton
+                compact={isLandscapeMobile}
                 label={
                   mapOpen
                     ? "지도 닫기"
@@ -5404,6 +5480,7 @@ export default function DevilGameWorld({
                 playerState ===
                 "alive" && (
                   <ActionButton
+                    compact={isLandscapeMobile}
                     label={
                       nearbyMission
                         ? nearbyMission.title
@@ -5428,6 +5505,7 @@ export default function DevilGameWorld({
               {playerState ===
                 "ghost" && (
                   <ActionButton
+                    compact={isLandscapeMobile}
                     label={
                       nearbyMission
                         ? nearbyMission.title
@@ -5454,6 +5532,7 @@ export default function DevilGameWorld({
                 "alive" && (
                   <>
                     <ActionButton
+                      compact={isLandscapeMobile}
                       label={
                         cooldownRemaining >
                           0
@@ -5481,6 +5560,7 @@ export default function DevilGameWorld({
                     />
 
                     <ActionButton
+                      compact={isLandscapeMobile}
                       label={
                         blackout
                           ? "정전 해제"
@@ -5517,28 +5597,33 @@ export default function DevilGameWorld({
           !mapOpen && (
             <div
               data-no-move
-              className="
+              className={`
                 absolute
-                bottom-[max(18px,env(safe-area-inset-bottom))]
-                left-[max(18px,env(safe-area-inset-left))]
                 z-[9050]
                 flex
                 flex-col
                 items-center
-                gap-1
-              "
+
+                ${
+                  isLandscapeMobile
+                    ? "bottom-[max(10px,env(safe-area-inset-bottom))] left-[max(12px,env(safe-area-inset-left))] gap-0"
+                    : "bottom-[max(18px,env(safe-area-inset-bottom))] left-[max(18px,env(safe-area-inset-left))] gap-1"
+                }
+              `}
             >
-              <div
-                className="
-                  text-[8px]
-                  font-black
-                  tracking-[0.12em]
-                  text-white/45
-                  drop-shadow
-                "
-              >
-                MOVE
-              </div>
+              {!isLandscapeMobile && (
+                <div
+                  className="
+                    text-[8px]
+                    font-black
+                    tracking-[0.12em]
+                    text-white/45
+                    drop-shadow
+                  "
+                >
+                  MOVE
+                </div>
+              )}
 
               <div
                 role="application"
@@ -5557,8 +5642,6 @@ export default function DevilGameWorld({
                 }
                 className="
                   relative
-                  h-[116px]
-                  w-[116px]
                   touch-none
                   select-none
                   rounded-full
@@ -5568,6 +5651,16 @@ export default function DevilGameWorld({
                   shadow-[0_8px_30px_rgba(0,0,0,0.45)]
                   backdrop-blur-sm
                 "
+                style={{
+                  width:
+                    isLandscapeMobile
+                      ? MOBILE_LANDSCAPE_JOYSTICK_SIZE
+                      : MOBILE_JOYSTICK_SIZE,
+                  height:
+                    isLandscapeMobile
+                      ? MOBILE_LANDSCAPE_JOYSTICK_SIZE
+                      : MOBILE_JOYSTICK_SIZE,
+                }}
               >
                 <div
                   className="
@@ -5661,7 +5754,7 @@ export default function DevilGameWorld({
             )}
 
           <span className="rounded-lg bg-amber-400/15 px-2 py-1 text-[8px] font-bold text-amber-200">
-            📍 중앙 사무실 회의 테이블 : 긴급회의 장소
+            📍 회의실 회의 테이블 : 긴급회의 장소
           </span>
 
           {playerState === "ghost" && (
@@ -6994,6 +7087,7 @@ function ActionButton({
   disabled = false,
   active = false,
   variant = "default",
+  compact = false,
 }: {
   label: string;
   icon: string;
@@ -7005,6 +7099,7 @@ function ActionButton({
   | "default"
   | "danger"
   | "dark";
+  compact?: boolean;
 }) {
   const variantClass =
     variant === "danger"
@@ -7032,26 +7127,20 @@ function ActionButton({
       }}
       className={`
         flex
-        min-w-[112px]
         items-center
         justify-between
-        gap-2
-        rounded-2xl
         border
-        px-3
-        py-2.5
-        text-[10px]
         font-black
         shadow-xl
         backdrop-blur-sm
         transition
         active:scale-95
 
-        max-[700px]:min-w-[94px]
-        max-[700px]:rounded-xl
-        max-[700px]:px-2.5
-        max-[700px]:py-2
-        max-[700px]:text-[9px]
+        ${
+          compact
+            ? "min-h-[44px] min-w-[90px] gap-1.5 rounded-xl px-2 py-1.5 text-[9px]"
+            : "min-w-[112px] gap-2 rounded-2xl px-3 py-2.5 text-[10px] max-[700px]:min-w-[94px] max-[700px]:rounded-xl max-[700px]:px-2.5 max-[700px]:py-2 max-[700px]:text-[9px]"
+        }
 
         disabled:cursor-not-allowed
         disabled:opacity-35
@@ -7067,10 +7156,11 @@ function ActionButton({
         "
       >
         <span
-          className="
-            text-[14px]
-            max-[700px]:text-[12px]
-          "
+          className={
+            compact
+              ? "text-[13px]"
+              : "text-[14px] max-[700px]:text-[12px]"
+          }
         >
           {icon}
         </span>
@@ -7085,7 +7175,7 @@ function ActionButton({
         </span>
       </span>
 
-      {shortcut && (
+      {shortcut && !compact && (
         <span
           className="
             rounded-md
