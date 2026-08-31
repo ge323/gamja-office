@@ -4826,6 +4826,87 @@ export default function DevilGameWorld({
         )}
 
         {/* =================================================
+            Off-screen player indicators
+
+            다른 참가자가 카메라 밖에 있어도 게임에 정상적으로
+            존재한다는 것을 알 수 있도록 화면 가장자리에 방향을 표시한다.
+        ================================================= */}
+
+        {!meeting &&
+          otherPlayers
+            .filter(
+              (player) =>
+                !(
+                  player.state === "ghost" &&
+                  playerState !== "ghost"
+                )
+            )
+            .map((player) => {
+              const rawX =
+                player.renderX -
+                cameraX;
+              const rawY =
+                player.renderY -
+                cameraY;
+              const margin =
+                isMobile ? 42 : 52;
+              const inside =
+                rawX >= margin &&
+                rawX <= viewportSize.width - margin &&
+                rawY >= margin &&
+                rawY <= viewportSize.height - margin;
+
+              if (inside) {
+                return null;
+              }
+
+              const centerX =
+                viewportSize.width / 2;
+              const centerY =
+                viewportSize.height / 2;
+              const dx =
+                rawX - centerX;
+              const dy =
+                rawY - centerY;
+              const angle =
+                Math.atan2(dy, dx);
+              const edgeX =
+                Math.min(
+                  viewportSize.width - margin,
+                  Math.max(margin, rawX)
+                );
+              const edgeY =
+                Math.min(
+                  viewportSize.height - margin,
+                  Math.max(margin, rawY)
+                );
+
+              return (
+                <div
+                  key={`indicator-${player.id}`}
+                  className="pointer-events-none absolute z-[4950] flex items-center gap-1 rounded-full border border-white/15 bg-black/65 px-2 py-1 text-[8px] font-black text-white shadow-lg backdrop-blur-sm"
+                  style={{
+                    left: edgeX,
+                    top: edgeY,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <span
+                    className="inline-block text-amber-300"
+                    style={{
+                      transform: `rotate(${angle * 180 / Math.PI + 90}deg)`,
+                    }}
+                  >
+                    ▲
+                  </span>
+                  <span className="max-w-[72px] truncate">
+                    {getDisplayName(player.nickname)}
+                  </span>
+                </div>
+              );
+            })}
+
+        {/* =================================================
             Me
         ================================================= */}
 
@@ -6457,7 +6538,13 @@ export default function DevilGameWorld({
             <div
               className={`
                 grid min-h-0 flex-1 overflow-hidden
-                ${isLandscapeMobile ? "grid-cols-[minmax(0,1fr)_minmax(250px,36vw)]" : "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]"}
+                ${
+                  isLandscapeMobile
+                    ? "grid-cols-[minmax(0,1fr)_minmax(250px,36vw)] grid-rows-1"
+                    : isMobile
+                      ? "grid-cols-1 grid-rows-[minmax(250px,42%)_minmax(0,1fr)]"
+                      : "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-1 grid-rows-[minmax(300px,46%)_minmax(0,1fr)]"
+                }
               `}
             >
               {/* Round table / voting stage */}
@@ -6474,8 +6561,12 @@ export default function DevilGameWorld({
                   }}
                 />
 
-                <div className="absolute left-1/2 top-[48%] h-[36%] w-[48%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[5px] border-[#8d715d] bg-[#b79677] shadow-[0_18px_45px_rgba(0,0,0,.45),inset_0_8px_0_rgba(255,255,255,.12)]" />
-                <div className="absolute left-1/2 top-[48%] h-[28%] w-[40%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-white/10 bg-[#a98567]/35" />
+                <div
+                  className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[5px] border-[#8d715d] bg-[#b79677] shadow-[0_18px_45px_rgba(0,0,0,.45),inset_0_8px_0_rgba(255,255,255,.12)] ${isMobile && !isLandscapeMobile ? "top-[50%] h-[31%] w-[58%]" : "top-[48%] h-[36%] w-[48%]"}`}
+                />
+                <div
+                  className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-white/10 bg-[#a98567]/35 ${isMobile && !isLandscapeMobile ? "top-[50%] h-[23%] w-[49%]" : "top-[48%] h-[28%] w-[40%]"}`}
+                />
 
                 <div className="absolute left-1/2 top-[48%] z-10 -translate-x-1/2 -translate-y-1/2 text-center">
                   <div className="text-[9px] font-black tracking-[0.18em] text-black/35">MEETING TABLE</div>
@@ -6489,10 +6580,27 @@ export default function DevilGameWorld({
                 {meetingPlayers.map((player, index) => {
                   const count = Math.max(1, meetingPlayers.length);
                   const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
-                  const radiusX = isLandscapeMobile ? 34 : 35;
-                  const radiusY = isLandscapeMobile ? 36 : 34;
+                  const portraitMeeting =
+                    isMobile &&
+                    !isLandscapeMobile;
+                  const radiusX =
+                    portraitMeeting
+                      ? 39
+                      : isLandscapeMobile
+                        ? 34
+                        : 35;
+                  const radiusY =
+                    portraitMeeting
+                      ? 31
+                      : isLandscapeMobile
+                        ? 36
+                        : 34;
+                  const centerY =
+                    portraitMeeting
+                      ? 50
+                      : 48;
                   const left = 50 + Math.cos(angle) * radiusX;
-                  const top = 48 + Math.sin(angle) * radiusY;
+                  const top = centerY + Math.sin(angle) * radiusY;
                   const dead = player.state === "ghost";
                   const hasVoted = meeting.votedPlayerIds.includes(player.id);
                   const canVoteThis =
@@ -6532,8 +6640,21 @@ export default function DevilGameWorld({
                       </div>
 
                       <div
-                        className={`${isLandscapeMobile ? "scale-[0.58]" : "scale-[0.72]"} origin-top`}
-                        style={{ marginBottom: isLandscapeMobile ? -38 : -25 }}
+                        className={`${
+                          isMobile && !isLandscapeMobile
+                            ? "scale-[0.50]"
+                            : isLandscapeMobile
+                              ? "scale-[0.58]"
+                              : "scale-[0.72]"
+                        } origin-top`}
+                        style={{
+                          marginBottom:
+                            isMobile && !isLandscapeMobile
+                              ? -45
+                              : isLandscapeMobile
+                                ? -38
+                                : -25,
+                        }}
                       >
                         <Potato
                           name=""
@@ -6605,7 +6726,13 @@ export default function DevilGameWorld({
               </div>
 
               {/* Chat panel */}
-              <div className="flex min-h-0 flex-col border-l border-white/10 bg-[#201a16]">
+              <div
+                className={`flex min-h-0 flex-col bg-[#201a16] ${
+                  isLandscapeMobile
+                    ? "border-l border-white/10"
+                    : "border-t border-white/10 lg:border-l lg:border-t-0"
+                }`}
+              >
                 <div className={`${isLandscapeMobile ? "px-3 py-2" : "px-4 py-3"} flex shrink-0 items-center justify-between border-b border-white/10`}>
                   <div>
                     <div className="text-[10px] font-black text-white">💬 회의 채팅</div>
@@ -6650,7 +6777,14 @@ export default function DevilGameWorld({
                 </div>
 
                 {meeting.phase !== "result" && (
-                  <div className={`${isLandscapeMobile ? "p-2" : "p-3"} shrink-0 border-t border-white/10 bg-black/20`}>
+                  <div
+                    className={`${isLandscapeMobile ? "p-2" : "p-3"} shrink-0 border-t border-white/10 bg-black/20`}
+                    style={{
+                      paddingBottom: isMobile
+                        ? "max(12px, env(safe-area-inset-bottom))"
+                        : undefined,
+                    }}
+                  >
                     {playerState === "alive" ? (
                       <form
                         data-no-move
