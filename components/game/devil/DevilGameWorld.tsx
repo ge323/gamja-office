@@ -2625,15 +2625,21 @@ export default function DevilGameWorld({
           return;
         }
 
+        /*
+         * 데스크톱에서도 브라우저의 실제 가용 영역보다
+         * 큰 최소 크기를 강제하지 않는다.
+         * 작은 노트북/브라우저 툴바 환경에서도
+         * 게임과 회의 화면이 위아래로 잘리지 않게 한다.
+         */
         setViewportSize({
           width:
             Math.min(
               VIEWPORT_WIDTH,
               Math.max(
-                720,
+                320,
                 Math.floor(
                   rawWidth -
-                  32
+                  12
                 )
               )
             ),
@@ -2642,10 +2648,10 @@ export default function DevilGameWorld({
             Math.min(
               VIEWPORT_HEIGHT,
               Math.max(
-                520,
+                280,
                 Math.floor(
                   rawHeight -
-                  32
+                  12
                 )
               )
             ),
@@ -4559,31 +4565,32 @@ export default function DevilGameWorld({
   return (
     <div
       className="
+        fixed
+        inset-0
         flex
-        min-h-[100dvh]
-        w-full
+        h-[100dvh]
+        w-[100vw]
         items-center
         justify-center
         overflow-hidden
         bg-zinc-950
-        p-4
       "
-      style={
-        isMobile
-          ? {
-              position: "fixed",
-              inset: 0,
-              width: "100vw",
-              height: "100dvh",
-              minHeight: "100dvh",
-              padding: 0,
-              margin: 0,
-              overflow: "hidden",
-              overscrollBehavior: "none",
-              touchAction: "none",
-            }
-          : undefined
-      }
+      style={{
+        width: "100vw",
+        height:
+          "var(--game-vh, 100dvh)",
+        maxWidth: "100vw",
+        maxHeight:
+          "var(--game-vh, 100dvh)",
+        padding: 0,
+        margin: 0,
+        overflow: "hidden",
+        overscrollBehavior: "none",
+        touchAction:
+          isMobile
+            ? "none"
+            : undefined,
+      }}
     >
       <div
         ref={
@@ -6531,17 +6538,19 @@ export default function DevilGameWorld({
         <div
           data-no-move
           className="fixed inset-0 z-[65000] overflow-hidden bg-[#171310]"
-          style={
-            isMobile
-              ? {
-                  width: "100vw",
-                  height: "100dvh",
-                  maxHeight: "100dvh",
-                  overscrollBehavior: "none",
-                  touchAction: "manipulation",
-                }
-              : undefined
-          }
+          style={{
+            width: "100vw",
+            height:
+              "var(--game-vh, 100dvh)",
+            maxHeight:
+              "var(--game-vh, 100dvh)",
+            overscrollBehavior:
+              "none",
+            touchAction:
+              isMobile
+                ? "manipulation"
+                : undefined,
+          }}
         >
           <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
             {/* Compact Header */}
@@ -6549,7 +6558,7 @@ export default function DevilGameWorld({
               className={`
                 relative z-20 flex shrink-0 items-center justify-between
                 border-b border-white/10 bg-[#211a16]/95 text-white
-                ${isLandscapeMobile ? "h-[54px] px-3" : "px-5 py-4"}
+                ${isLandscapeMobile ? "h-[50px] px-3" : "h-[58px] px-4"}
               `}
             >
               <div className="min-w-0">
@@ -6619,13 +6628,13 @@ export default function DevilGameWorld({
                 />
 
                 <div
-                  className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[5px] border-[#8d715d] bg-[#b79677] shadow-[0_18px_45px_rgba(0,0,0,.45),inset_0_8px_0_rgba(255,255,255,.12)] ${isMobile && !isLandscapeMobile ? "top-[50%] h-[31%] w-[58%]" : "top-[48%] h-[36%] w-[48%]"}`}
+                  className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[5px] border-[#8d715d] bg-[#b79677] shadow-[0_18px_45px_rgba(0,0,0,.45),inset_0_8px_0_rgba(255,255,255,.12)] ${isMobile && !isLandscapeMobile ? "top-[51%] h-[30%] w-[58%]" : "top-[50%] h-[34%] w-[48%]"}`}
                 />
                 <div
-                  className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-white/10 bg-[#a98567]/35 ${isMobile && !isLandscapeMobile ? "top-[50%] h-[23%] w-[49%]" : "top-[48%] h-[28%] w-[40%]"}`}
+                  className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-white/10 bg-[#a98567]/35 ${isMobile && !isLandscapeMobile ? "top-[51%] h-[22%] w-[49%]" : "top-[50%] h-[26%] w-[40%]"}`}
                 />
 
-                <div className="absolute left-1/2 top-[48%] z-10 -translate-x-1/2 -translate-y-1/2 text-center">
+                <div className="absolute left-1/2 top-[50%] z-10 -translate-x-1/2 -translate-y-1/2 text-center">
                   <div className="text-[9px] font-black tracking-[0.18em] text-black/35">MEETING TABLE</div>
                   {meeting.phase === "voting" && !voted && playerState === "alive" && (
                     <div className="mt-2 rounded-full bg-red-700/90 px-3 py-1 text-[8px] font-black text-white shadow-lg">
@@ -6646,16 +6655,21 @@ export default function DevilGameWorld({
                       : isLandscapeMobile
                         ? 34
                         : 35;
+                  /*
+                   * 플레이어 원형 배치를 화면 안쪽으로 당긴다.
+                   * 기존 radiusY 34~36%는 상단 캐릭터가
+                   * 헤더 뒤로 잘리는 경우가 있었다.
+                   */
                   const radiusY =
                     portraitMeeting
-                      ? 31
+                      ? 27
                       : isLandscapeMobile
-                        ? 36
-                        : 34;
+                        ? 29
+                        : 28;
                   const centerY =
                     portraitMeeting
-                      ? 50
-                      : 48;
+                      ? 51
+                      : 50;
                   const left = 50 + Math.cos(angle) * radiusX;
                   const top = centerY + Math.sin(angle) * radiusY;
                   const dead = player.state === "ghost";
@@ -6699,10 +6713,10 @@ export default function DevilGameWorld({
                       <div
                         className={`${
                           isMobile && !isLandscapeMobile
-                            ? "scale-[0.50]"
+                            ? "scale-[0.48]"
                             : isLandscapeMobile
-                              ? "scale-[0.58]"
-                              : "scale-[0.72]"
+                              ? "scale-[0.54]"
+                              : "scale-[0.64]"
                         } origin-top`}
                         style={{
                           marginBottom:
