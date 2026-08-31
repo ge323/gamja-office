@@ -4514,10 +4514,16 @@ export default function DevilGameWorld({
       style={
         isMobile
           ? {
+              position: "fixed",
+              inset: 0,
               width: "100vw",
               height: "100dvh",
               minHeight: "100dvh",
               padding: 0,
+              margin: 0,
+              overflow: "hidden",
+              overscrollBehavior: "none",
+              touchAction: "none",
             }
           : undefined
       }
@@ -6376,420 +6382,331 @@ export default function DevilGameWorld({
 
       {/* =================================================
           Emergency Meeting
+
+          모바일 가로모드에서는 회의실 테이블을 중심으로
+          감자들이 둥글게 앉아 있는 형태로 표시한다.
+          iOS 입력창 자동 확대를 막기 위해 모바일 input은
+          16px 이상으로 유지한다.
       ================================================= */}
 
-      {meeting &&
-        !gameResult && (
-          <div
-            data-no-move
-            className="
-              fixed
-              inset-0
-              z-[65000]
-              flex
-              items-center
-              justify-center
-              bg-black/85
-              p-3
-              backdrop-blur-md
-            "
-          >
+      {meeting && !gameResult && (
+        <div
+          data-no-move
+          className="fixed inset-0 z-[65000] overflow-hidden bg-[#171310]"
+          style={
+            isMobile
+              ? {
+                  width: "100vw",
+                  height: "100dvh",
+                  maxHeight: "100dvh",
+                  overscrollBehavior: "none",
+                  touchAction: "manipulation",
+                }
+              : undefined
+          }
+        >
+          <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+            {/* Compact Header */}
             <div
-              className="
-                flex
-                h-[min(720px,94dvh)]
-                w-full
-                max-[700px]:h-[100dvh]
-                max-[700px]:max-h-[100dvh]
-                max-[700px]:rounded-none
-                max-w-[940px]
-                flex-col
-                overflow-hidden
-                rounded-[28px]
-                border
-                border-white/10
-                bg-[#f4f1e9]
-                shadow-[0_30px_100px_rgba(0,0,0,0.8)]
-              "
+              className={`
+                relative z-20 flex shrink-0 items-center justify-between
+                border-b border-white/10 bg-[#211a16]/95 text-white
+                ${isLandscapeMobile ? "h-[54px] px-3" : "px-5 py-4"}
+              `}
             >
-              {/* Header */}
-
-              <div
-                className="
-                  bg-red-700
-                  px-5
-                  py-4
-                  text-white
-                  sm:px-6
-                  sm:py-5
-                "
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-[9px] font-black tracking-[0.25em] text-white/50">
-                      EMERGENCY MEETING
-                    </div>
-
-                    <div className="mt-1 text-[20px] font-black">
-                      🚨 긴급 회의
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl bg-black/20 px-4 py-2 text-[11px] font-black">
-                    {meeting.phase ===
-                      "discussion"
-                      ? `토론 ${meetingSeconds}초`
-                      : meeting.phase ===
-                        "voting"
-                        ? `투표 ${meetingSeconds}초`
-                        : "투표 결과"}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[15px]">🚨</span>
+                  <div className={`${isLandscapeMobile ? "text-[14px]" : "text-[18px]"} font-black text-red-300`}>
+                    긴급회의
                   </div>
                 </div>
-
-                <div className="mt-3 text-[11px] font-semibold text-white/75">
-                  {meeting.kind ===
-                  "emergency" ? (
-                    <>
-                      📣 {getDisplayName(
-                        meeting.reporterNickname
-                      )}이(가) 긴급회의를 소집했습니다.
-                    </>
-                  ) : (
-                    <>
-                      💀 {getDisplayName(
-                        meeting.victimNickname
-                      )}이(가) 발견되었습니다.
-                      {meeting.reporterNickname
-                        ? ` · 발견자 ${getDisplayName(
-                          meeting.reporterNickname
-                        )}`
-                        : ""}
-                    </>
-                  )}
-                </div>
+                {!isLandscapeMobile && (
+                  <div className="mt-1 text-[9px] font-semibold text-white/55">
+                    {meeting.kind === "emergency"
+                      ? `📣 ${getDisplayName(meeting.reporterNickname)}이(가) 긴급회의를 소집했습니다.`
+                      : `💀 ${getDisplayName(meeting.victimNickname)}이(가) 발견되었습니다.`}
+                  </div>
+                )}
               </div>
 
-              <div
-                className="
-                  grid
-                  min-h-0
-                  flex-1
-                  grid-cols-1
-                  md:grid-cols-[280px_1fr]
-                "
-              >
-                {/* Participants / Voting */}
-
+              <div className="flex shrink-0 items-center gap-2">
+                {isLandscapeMobile && (
+                  <div className="max-w-[44vw] truncate text-right text-[8px] font-semibold text-white/45">
+                    {meeting.kind === "emergency"
+                      ? `${getDisplayName(meeting.reporterNickname)} 소집`
+                      : `${getDisplayName(meeting.victimNickname)} 발견`}
+                  </div>
+                )}
                 <div
-                  className="
-                    max-h-[250px]
-                    overflow-y-auto
-                    max-[700px]:max-h-[190px]
-                    border-b
-                    border-black/10
-                    bg-[#ece8de]
-                    p-4
-                    md:max-h-none
-                    md:border-b-0
-                    md:border-r
-                  "
+                  className={`
+                    rounded-full border border-white/10 bg-black/35 font-black
+                    ${isLandscapeMobile ? "px-3 py-1.5 text-[9px]" : "px-4 py-2 text-[11px]"}
+                  `}
                 >
-                  <div className="mb-3 text-[9px] font-black tracking-[0.15em] text-black/35">
-                    PARTICIPANTS
-                  </div>
-
-                  {meetingPlayers.map(
-                    (player) => {
-                      const dead =
-                        player.state ===
-                        "ghost";
-
-                      const hasVoted =
-                        meeting.votedPlayerIds.includes(
-                          player.id
-                        );
-
-                      return (
-                        <div
-                          key={player.id}
-                          className="mb-2 flex items-center gap-3 rounded-xl border border-black/10 bg-white p-3"
-                        >
-                          <div className="text-xl">
-                            {dead
-                              ? "💀"
-                              : "🥔"}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-[11px] font-black text-black/70">
-                              {getDisplayName(
-                                player.nickname
-                              )}
-                            </div>
-
-                            <div className="mt-0.5 text-[8px] text-black/35">
-                              {dead
-                                ? "사망"
-                                : hasVoted
-                                  ? "투표 완료"
-                                  : "생존"}
-                            </div>
-                          </div>
-
-                          {meeting.phase ===
-                            "voting" &&
-                            !dead &&
-                            playerState ===
-                            "alive" &&
-                            !voted && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  votePlayer(
-                                    player.id
-                                  )
-                                }
-                                className="rounded-lg bg-zinc-900 px-2.5 py-2 text-[8px] font-black text-white transition hover:bg-red-700 active:scale-95"
-                              >
-                                투표
-                              </button>
-                            )}
-                        </div>
-                      );
-                    }
-                  )}
-
-                  {meeting.phase ===
-                    "voting" &&
-                    playerState ===
-                    "alive" &&
-                    !voted && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          votePlayer(
-                            "skip"
-                          )
-                        }
-                        className="mt-3 w-full rounded-xl border border-black/10 bg-white py-3 text-[10px] font-black text-black/60 transition hover:bg-amber-50 active:scale-[0.98]"
-                      >
-                        ⏭️ 투표 건너뛰기
-                      </button>
-                    )}
-
-                  {voted &&
-                    meeting.phase ===
-                    "voting" && (
-                      <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-center text-[9px] font-black text-emerald-700">
-                        ✓ 투표 완료 · 다른 감자를 기다리는 중
-                      </div>
-                    )}
-                </div>
-
-                {/* Chat */}
-
-                <div className="flex min-h-0 flex-col">
-                  <div className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3 sm:px-5">
-                    <div>
-                      <div className="text-[10px] font-black text-black/70">
-                        회의 채팅
-                      </div>
-
-                      <div className="mt-0.5 text-[8px] font-semibold text-black/30">
-                        실시간으로 모든 생존 참가자에게 표시됩니다.
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[8px] font-bold text-emerald-600">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      LIVE
-                    </div>
-                  </div>
-                  <div
-                    ref={meetingChatScrollRef}
-                    className="min-h-0 flex-1 overflow-y-auto bg-[#f8f6f1] p-4 sm:p-5"
-                  >
-                    {meetingMessages.length ===
-                      0 ? (
-                      <div className="flex h-full min-h-[160px] items-center justify-center text-center text-[11px] font-semibold text-black/30">
-                        💬 회의 채팅
-                        <br />
-                        발견 위치, 마지막으로 본 사람, 이동 경로를 이야기해보세요.
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {meetingMessages.map(
-                          (message) => {
-                            const mine =
-                              message.playerId ===
-                              myPlayerId;
-
-                            return (
-                              <div
-                                key={message.id}
-                                className={
-                                  mine
-                                    ? "flex justify-end"
-                                    : "flex justify-start"
-                                }
-                              >
-                                <div
-                                  className={
-                                    mine
-                                      ? "max-w-[78%] rounded-[18px] rounded-br-[5px] bg-zinc-900 px-4 py-2.5 text-white shadow-sm"
-                                      : "max-w-[78%] rounded-[18px] rounded-bl-[5px] border border-black/10 bg-white px-4 py-2.5 text-black/70 shadow-sm"
-                                  }
-                                >
-                                  <div className="mb-1 text-[8px] font-black opacity-45">
-                                    {getDisplayName(
-                                      message.nickname
-                                    )}
-                                  </div>
-
-                                  <div className="break-words text-[11px] font-semibold leading-5">
-                                    {message.message}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Vote Result */}
-
-                  {meeting.phase ===
-                    "result" &&
-                    meetingResult && (
-                      <div className="border-t border-black/10 bg-amber-50 p-5 text-center">
-                        {meetingResult.skipped ||
-                          !meetingResult.expelledPlayer ? (
-                          <>
-                            <div className="text-3xl">
-                              🤝
-                            </div>
-
-                            <div className="mt-2 text-[14px] font-black text-black/75">
-                              아무도 퇴출되지 않았습니다.
-                            </div>
-
-                            <div className="mt-1 text-[9px] font-semibold text-black/35">
-                              잠시 후 게임이 다시 시작됩니다.
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-3xl">
-                              🚪
-                            </div>
-
-                            <div className="mt-2 text-[14px] font-black text-black/75">
-                              {getDisplayName(
-                                meetingResult
-                                  .expelledPlayer
-                                  .nickname
-                              )} 퇴출
-                            </div>
-
-                            <div
-                              className={
-                                meetingResult
-                                  .expelledPlayer
-                                  .role ===
-                                  "devil"
-                                  ? "mt-2 text-[11px] font-black text-red-600"
-                                  : "mt-2 text-[11px] font-black text-emerald-700"
-                              }
-                            >
-                              {meetingResult
-                                .expelledPlayer
-                                .role ===
-                                "devil"
-                                ? "😈 악마였습니다!"
-                                : "🥔 악마가 아니었습니다."}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                  {/* Chat Input */}
-
-                  {meeting.phase !==
-                    "result" && (
-                      <div className="border-t border-black/10 bg-white p-3 sm:p-4">
-                        {playerState ===
-                          "alive" ? (
-                          <form
-                            data-no-move
-                            onSubmit={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              sendMeetingMessage();
-                            }}
-                            onPointerDown={(event) =>
-                              event.stopPropagation()
-                            }
-                            onMouseDown={(event) =>
-                              event.stopPropagation()
-                            }
-                            onClick={(event) =>
-                              event.stopPropagation()
-                            }
-                            className="flex gap-2"
-                          >
-                            <input
-                              value={meetingInput}
-                              onChange={(event) =>
-                                setMeetingInput(
-                                  event.target.value
-                                )
-                              }
-                              onKeyDown={(event) =>
-                                event.stopPropagation()
-                              }
-                              onKeyUp={(event) =>
-                                event.stopPropagation()
-                              }
-                              onClick={(event) =>
-                                event.stopPropagation()
-                              }
-                              onPointerDown={(event) =>
-                                event.stopPropagation()
-                              }
-                              onMouseDown={(event) =>
-                                event.stopPropagation()
-                              }
-                              autoComplete="off"
-                              placeholder="메시지를 입력하세요..."
-                              maxLength={160}
-                              className="min-w-0 flex-1 rounded-xl border border-black/10 bg-[#f5f5f5] px-4 py-3 text-[11px] text-black outline-none focus:border-black/30"
-                            />
-
-                            <button
-                              type="submit"
-                              disabled={
-                                !meetingInput.trim()
-                              }
-                              className="rounded-xl bg-zinc-900 px-5 text-[10px] font-black text-white transition active:scale-95 disabled:opacity-35"
-                            >
-                              전송
-                            </button>
-                          </form>
-                        ) : (
-                          <div className="text-center text-[10px] font-semibold text-black/35">
-                            👻 유령은 회의를 볼 수 있지만 대화나 투표에는 참여할 수 없습니다.
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  {meeting.phase === "discussion"
+                    ? `토론 ${meetingSeconds}초`
+                    : meeting.phase === "voting"
+                      ? `투표 ${meetingSeconds}초`
+                      : "투표 결과"}
                 </div>
               </div>
             </div>
+
+            {/* Main Meeting Stage */}
+            <div
+              className={`
+                grid min-h-0 flex-1 overflow-hidden
+                ${isLandscapeMobile ? "grid-cols-[minmax(0,1fr)_minmax(250px,36vw)]" : "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]"}
+              `}
+            >
+              {/* Round table / voting stage */}
+              <div
+                className="relative min-h-0 overflow-hidden bg-[radial-gradient(circle_at_center,#46382f_0%,#2b211b_56%,#171310_100%)]"
+              >
+                {/* subtle floor grid */}
+                <div
+                  className="pointer-events-none absolute inset-0 opacity-[0.08]"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px)",
+                    backgroundSize: "32px 32px",
+                  }}
+                />
+
+                <div className="absolute left-1/2 top-[48%] h-[36%] w-[48%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[5px] border-[#8d715d] bg-[#b79677] shadow-[0_18px_45px_rgba(0,0,0,.45),inset_0_8px_0_rgba(255,255,255,.12)]" />
+                <div className="absolute left-1/2 top-[48%] h-[28%] w-[40%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-white/10 bg-[#a98567]/35" />
+
+                <div className="absolute left-1/2 top-[48%] z-10 -translate-x-1/2 -translate-y-1/2 text-center">
+                  <div className="text-[9px] font-black tracking-[0.18em] text-black/35">MEETING TABLE</div>
+                  {meeting.phase === "voting" && !voted && playerState === "alive" && (
+                    <div className="mt-2 rounded-full bg-red-700/90 px-3 py-1 text-[8px] font-black text-white shadow-lg">
+                      감자를 눌러 투표
+                    </div>
+                  )}
+                </div>
+
+                {meetingPlayers.map((player, index) => {
+                  const count = Math.max(1, meetingPlayers.length);
+                  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
+                  const radiusX = isLandscapeMobile ? 34 : 35;
+                  const radiusY = isLandscapeMobile ? 36 : 34;
+                  const left = 50 + Math.cos(angle) * radiusX;
+                  const top = 48 + Math.sin(angle) * radiusY;
+                  const dead = player.state === "ghost";
+                  const hasVoted = meeting.votedPlayerIds.includes(player.id);
+                  const canVoteThis =
+                    meeting.phase === "voting" &&
+                    !dead &&
+                    playerState === "alive" &&
+                    !voted;
+                  const style = player.characterStyle;
+
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      data-no-move
+                      disabled={!canVoteThis}
+                      onClick={() => {
+                        if (canVoteThis) votePlayer(player.id);
+                      }}
+                      className={`
+                        absolute z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center
+                        rounded-2xl px-1.5 py-1 outline-none transition
+                        ${canVoteThis ? "cursor-pointer hover:bg-red-500/10 active:scale-95" : "cursor-default"}
+                        ${hasVoted ? "ring-2 ring-emerald-400/60" : ""}
+                        ${dead ? "opacity-45 grayscale" : ""}
+                      `}
+                      style={{ left: `${left}%`, top: `${top}%` }}
+                    >
+                      <div
+                        className={`
+                          mb-0.5 max-w-[88px] truncate rounded-full px-2 py-0.5
+                          text-[8px] font-black shadow
+                          ${player.id === myPlayerId ? "bg-amber-300 text-zinc-950" : "bg-black/70 text-white"}
+                        `}
+                      >
+                        {player.id === myPlayerId ? "나 · " : ""}
+                        {getDisplayName(player.nickname)}
+                      </div>
+
+                      <div
+                        className={`${isLandscapeMobile ? "scale-[0.58]" : "scale-[0.72]"} origin-top`}
+                        style={{ marginBottom: isLandscapeMobile ? -38 : -25 }}
+                      >
+                        <Potato
+                          name=""
+                          glasses={style?.glasses ?? "none"}
+                          hat={style?.hat ?? "none"}
+                          ribbon={style?.ribbon ?? false}
+                          tie={style?.tie ?? false}
+                          special={style?.special ?? "none"}
+                          color={style?.color ?? "default"}
+                          hair={style?.hair ?? "none"}
+                          hairColor={style?.hairColor ?? "brown"}
+                          eyes={style?.eyes ?? "dot"}
+                          mouth={style?.mouth ?? "default"}
+                          blush={style?.blush ?? true}
+                          freckles={style?.freckles ?? false}
+                          moving={false}
+                          direction="down"
+                          ghost={dead}
+                          attacking={false}
+                          evil={false}
+                          hit={false}
+                        />
+                      </div>
+
+                      <div className="mt-1 min-h-[14px] text-[7px] font-black">
+                        {dead ? (
+                          <span className="text-white/40">💀 사망</span>
+                        ) : hasVoted ? (
+                          <span className="text-emerald-300">✓ 투표 완료</span>
+                        ) : canVoteThis ? (
+                          <span className="rounded-full bg-red-600 px-2 py-0.5 text-white">투표</span>
+                        ) : null}
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {meeting.phase === "voting" && playerState === "alive" && !voted && (
+                  <button
+                    type="button"
+                    data-no-move
+                    onClick={() => votePlayer("skip")}
+                    className="absolute bottom-3 left-3 z-30 rounded-full border border-white/15 bg-black/65 px-3 py-2 text-[8px] font-black text-white shadow-xl active:scale-95"
+                  >
+                    ⏭️ 건너뛰기
+                  </button>
+                )}
+
+                {voted && meeting.phase === "voting" && (
+                  <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-emerald-500/90 px-4 py-2 text-[8px] font-black text-white shadow-xl">
+                    ✓ 투표 완료 · 기다리는 중
+                  </div>
+                )}
+
+                {meeting.phase === "result" && meetingResult && (
+                  <div className="absolute inset-x-[12%] bottom-4 z-40 rounded-2xl border border-white/10 bg-black/80 p-3 text-center text-white shadow-2xl backdrop-blur-md">
+                    {meetingResult.skipped || !meetingResult.expelledPlayer ? (
+                      <div className="text-[11px] font-black">🤝 아무도 퇴출되지 않았습니다.</div>
+                    ) : (
+                      <>
+                        <div className="text-[12px] font-black">🚪 {getDisplayName(meetingResult.expelledPlayer.nickname)} 퇴출</div>
+                        <div className={`mt-1 text-[9px] font-black ${meetingResult.expelledPlayer.role === "devil" ? "text-red-300" : "text-emerald-300"}`}>
+                          {meetingResult.expelledPlayer.role === "devil" ? "😈 악마였습니다!" : "🥔 악마가 아니었습니다."}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Chat panel */}
+              <div className="flex min-h-0 flex-col border-l border-white/10 bg-[#201a16]">
+                <div className={`${isLandscapeMobile ? "px-3 py-2" : "px-4 py-3"} flex shrink-0 items-center justify-between border-b border-white/10`}>
+                  <div>
+                    <div className="text-[10px] font-black text-white">💬 회의 채팅</div>
+                    {!isLandscapeMobile && (
+                      <div className="mt-0.5 text-[8px] font-semibold text-white/35">생존 참가자끼리 실시간 대화</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-[7px] font-bold text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> LIVE
+                  </div>
+                </div>
+
+                <div
+                  ref={meetingChatScrollRef}
+                  className={`${isLandscapeMobile ? "p-2" : "p-3"} min-h-0 flex-1 overflow-y-auto overscroll-contain`}
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
+                  {meetingMessages.length === 0 ? (
+                    <div className="flex h-full items-center justify-center px-4 text-center text-[9px] font-semibold leading-4 text-white/30">
+                      아직 메시지가 없습니다.<br />발견 위치나 이동 경로를 이야기해보세요.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {meetingMessages.map((message) => {
+                        const mine = message.playerId === myPlayerId;
+                        return (
+                          <div key={message.id} className={mine ? "flex justify-end" : "flex justify-start"}>
+                            <div
+                              className={`
+                                max-w-[86%] rounded-2xl px-3 py-2 shadow-sm
+                                ${mine ? "rounded-br-[5px] bg-violet-600 text-white" : "rounded-bl-[5px] bg-white/10 text-white"}
+                              `}
+                            >
+                              <div className="mb-0.5 text-[7px] font-black opacity-45">{getDisplayName(message.nickname)}</div>
+                              <div className="break-words text-[10px] font-semibold leading-4">{message.message}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {meeting.phase !== "result" && (
+                  <div className={`${isLandscapeMobile ? "p-2" : "p-3"} shrink-0 border-t border-white/10 bg-black/20`}>
+                    {playerState === "alive" ? (
+                      <form
+                        data-no-move
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          sendMeetingMessage();
+                        }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          value={meetingInput}
+                          onChange={(event) => setMeetingInput(event.target.value)}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          onKeyUp={(event) => event.stopPropagation()}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
+                          onFocus={() => {
+                            if (isMobile) {
+                              window.setTimeout(() => {
+                                window.scrollTo(0, 0);
+                              }, 50);
+                            }
+                          }}
+                          autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="sentences"
+                          enterKeyHint="send"
+                          placeholder="메시지를 입력하세요..."
+                          maxLength={160}
+                          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white px-3 py-2.5 font-semibold text-zinc-900 outline-none focus:border-violet-400"
+                          style={{ fontSize: isMobile ? 16 : 12 }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={!meetingInput.trim()}
+                          className="flex h-[42px] w-[44px] shrink-0 items-center justify-center rounded-xl bg-violet-600 text-[18px] font-black text-white shadow-lg transition active:scale-95 disabled:opacity-35"
+                          aria-label="메시지 전송"
+                        >
+                          ➤
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="py-2 text-center text-[9px] font-semibold text-white/35">
+                        👻 유령은 회의를 볼 수 있지만 채팅과 투표에는 참여할 수 없습니다.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* =================================================
           Leave Confirm
