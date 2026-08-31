@@ -6953,214 +6953,667 @@ export default function DevilGameWorld({
           승리 화면에도 동일하게 표시된다.
       ================================================= */}
 
-      {gameResult && (
+      {/* =================================================
+    Game Result / Victory Screen
+
+    PC
+    - 기존처럼 넉넉한 승리 화면
+
+    Mobile Landscape
+    - 제목 크기 축소
+    - 캐릭터 영역 압축
+    - 닉네임을 캐릭터 아래로 이동
+    - 사무실 돌아가기 버튼 항상 노출
+================================================= */}
+
+{gameResult && (
+  <div
+    data-no-move
+    className={`
+      fixed
+      inset-0
+      z-[70000]
+      overflow-hidden
+      text-white
+      backdrop-blur-md
+
+      ${
+        gameResult.winningTeam ===
+        "devil"
+          ? `
+            bg-[radial-gradient(
+              circle_at_center,
+              rgba(127,29,29,0.72),
+              rgba(9,9,11,0.97)_68%
+            )]
+          `
+          : `
+            bg-[radial-gradient(
+              circle_at_center,
+              rgba(5,150,105,0.45),
+              rgba(9,9,11,0.96)_72%
+            )]
+          `
+      }
+    `}
+  >
+    {/* ===============================================
+        Background Decoration
+    =============================================== */}
+
+    <div
+      className="
+        pointer-events-none
+        absolute
+        inset-0
+        overflow-hidden
+      "
+    >
+      {Array.from({
+        length:
+          isLandscapeMobile
+            ? 14
+            : 24,
+      }).map(
+        (
+          _,
+          index
+        ) => (
+          <span
+            key={
+              index
+            }
+            className="
+              absolute
+              animate-pulse
+              opacity-60
+            "
+            style={{
+              left: `${
+                (
+                  index *
+                  37
+                ) %
+                100
+              }%`,
+
+              top: `${
+                (
+                  index *
+                  53
+                ) %
+                92
+              }%`,
+
+              fontSize:
+                isLandscapeMobile
+                  ? 14
+                  : 18,
+
+              animationDelay: `${
+                (
+                  index %
+                  7
+                ) *
+                120
+              }ms`,
+
+              animationDuration: `${
+                900 +
+                (
+                  index %
+                  5
+                ) *
+                  180
+              }ms`,
+            }}
+          >
+            {gameResult.winningTeam ===
+            "devil"
+              ? index %
+                  3 ===
+                0
+                ? "🔥"
+                : "✦"
+              : index %
+                    3 ===
+                  0
+                ? "🎊"
+                : "✨"}
+          </span>
+        )
+      )}
+    </div>
+
+    {/* ===============================================
+        Main Result Layout
+    =============================================== */}
+
+    <div
+      className={`
+        relative
+        z-10
+        mx-auto
+        flex
+        h-full
+        w-full
+        max-w-[1000px]
+        flex-col
+        items-center
+        text-center
+
+        ${
+          isLandscapeMobile
+            ? `
+              justify-between
+              px-16
+              pb-[max(14px,env(safe-area-inset-bottom))]
+              pt-[max(10px,env(safe-area-inset-top))]
+            `
+            : `
+              justify-center
+              p-6
+            `
+        }
+      `}
+    >
+      {/* ===============================================
+          Header
+      =============================================== */}
+
+      <div
+        className={`
+          flex
+          shrink-0
+          flex-col
+          items-center
+
+          ${
+            isLandscapeMobile
+              ? "gap-1"
+              : "gap-3"
+          }
+        `}
+      >
+        {!isLandscapeMobile && (
+          <div
+            className={`
+              rounded-full
+              border
+              px-4
+              py-2
+              text-[9px]
+              font-black
+              tracking-[0.32em]
+
+              ${
+                gameResult.winningTeam ===
+                "devil"
+                  ? `
+                    border-red-300/20
+                    bg-red-500/10
+                    text-red-200
+                  `
+                  : `
+                    border-emerald-300/20
+                    bg-emerald-500/10
+                    text-emerald-100
+                  `
+              }
+            `}
+          >
+            POTATO WAR · VICTORY
+          </div>
+        )}
+
         <div
-          data-no-move
           className={`
-            fixed inset-0 z-[70000]
-            flex items-center justify-center
-            overflow-hidden p-3
-            text-white
-            backdrop-blur-md
+            font-black
+            leading-none
+            tracking-[-0.05em]
+            drop-shadow-[0_8px_25px_rgba(0,0,0,0.55)]
+
             ${
-              gameResult.winningTeam === "devil"
-                ? "bg-[radial-gradient(circle_at_center,rgba(127,29,29,0.72),rgba(9,9,11,0.97)_68%)]"
-                : "bg-[radial-gradient(circle_at_center,rgba(5,150,105,0.45),rgba(9,9,11,0.96)_72%)]"
+              isLandscapeMobile
+                ? `
+                  text-[clamp(26px,5.2vh,46px)]
+                `
+                : `
+                  mt-2
+                  text-[clamp(30px,7vw,64px)]
+                `
+            }
+
+            ${
+              gameResult.winningTeam ===
+              "devil"
+                ? "text-red-300"
+                : "text-emerald-200"
             }
           `}
         >
-          {/* 배경 장식 */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {Array.from({ length: 24 }).map((_, index) => (
-              <span
-                key={index}
-                className="absolute animate-pulse text-lg opacity-60"
-                style={{
-                  left: `${(index * 37) % 100}%`,
-                  top: `${(index * 53) % 92}%`,
-                  animationDelay: `${(index % 7) * 120}ms`,
-                  animationDuration: `${900 + (index % 5) * 180}ms`,
-                }}
-              >
-                {gameResult.winningTeam === "devil"
-                  ? index % 3 === 0
-                    ? "🔥"
-                    : "✦"
-                  : index % 3 === 0
-                    ? "🎊"
-                    : "✨"}
-              </span>
-            ))}
-          </div>
-
-          <div className="relative z-10 flex w-full max-w-[900px] flex-col items-center text-center">
-            <div
-              className={`
-                rounded-full border px-4 py-2
-                text-[9px] font-black tracking-[0.32em]
-                ${
-                  gameResult.winningTeam === "devil"
-                    ? "border-red-300/20 bg-red-500/10 text-red-200"
-                    : "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-                }
-              `}
-            >
-              POTATO WAR · VICTORY
-            </div>
-
-            <div
-              className={`
-                mt-5 text-[clamp(30px,7vw,64px)]
-                font-black leading-none tracking-[-0.05em]
-                drop-shadow-[0_8px_25px_rgba(0,0,0,0.55)]
-                ${
-                  gameResult.winningTeam === "devil"
-                    ? "text-red-300"
-                    : "text-emerald-200"
-                }
-              `}
-            >
-              {gameResult.winningTeam === "devil"
-                ? "😈 악마팀 승리!"
-                : "🎉 생존자팀 승리!"}
-            </div>
-
-            <div className="mt-3 max-w-[620px] text-[11px] font-semibold leading-5 text-white/55">
-              {gameResult.reason}
-            </div>
-
-            {/* 실제 승리 유저들의 커스텀 감자 */}
-            <div
-              className="
-                mt-7 flex min-h-[210px] w-full
-                flex-wrap items-end justify-center
-                gap-x-5 gap-y-8
-                max-[700px]:mt-5 max-[700px]:gap-x-2
-              "
-            >
-              {gameResult.winners.length > 0 ? (
-                gameResult.winners.map((winner, index) => {
-                  const winnerStyle = winner.characterStyle;
-
-                  return (
-                    <div
-                      key={winner.id}
-                      className="flex min-w-[120px] flex-col items-center max-[700px]:min-w-[92px]"
-                      style={{
-                        animation: `potatoVictoryBounce 900ms ease-in-out ${index * 110}ms infinite alternate`,
-                      }}
-                    >
-                      <div
-                        className={`
-                          mb-2 rounded-full border px-3 py-1
-                          text-[9px] font-black
-                          ${
-                            gameResult.winningTeam === "devil"
-                              ? "border-red-300/20 bg-red-950/60 text-red-100"
-                              : "border-emerald-300/20 bg-emerald-950/60 text-emerald-100"
-                          }
-                        `}
-                      >
-                        {getDisplayName(winner.nickname)}
-                      </div>
-
-                      <div
-                        className="origin-bottom max-[700px]:scale-[0.82]"
-                        style={{
-                          transform:
-                            index % 2 === 0
-                              ? "rotate(-3deg) scale(1.2)"
-                              : "rotate(3deg) scale(1.2)",
-                        }}
-                      >
-                        <Potato
-                          name=""
-                          glasses={winnerStyle?.glasses ?? "none"}
-                          hat={winnerStyle?.hat ?? "none"}
-                          ribbon={winnerStyle?.ribbon ?? false}
-                          tie={winnerStyle?.tie ?? false}
-                          color={winnerStyle?.color ?? "default"}
-                          hair={winnerStyle?.hair ?? "none"}
-                          hairColor={winnerStyle?.hairColor ?? "brown"}
-                          eyes={winnerStyle?.eyes ?? "dot"}
-                          mouth={winnerStyle?.mouth ?? "default"}
-                          blush={winnerStyle?.blush ?? true}
-                          freckles={winnerStyle?.freckles ?? false}
-                          moving={true}
-                          ghost={false}
-                          attacking={false}
-                          evil={gameResult.winningTeam === "devil"}
-                          hit={false}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-12 text-sm font-black text-white/70">
-                  승리! 🎉
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 text-[10px] font-semibold text-white/45">
-              {gameResult.winningTeam === "devil"
-                ? "악마 감자들이 사무실을 장악했습니다."
-                : "생존 감자들이 악마의 위협에서 살아남았습니다."}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                const socket = socketRef.current;
-
-                if (!socket || !socket.connected) {
-                  onReturnToOffice();
-                  return;
-                }
-
-                socket.emit(
-                  "devilGame:return-office",
-                  {
-                    roomId,
-                    playerId: myPlayerIdRef.current,
-                  },
-                  () => {
-                    onReturnToOffice();
-                  }
-                );
-              }}
-              className={`
-                mt-7 min-w-[240px] rounded-2xl
-                px-6 py-4 text-[11px] font-black
-                shadow-xl transition
-                hover:-translate-y-0.5
-                ${
-                  gameResult.winningTeam === "devil"
-                    ? "bg-red-100 text-red-950 hover:bg-red-50"
-                    : "bg-emerald-100 text-emerald-950 hover:bg-emerald-50"
-                }
-              `}
-            >
-              🏢 사무실로 돌아가기
-            </button>
-          </div>
-
-          <style>{`
-            @keyframes potatoVictoryBounce {
-              0% {
-                transform: translateY(0) rotate(-1deg);
-              }
-              45% {
-                transform: translateY(-12px) rotate(1deg);
-              }
-              100% {
-                transform: translateY(-22px) rotate(-1deg);
-              }
-            }
-          `}</style>
+          {gameResult.winningTeam ===
+          "devil"
+            ? "😈 악마팀 승리!"
+            : "🎉 생존자팀 승리!"}
         </div>
-      )}
+
+        <div
+          className={`
+            max-w-[620px]
+            font-semibold
+            text-white/55
+
+            ${
+              isLandscapeMobile
+                ? `
+                  mt-1
+                  text-[10px]
+                  leading-4
+                `
+                : `
+                  mt-2
+                  text-[11px]
+                  leading-5
+                `
+            }
+          `}
+        >
+          {gameResult.reason}
+        </div>
+      </div>
+
+      {/* ===============================================
+          Winners
+      =============================================== */}
+
+      <div
+        className={`
+          flex
+          w-full
+          flex-1
+          flex-wrap
+          items-center
+          justify-center
+
+          ${
+            isLandscapeMobile
+              ? `
+                min-h-0
+                gap-x-5
+                gap-y-2
+                py-1
+              `
+              : `
+                min-h-[210px]
+                gap-x-5
+                gap-y-8
+                py-4
+              `
+          }
+        `}
+      >
+        {gameResult.winners.length >
+        0 ? (
+          gameResult.winners.map(
+            (
+              winner,
+              index
+            ) => {
+              const winnerStyle =
+                winner.characterStyle;
+
+              return (
+                <div
+                  key={
+                    winner.id
+                  }
+                  className={`
+                    relative
+                    flex
+                    flex-col
+                    items-center
+
+                    ${
+                      isLandscapeMobile
+                        ? `
+                          min-w-[82px]
+                        `
+                        : `
+                          min-w-[120px]
+                        `
+                    }
+                  `}
+                  style={{
+                    animation:
+                      isLandscapeMobile
+                        ? `potatoVictoryMobile 850ms ease-in-out ${
+                            index *
+                            90
+                          }ms infinite alternate`
+                        : `potatoVictoryBounce 900ms ease-in-out ${
+                            index *
+                            110
+                          }ms infinite alternate`,
+                  }}
+                >
+                  {/* =====================================
+                      Potato
+
+                      이름보다 먼저 렌더링하고
+                      이름은 아래쪽으로 내려 겹침 제거
+                  ===================================== */}
+
+                  <div
+                    className="
+                      relative
+                      z-10
+                      origin-bottom
+                    "
+                    style={{
+                      transform:
+                        isLandscapeMobile
+                          ? index %
+                              2 ===
+                            0
+                            ? `
+                              rotate(-2deg)
+                              scale(0.82)
+                            `
+                            : `
+                              rotate(2deg)
+                              scale(0.82)
+                            `
+                          : index %
+                                2 ===
+                              0
+                            ? `
+                              rotate(-3deg)
+                              scale(1.2)
+                            `
+                            : `
+                              rotate(3deg)
+                              scale(1.2)
+                            `,
+                    }}
+                  >
+                    <Potato
+                      name=""
+                      glasses={
+                        winnerStyle?.glasses ??
+                        "none"
+                      }
+                      hat={
+                        winnerStyle?.hat ??
+                        "none"
+                      }
+                      ribbon={
+                        winnerStyle?.ribbon ??
+                        false
+                      }
+                      tie={
+                        winnerStyle?.tie ??
+                        false
+                      }
+                      color={
+                        winnerStyle?.color ??
+                        "default"
+                      }
+                      hair={
+                        winnerStyle?.hair ??
+                        "none"
+                      }
+                      hairColor={
+                        winnerStyle?.hairColor ??
+                        "brown"
+                      }
+                      eyes={
+                        winnerStyle?.eyes ??
+                        "dot"
+                      }
+                      mouth={
+                        winnerStyle?.mouth ??
+                        "default"
+                      }
+                      blush={
+                        winnerStyle?.blush ??
+                        true
+                      }
+                      freckles={
+                        winnerStyle?.freckles ??
+                        false
+                      }
+                      moving={
+                        true
+                      }
+                      ghost={
+                        false
+                      }
+                      attacking={
+                        false
+                      }
+                      evil={
+                        gameResult.winningTeam ===
+                        "devil"
+                      }
+                      hit={
+                        false
+                      }
+                    />
+                  </div>
+
+                  {/* =====================================
+                      Winner Name
+
+                      기존 캐릭터 위 → 캐릭터 아래
+                  ===================================== */}
+
+                  <div
+                    className={`
+                      relative
+                      z-20
+                      rounded-full
+                      border
+                      font-black
+                      shadow-lg
+                      backdrop-blur-sm
+
+                      ${
+                        isLandscapeMobile
+                          ? `
+                            -mt-1
+                            px-2.5
+                            py-1
+                            text-[8px]
+                          `
+                          : `
+                            mt-3
+                            px-3
+                            py-1
+                            text-[9px]
+                          `
+                      }
+
+                      ${
+                        gameResult.winningTeam ===
+                        "devil"
+                          ? `
+                            border-red-300/20
+                            bg-red-950/80
+                            text-red-100
+                          `
+                          : `
+                            border-emerald-300/20
+                            bg-emerald-950/80
+                            text-emerald-100
+                          `
+                      }
+                    `}
+                  >
+                    {getDisplayName(
+                      winner.nickname
+                    )}
+                  </div>
+                </div>
+              );
+            }
+          )
+        ) : (
+          <div
+            className="
+              text-sm
+              font-black
+              text-white/70
+            "
+          >
+            승리! 🎉
+          </div>
+        )}
+      </div>
+
+      {/* ===============================================
+          Bottom
+      =============================================== */}
+
+      <div
+        className={`
+          flex
+          shrink-0
+          flex-col
+          items-center
+
+          ${
+            isLandscapeMobile
+              ? "gap-2"
+              : "gap-4"
+          }
+        `}
+      >
+        <div
+          className={`
+            font-semibold
+            text-white/50
+
+            ${
+              isLandscapeMobile
+                ? "text-[9px]"
+                : "text-[10px]"
+            }
+          `}
+        >
+          {gameResult.winningTeam ===
+          "devil"
+            ? "악마 감자들이 사무실을 장악했습니다."
+            : "생존 감자들이 악마의 위협에서 살아남았습니다."}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            const socket =
+              socketRef.current;
+
+            if (
+              !socket ||
+              !socket.connected
+            ) {
+              onReturnToOffice();
+              return;
+            }
+
+            socket.emit(
+              "devilGame:return-office",
+              {
+                roomId,
+
+                playerId:
+                  myPlayerIdRef
+                    .current,
+              },
+              () => {
+                onReturnToOffice();
+              }
+            );
+          }}
+          className={`
+            rounded-2xl
+            font-black
+            shadow-xl
+            transition
+            hover:-translate-y-0.5
+
+            ${
+              isLandscapeMobile
+                ? `
+                  min-w-[190px]
+                  px-5
+                  py-2.5
+                  text-[10px]
+                `
+                : `
+                  min-w-[240px]
+                  px-6
+                  py-4
+                  text-[11px]
+                `
+            }
+
+            ${
+              gameResult.winningTeam ===
+              "devil"
+                ? `
+                  bg-red-100
+                  text-red-950
+                  hover:bg-red-50
+                `
+                : `
+                  bg-emerald-100
+                  text-emerald-950
+                  hover:bg-emerald-50
+                `
+            }
+          `}
+        >
+          🏢 사무실로 돌아가기
+        </button>
+      </div>
+    </div>
+
+    <style>{`
+      @keyframes potatoVictoryBounce {
+        0% {
+          transform:
+            translateY(0)
+            rotate(-1deg);
+        }
+
+        45% {
+          transform:
+            translateY(-12px)
+            rotate(1deg);
+        }
+
+        100% {
+          transform:
+            translateY(-22px)
+            rotate(-1deg);
+        }
+      }
+
+      @keyframes potatoVictoryMobile {
+        0% {
+          transform:
+            translateY(0);
+        }
+
+        100% {
+          transform:
+            translateY(-7px);
+        }
+      }
+    `}</style>
+  </div>
+)}
 
       {/* =================================================
           Mission Modal
