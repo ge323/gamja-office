@@ -65,10 +65,10 @@ const DEVIL_GAME_MIN_PLAYERS =
   3;
 
 const DEVIL_GAME_DEFAULT_MAX_PLAYERS =
-  6;
+  5;
 
 const DEVIL_GAME_MAX_PLAYERS =
-  6;
+  5;
 
 /*
  * 방장이 시작을 누른 뒤
@@ -534,7 +534,7 @@ function assignRoles(
 ) {
   /*
    * 3~4명 : 악마 1명
-   * 5~6명 : 악마 2명
+   * 5명 : 악마 2명
    */
 
   const devilCount =
@@ -1005,16 +1005,37 @@ function broadcastBlackout(
       )
     )
     .emit(
-      "devilGame:blackout",
-      getPublicBlackoutState(
-        room
-      )
+      "devilGame:blackout-changed",
+      {
+        active:
+          Boolean(
+            room.blackout?.active
+          ),
+
+        activatedBy:
+          room.blackout
+            ?.activatedBy ??
+          null,
+
+        changedAt:
+          room.blackout
+            ?.changedAt ??
+          null,
+
+        cooldownEndsAt:
+          Number(
+            room.blackout
+              ?.cooldownEndsAt ??
+            0
+          ),
+      }
     );
 
   broadcastGameState(
     room
   );
 }
+
 /* =========================================================
    Find Game Room / Player
 ========================================================= */
@@ -1091,7 +1112,7 @@ function resetBlackout(room) {
   };
 
   io.to(getSocketRoomName(room.id)).emit(
-    "devilGame:blackout",
+    "devilGame:blackout-changed",
     getPublicBlackoutState(room)
   );
 }
@@ -1177,1034 +1198,1560 @@ function getAliveGamePlayers(room) {
       player.state === "alive"
   );
 }
-
-function getAliveSurvivors(room) {
-  return getAliveGamePlayers(room).filter(
-    (player) => player.role === "survivor"
+function getAliveSurvivors(
+  room
+) {
+  return getAliveGamePlayers(
+    room
+  ).filter(
+    player =>
+      player.role ===
+      "survivor"
   );
 }
 
-function getAliveDevils(room) {
-  return getAliveGamePlayers(room).filter(
-    (player) => player.role === "devil"
+function getAliveDevils(
+  room
+) {
+  return getAliveGamePlayers(
+    room
+  ).filter(
+    player =>
+      player.role ===
+      "devil"
   );
 }
 
-function getGameWinners(room, winningTeam) {
-  return Object.values(room?.gamePlayers ?? {})
-    .filter(
-      (player) =>
-        player.leftGame !== true &&
-        player.role === winningTeam
-    )
-    .map((player) => ({
-      id: player.id,
-      nickname: player.nickname,
-      characterStyle: player.characterStyle,
-      role: player.role,
-    }));
-}
+/* =========================================================
+   Finish Potato War
+========================================================= */
 
-function finishDevilGame(room, winningTeam, reason) {
-  if (!room || room.status !== "playing") {
+function finishPotatoWar(
+  room,
+  winner,
+  reason
+) {
+  if (
+    !room ||
+    room.status ===
+      "finished"
+  ) {
     return;
   }
 
-  room.status = "finished";
+  room.status =
+    "finished";
+
+  room.finishedAt =
+    Date.now();
+
+  room.winner =
+    winner;
+
+  room.finishReason =
+    reason;
 
   /*
-   * 게임 종료 시 정전을 반드시 해제한다.
+   * 게임 종료 시 정전도 해제.
    */
-  room.blackout = {
-    active: false,
-    activatedBy: null,
-    changedAt: Date.now(),
-    cooldownEndsAt: 0,
-  };
-
-  if (room.meeting) {
-    room.meeting.active = false;
-  }
-
-  const result = {
-    winningTeam,
-    reason,
-    winners: getGameWinners(room, winningTeam),
-  };
-
-  room.gameResult = result;
-
-  io.to(getSocketRoomName(room.id)).emit(
-    "devilGame:blackout",
-    getPublicBlackoutState(room)
+  resetBlackout(
+    room
   );
 
-  io.to(getSocketRoomName(room.id)).emit(
-    "devilGame:result",
-    result
+  clearMeetingTimers(
+    room
+  );
+
+  const result = {
+    winner,
+    reason,
+
+    finishedAt:
+      room.finishedAt,
+  };
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:finished",
+      result
+    );
+
+  broadcastGameState(
+    room
   );
 
   broadcastRoomList();
 
   console.log(
-    `🏁 감자전쟁 종료: ${room.id} / ${winningTeam} / ${reason}`
+    `🏁 감자전쟁 종료: ${room.id} / ${winner} / ${reason}`
   );
 }
 
-function checkDevilGameResult(room) {
-  if (!room || room.status !== "playing") {
-    return false;
+/* =========================================================
+   Check Potato War Result
+========================================================= */
+
+function checkDevilGameResult(
+  room
+) {
+  if (
+    !room ||
+    room.status !==
+      "playing"
+  ) {
+    return;
   }
 
-  const aliveSurvivors = getAliveSurvivors(room);
-  const aliveDevils = getAliveDevils(room);
+  const aliveSurvivors =
+    getAliveSurvivors(
+      room
+    );
+
+  const aliveDevils =
+    getAliveDevils(
+      room
+    );
 
   /*
-   * 악마가 모두 제거되면 생존자 승리.
+   * 악마가 모두 제거되면
+   * 생존자 승리.
    */
-  if (aliveDevils.length === 0) {
-    finishDevilGame(
+  if (
+    aliveDevils.length ===
+    0
+  ) {
+    finishPotatoWar(
       room,
       "survivor",
-      "모든 악마 감자가 제거되었습니다!"
+      "all-devils-eliminated"
     );
 
-    return true;
+    return;
   }
 
   /*
-   * 생존자가 모두 사망하면 악마 승리.
+   * 생존자가 모두 제거되면
+   * 악마 승리.
    */
-  if (aliveSurvivors.length === 0) {
-    finishDevilGame(
+  if (
+    aliveSurvivors.length ===
+    0
+  ) {
+    finishPotatoWar(
       room,
       "devil",
-      "모든 생존자 감자가 제거되었습니다!"
+      "all-survivors-eliminated"
     );
 
-    return true;
+    return;
   }
 
   /*
    * 악마 수가 생존자 수 이상이 되면
-   * 생존자들이 더 이상 악마를 투표로 제거할 수 없으므로
    * 악마 승리.
    */
-  if (aliveDevils.length >= aliveSurvivors.length) {
-    finishDevilGame(
+  if (
+    aliveDevils.length >=
+    aliveSurvivors.length
+  ) {
+    finishPotatoWar(
       room,
       "devil",
-      "악마 감자가 생존자 감자 수와 같거나 많아졌습니다!"
+      "devils-reached-parity"
     );
 
-    return true;
+    return;
   }
 
   /*
-   * 생존자 개인 미션 전체 달성 확인.
+   * 모든 생존자 미션이 완료되면
+   * 생존자 승리.
    */
-  const progress = getSurvivorMissionProgress(room);
+  const progress =
+    getSurvivorMissionProgress(
+      room
+    );
 
   if (
     progress.total > 0 &&
-    progress.completed >= progress.total
+    progress.completed >=
+      progress.total
   ) {
-    finishDevilGame(
+    finishPotatoWar(
       room,
       "survivor",
-      "모든 생존자 감자가 미션을 완료했습니다!"
+      "all-missions-completed"
     );
-
-    return true;
   }
-
-  return false;
 }
 
 /* =========================================================
    Corpse Helpers
 ========================================================= */
 
-function createCorpse(room, victim) {
-  const corpse = {
-    id: `corpse-${createId()}`,
-    victimId: victim.id,
-    victimNickname: victim.nickname,
-    characterStyle: victim.characterStyle,
-    x: victim.x,
-    y: victim.y,
-    createdAt: Date.now(),
-    reported: false,
-  };
-
-  room.corpses.push(corpse);
-
-  return corpse;
-}
-
-function findCorpseById(room, corpseId) {
-  return (
-    (room?.corpses ?? []).find(
-      (corpse) => corpse.id === corpseId
-    ) ?? null
-  );
-}
-
-function getNearestReportableCorpse(room, reporter) {
-  if (!room || !reporter) {
+function findCorpseById(
+  room,
+  corpseId
+) {
+  if (
+    !room ||
+    !Array.isArray(
+      room.corpses
+    )
+  ) {
     return null;
   }
 
-  let nearestCorpse = null;
-  let nearestDistance = Infinity;
+  return (
+    room.corpses.find(
+      corpse =>
+        corpse.id ===
+        corpseId
+    ) ??
+    null
+  );
+}
 
-  for (const corpse of room.corpses ?? []) {
-    if (corpse.reported) {
+function getNearestReportableCorpse(
+  room,
+  reporter
+) {
+  if (
+    !room ||
+    !reporter
+  ) {
+    return null;
+  }
+
+  let nearest =
+    null;
+
+  let nearestDistance =
+    Infinity;
+
+  for (
+    const corpse of
+    room.corpses ?? []
+  ) {
+    if (
+      corpse.reported
+    ) {
       continue;
     }
 
-    const distance = getDistance(reporter, corpse);
+    const distance =
+      getDistance(
+        reporter,
+        corpse
+      );
 
     if (
-      distance <= POTATO_WAR_REPORT_DISTANCE &&
-      distance < nearestDistance
+      distance >
+      POTATO_WAR_REPORT_DISTANCE
     ) {
-      nearestCorpse = corpse;
-      nearestDistance = distance;
+      continue;
+    }
+
+    if (
+      distance <
+      nearestDistance
+    ) {
+      nearest =
+        corpse;
+
+      nearestDistance =
+        distance;
     }
   }
 
-  return nearestCorpse;
+  return nearest;
 }
 
 /* =========================================================
-   Meeting Helpers
+   Meeting Timers
 ========================================================= */
 
-function clearMeetingTimers(room) {
-  if (!room?.meeting) {
-    return;
-  }
-
-  if (room.meeting.discussionTimer) {
-    clearTimeout(room.meeting.discussionTimer);
-  }
-
-  if (room.meeting.votingTimer) {
-    clearTimeout(room.meeting.votingTimer);
-  }
-
-  if (room.meeting.resultTimer) {
-    clearTimeout(room.meeting.resultTimer);
-  }
-
-  room.meeting.discussionTimer = null;
-  room.meeting.votingTimer = null;
-  room.meeting.resultTimer = null;
-}
-
-function broadcastMeeting(room) {
+function clearMeetingTimers(
+  room
+) {
   if (!room) {
     return;
   }
 
-  io.to(getSocketRoomName(room.id)).emit(
-    "devilGame:meeting",
-    getPublicMeeting(room)
-  );
-
-  broadcastGameState(room);
-}
-
-function createMeetingMessage(player, text) {
-  return {
-    id: `meeting-message-${createId()}`,
-    playerId: player.id,
-    nickname: player.nickname,
-    text,
-    createdAt: Date.now(),
-  };
-}
-
-function startMeetingVoting(room) {
   if (
-    !room?.meeting ||
-    !room.meeting.active ||
-    room.meeting.phase !== "discussion"
+    room.discussionTimer
   ) {
-    return;
-  }
-
-  room.meeting.phase = "voting";
-  room.meeting.phaseEndsAt =
-    Date.now() + POTATO_WAR_VOTING_MS;
-
-  broadcastMeeting(room);
-
-  room.meeting.votingTimer = setTimeout(() => {
-    finishMeetingVoting(room);
-  }, POTATO_WAR_VOTING_MS);
-}
-
-function getEligibleVoters(room) {
-  return Object.values(room?.gamePlayers ?? {}).filter(
-    (player) =>
-      player.leftGame !== true &&
-      player.state === "alive"
-  );
-}
-
-function allEligiblePlayersVoted(room) {
-  const eligible = getEligibleVoters(room);
-
-  if (eligible.length === 0) {
-    return true;
-  }
-
-  const votes = room?.meeting?.votes ?? {};
-
-  return eligible.every((player) =>
-    Object.prototype.hasOwnProperty.call(
-      votes,
-      player.id
-    )
-  );
-}
-
-function calculateVoteResult(room) {
-  const meeting = room?.meeting;
-
-  if (!meeting) {
-    return {
-      ejectedPlayerId: null,
-      ejectedPlayer: null,
-      skipped: true,
-      tie: false,
-      counts: {},
-      skipVotes: 0,
-    };
-  }
-
-  const counts = {};
-  let skipVotes = 0;
-
-  for (const targetId of Object.values(meeting.votes ?? {})) {
-    if (!targetId || targetId === "skip") {
-      skipVotes += 1;
-      continue;
-    }
-
-    counts[targetId] =
-      Number(counts[targetId] ?? 0) + 1;
-  }
-
-  let highestCount = 0;
-  let highestPlayerIds = [];
-
-  for (const [playerId, count] of Object.entries(counts)) {
-    if (count > highestCount) {
-      highestCount = count;
-      highestPlayerIds = [playerId];
-    } else if (count === highestCount) {
-      highestPlayerIds.push(playerId);
-    }
-  }
-
-  /*
-   * 스킵 표가 최다 득표와 같거나 많으면 추방 없음.
-   */
-  if (
-    skipVotes >= highestCount ||
-    highestPlayerIds.length === 0
-  ) {
-    return {
-      ejectedPlayerId: null,
-      ejectedPlayer: null,
-      skipped: true,
-      tie:
-        highestCount > 0 &&
-        skipVotes === highestCount,
-      counts,
-      skipVotes,
-    };
-  }
-
-  /*
-   * 플레이어끼리 동률이면 추방 없음.
-   */
-  if (highestPlayerIds.length !== 1) {
-    return {
-      ejectedPlayerId: null,
-      ejectedPlayer: null,
-      skipped: false,
-      tie: true,
-      counts,
-      skipVotes,
-    };
-  }
-
-  const ejectedPlayerId = highestPlayerIds[0];
-
-  const ejectedPlayer =
-    findGamePlayerById(room, ejectedPlayerId);
-
-  return {
-    ejectedPlayerId,
-    ejectedPlayer,
-    skipped: false,
-    tie: false,
-    counts,
-    skipVotes,
-  };
-}
-
-function finishMeetingVoting(room) {
-  if (
-    !room?.meeting ||
-    !room.meeting.active ||
-    room.meeting.phase === "result"
-  ) {
-    return;
-  }
-
-  const meeting = room.meeting;
-
-  if (meeting.votingTimer) {
-    clearTimeout(meeting.votingTimer);
-    meeting.votingTimer = null;
-  }
-
-  const voteResult = calculateVoteResult(room);
-
-  meeting.phase = "result";
-  meeting.phaseEndsAt =
-    Date.now() + POTATO_WAR_VOTE_RESULT_MS;
-
-  meeting.voteResult = {
-    ejectedPlayerId:
-      voteResult.ejectedPlayerId,
-
-    ejectedNickname:
-      voteResult.ejectedPlayer?.nickname ?? null,
-
-    ejectedRole:
-      voteResult.ejectedPlayer?.role ?? null,
-
-    skipped:
-      voteResult.skipped,
-
-    tie:
-      voteResult.tie,
-
-    counts:
-      voteResult.counts,
-
-    skipVotes:
-      voteResult.skipVotes,
-  };
-
-  if (voteResult.ejectedPlayer) {
-    voteResult.ejectedPlayer.state = "dead";
-    voteResult.ejectedPlayer.moving = false;
-  }
-
-  io.to(getSocketRoomName(room.id)).emit(
-    "devilGame:meeting-result",
-    meeting.voteResult
-  );
-
-  broadcastMeeting(room);
-
-  meeting.resultTimer = setTimeout(() => {
-    endMeeting(room);
-  }, POTATO_WAR_VOTE_RESULT_MS);
-}
-
-function endMeeting(room) {
-  if (!room?.meeting) {
-    return;
-  }
-
-  clearMeetingTimers(room);
-
-  /*
-   * 신고된 시체는 회의 종료 후 제거한다.
-   */
-  if (room.meeting.corpseId) {
-    room.corpses = (room.corpses ?? []).filter(
-      (corpse) =>
-        corpse.id !== room.meeting.corpseId
+    clearTimeout(
+      room.discussionTimer
     );
+
+    room.discussionTimer =
+      null;
   }
 
-  room.meeting.active = false;
+  if (
+    room.votingTimer
+  ) {
+    clearTimeout(
+      room.votingTimer
+    );
 
-  const endedMeeting = room.meeting;
+    room.votingTimer =
+      null;
+  }
 
-  room.meeting = null;
+  if (
+    room.voteResultTimer
+  ) {
+    clearTimeout(
+      room.voteResultTimer
+    );
 
-  io.to(getSocketRoomName(room.id)).emit(
-    "devilGame:meeting-ended",
-    {
-      meetingId: endedMeeting.id,
-    }
-  );
-
-  broadcastGameState(room);
-
-  checkDevilGameResult(room);
+    room.voteResultTimer =
+      null;
+  }
 }
 
-function startMeeting(room, reporter, options = {}) {
+/* =========================================================
+   Meeting Message
+========================================================= */
+
+function createMeetingMessage(
+  player,
+  text
+) {
+  return {
+    id:
+      createId(),
+
+    playerId:
+      player.id,
+
+    nickname:
+      player.nickname,
+
+    text,
+
+    createdAt:
+      Date.now(),
+  };
+}
+
+/* =========================================================
+   Broadcast Meeting
+========================================================= */
+
+function broadcastMeeting(
+  room
+) {
+  if (!room) {
+    return;
+  }
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:meeting",
+      getPublicMeeting(
+        room
+      )
+    );
+
+  broadcastGameState(
+    room
+  );
+}
+
+/* =========================================================
+   Start Meeting
+========================================================= */
+
+function startMeeting(
+  room,
+  reporter,
+  options = {}
+) {
   if (
     !room ||
-    !reporter ||
-    room.status !== "playing" ||
+    room.status !==
+      "playing"
+  ) {
+    return {
+      ok: false,
+      message:
+        "현재 게임이 진행 중이 아닙니다.",
+    };
+  }
+
+  if (
     room.meeting?.active
   ) {
     return {
       ok: false,
-      message: "현재 회의를 시작할 수 없습니다.",
+      message:
+        "이미 회의가 진행 중입니다.",
     };
   }
 
-  if (reporter.state !== "alive") {
+  if (
+    !reporter ||
+    reporter.state !==
+      "alive"
+  ) {
     return {
       ok: false,
-      message: "살아있는 감자만 회의를 시작할 수 있습니다.",
+      message:
+        "살아있는 감자만 회의를 소집할 수 있습니다.",
     };
-  }
-
-  const kind =
-    options.kind === "emergency"
-      ? "emergency"
-      : "corpse";
-
-  const corpse =
-    kind === "corpse"
-      ? options.corpse ?? null
-      : null;
-
-  if (kind === "corpse" && !corpse) {
-    return {
-      ok: false,
-      message: "신고할 시체를 찾을 수 없습니다.",
-    };
-  }
-
-  if (corpse) {
-    corpse.reported = true;
   }
 
   /*
-   * 회의가 시작되면 정전을 강제로 해제한다.
-   * 회의 화면에서 기존 정전이 계속 유지되는 문제를 방지.
+   * 회의가 시작되면 정전은 자동 해제.
    */
-  if (room.blackout?.active) {
-    room.blackout = {
-      active: false,
-      activatedBy: null,
-      changedAt: Date.now(),
-      cooldownEndsAt:
-        Number(room.blackout.cooldownEndsAt ?? 0),
-    };
+  resetBlackout(
+    room
+  );
 
-    io.to(getSocketRoomName(room.id)).emit(
-      "devilGame:blackout",
-      getPublicBlackoutState(room)
-    );
+  const kind =
+    options.kind ??
+    "corpse";
+
+  const corpse =
+    options.corpse ??
+    null;
+
+  if (corpse) {
+    corpse.reported =
+      true;
   }
 
+  clearMeetingTimers(
+    room
+  );
+
+  const now =
+    Date.now();
+
   room.meeting = {
-    id: `meeting-${createId()}`,
-    active: true,
+    id:
+      createId(),
+
+    active:
+      true,
+
     kind,
-    phase: "discussion",
 
-    reporterId: reporter.id,
-    reporterNickname: reporter.nickname,
+    phase:
+      "discussion",
 
-    corpseId: corpse?.id ?? null,
-    victimId: corpse?.victimId ?? null,
+    reporterId:
+      reporter.id,
 
-    /*
-     * 긴급회의에는 희생자가 없으므로 반드시 null.
-     */
+    reporterNickname:
+      reporter.nickname,
+
+    corpseId:
+      corpse?.id ??
+      null,
+
+    victimId:
+      corpse?.victimId ??
+      null,
+
     victimNickname:
-      corpse?.victimNickname ?? null,
+      corpse?.victimNickname ??
+      null,
 
-    startedAt: Date.now(),
+    startedAt:
+      now,
+
     phaseEndsAt:
-      Date.now() + POTATO_WAR_DISCUSSION_MS,
+      now +
+      POTATO_WAR_DISCUSSION_MS,
 
-    messages: [],
-    votes: {},
-    voteResult: null,
+    messages:
+      [],
 
-    discussionTimer: null,
-    votingTimer: null,
-    resultTimer: null,
+    votes:
+      {},
+
+    result:
+      null,
   };
 
-  broadcastMeeting(room);
+  /*
+   * 모든 플레이어의 이동을 정지.
+   */
+  Object.values(
+    room.gamePlayers ??
+      {}
+  ).forEach(
+    player => {
+      player.moving =
+        false;
+    }
+  );
 
-  room.meeting.discussionTimer = setTimeout(() => {
-    startMeetingVoting(room);
-  }, POTATO_WAR_DISCUSSION_MS);
+  broadcastMeeting(
+    room
+  );
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:meeting-started",
+      getPublicMeeting(
+        room
+      )
+    );
+
+  room.discussionTimer =
+    setTimeout(
+      () => {
+        startMeetingVoting(
+          room
+        );
+      },
+      POTATO_WAR_DISCUSSION_MS
+    );
 
   return {
     ok: true,
-    meeting: getPublicMeeting(room),
+
+    meeting:
+      getPublicMeeting(
+        room
+      ),
   };
 }
 
 /* =========================================================
-   Player Reconnect Helpers
+   Start Meeting Voting
 ========================================================= */
 
-function findReconnectableGamePlayer(room, nickname) {
-  if (!room?.gamePlayers || !nickname) {
-    return null;
-  }
-
-  const normalizedNickname =
-    String(nickname).trim();
-
-  if (!normalizedNickname) {
-    return null;
-  }
-
-  return (
-    Object.values(room.gamePlayers).find(
-      (gamePlayer) =>
-        gamePlayer.leftGame !== true &&
-        gamePlayer.nickname === normalizedNickname
-    ) ?? null
-  );
-}
-
-function reconnectGamePlayer(room, gamePlayer, socket) {
-  if (!room || !gamePlayer || !socket) {
+function startMeetingVoting(
+  room
+) {
+  if (
+    !room ||
+    !room.meeting ||
+    !room.meeting.active
+  ) {
     return;
   }
 
-  gamePlayer.connectedSocketId = socket.id;
+  if (
+    room.meeting.phase !==
+    "discussion"
+  ) {
+    return;
+  }
+
+  if (
+    room.discussionTimer
+  ) {
+    clearTimeout(
+      room.discussionTimer
+    );
+
+    room.discussionTimer =
+      null;
+  }
+
+  room.meeting.phase =
+    "voting";
+
+  room.meeting.phaseEndsAt =
+    Date.now() +
+    POTATO_WAR_VOTING_MS;
+
+  broadcastMeeting(
+    room
+  );
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:meeting-voting",
+      getPublicMeeting(
+        room
+      )
+    );
+
+  room.votingTimer =
+    setTimeout(
+      () => {
+        finishMeetingVoting(
+          room
+        );
+      },
+      POTATO_WAR_VOTING_MS
+    );
+}
+
+/* =========================================================
+   Eligible Meeting Voters
+========================================================= */
+
+function getEligibleMeetingVoters(
+  room
+) {
+  return Object.values(
+    room.gamePlayers ??
+      {}
+  ).filter(
+    player =>
+      player.leftGame !==
+        true &&
+      player.state ===
+        "alive"
+  );
+}
+
+function allEligiblePlayersVoted(
+  room
+) {
+  if (
+    !room?.meeting
+  ) {
+    return false;
+  }
+
+  const voters =
+    getEligibleMeetingVoters(
+      room
+    );
+
+  if (
+    voters.length ===
+    0
+  ) {
+    return false;
+  }
+
+  return voters.every(
+    player =>
+      Object.prototype.hasOwnProperty.call(
+        room.meeting.votes ??
+          {},
+        player.id
+      )
+  );
+}
+
+/* =========================================================
+   Finish Meeting Voting
+========================================================= */
+
+function finishMeetingVoting(
+  room
+) {
+  if (
+    !room ||
+    !room.meeting ||
+    !room.meeting.active
+  ) {
+    return;
+  }
+
+  if (
+    room.meeting.phase ===
+    "result"
+  ) {
+    return;
+  }
+
+  if (
+    room.votingTimer
+  ) {
+    clearTimeout(
+      room.votingTimer
+    );
+
+    room.votingTimer =
+      null;
+  }
+
+  const meeting =
+    room.meeting;
+
+  const counts = {};
+
+  Object.values(
+    meeting.votes ??
+      {}
+  ).forEach(
+    targetId => {
+      const key =
+        targetId ||
+        "skip";
+
+      counts[key] =
+        (counts[key] ??
+          0) +
+        1;
+    }
+  );
+
+  let highestCount =
+    0;
+
+  let highestTargets =
+    [];
+
+  Object.entries(
+    counts
+  ).forEach(
+    ([
+      targetId,
+      count,
+    ]) => {
+      if (
+        count >
+        highestCount
+      ) {
+        highestCount =
+          count;
+
+        highestTargets = [
+          targetId,
+        ];
+
+        return;
+      }
+
+      if (
+        count ===
+        highestCount
+      ) {
+        highestTargets.push(
+          targetId
+        );
+      }
+    }
+  );
+
+  let ejectedPlayer =
+    null;
+
+  let skipped =
+    false;
+
+  let tied =
+    false;
+
+  /*
+   * 아무도 투표하지 않은 경우.
+   */
+  if (
+    highestCount ===
+    0
+  ) {
+    skipped =
+      true;
+  } else if (
+    highestTargets.length >
+    1
+  ) {
+    /*
+     * 공동 1위는 아무도 추방되지 않음.
+     */
+    tied =
+      true;
+  } else {
+    const targetId =
+      highestTargets[0];
+
+    if (
+      targetId ===
+      "skip"
+    ) {
+      skipped =
+        true;
+    } else {
+      const target =
+        findGamePlayerById(
+          room,
+          targetId
+        );
+
+      if (
+        target &&
+        target.state ===
+          "alive"
+      ) {
+        target.state =
+          "ghost";
+
+        target.moving =
+          false;
+
+        ejectedPlayer =
+          target;
+      }
+    }
+  }
+
+  meeting.phase =
+    "result";
+
+  meeting.phaseEndsAt =
+    Date.now() +
+    POTATO_WAR_VOTE_RESULT_MS;
+
+  meeting.result = {
+    ejectedPlayerId:
+      ejectedPlayer?.id ??
+      null,
+
+    ejectedNickname:
+      ejectedPlayer?.nickname ??
+      null,
+
+    ejectedRole:
+      ejectedPlayer?.role ??
+      null,
+
+    skipped,
+
+    tied,
+
+    counts,
+  };
+
+  const publicResult = {
+    meetingId:
+      meeting.id,
+
+    ejectedPlayerId:
+      ejectedPlayer?.id ??
+      null,
+
+    ejectedNickname:
+      ejectedPlayer?.nickname ??
+      null,
+
+    /*
+     * 투표 결과에서 역할 공개.
+     */
+    ejectedRole:
+      ejectedPlayer?.role ??
+      null,
+
+    skipped,
+
+    tied,
+
+    counts,
+
+    phaseEndsAt:
+      meeting.phaseEndsAt,
+  };
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:meeting-result",
+      publicResult
+    );
+
+  broadcastMeeting(
+    room
+  );
+
+  /*
+   * 추방으로 승패가 결정될 수도 있으므로 확인.
+   */
+  checkDevilGameResult(
+    room
+  );
+
+  /*
+   * 게임이 이미 종료됐다면
+   * 회의 종료 타이머를 만들 필요 없음.
+   */
+  if (
+    room.status !==
+    "playing"
+  ) {
+    return;
+  }
+
+  room.voteResultTimer =
+    setTimeout(
+      () => {
+        endMeeting(
+          room
+        );
+      },
+      POTATO_WAR_VOTE_RESULT_MS
+    );
+}
+
+/* =========================================================
+   End Meeting
+========================================================= */
+
+function endMeeting(
+  room
+) {
+  if (
+    !room ||
+    !room.meeting
+  ) {
+    return;
+  }
+
+  clearMeetingTimers(
+    room
+  );
+
+  const oldMeeting =
+    room.meeting;
+
+  room.meeting =
+    null;
+
+  io
+    .to(
+      getSocketRoomName(
+        room.id
+      )
+    )
+    .emit(
+      "devilGame:meeting-ended",
+      {
+        meetingId:
+          oldMeeting.id,
+      }
+    );
+
+  broadcastGameState(
+    room
+  );
+}
+
+/* =========================================================
+   Reconnect Game Player
+========================================================= */
+
+function reconnectGamePlayer(
+  room,
+  gamePlayer,
+  socket
+) {
+  if (
+    !room ||
+    !gamePlayer ||
+    !socket
+  ) {
+    return;
+  }
+
+  gamePlayer.connectedSocketId =
+    socket.id;
+
+  gamePlayer.leftGame =
+    false;
 
   socket.join(
-    getSocketRoomName(room.id)
+    getSocketRoomName(
+      room.id
+    )
   );
 
+  /*
+   * 재접속 즉시 현재 게임 상태 전달.
+   */
   socket.emit(
     "devilGame:state",
-    getPublicGameState(room)
+    getPublicGameState(
+      room
+    )
   );
 
+  /*
+   * 중요:
+   * 재접속 시 현재 정전 상태도
+   * blackout-changed 이벤트로 다시 전달한다.
+   */
   socket.emit(
-    "devilGame:blackout",
-    getPublicBlackoutState(room)
+    "devilGame:blackout-changed",
+    getPublicBlackoutState(
+      room
+    )
   );
 
-  if (room.meeting?.active) {
+  if (
+    room.meeting?.active
+  ) {
     socket.emit(
       "devilGame:meeting",
-      getPublicMeeting(room)
-    );
-  }
-
-  if (room.gameResult) {
-    socket.emit(
-      "devilGame:result",
-      room.gameResult
-    );
-  }
-
-  broadcastGameState(room);
-}
-
-/* =========================================================
-   Remove Lobby Player
-========================================================= */
-
-function removePlayerFromLobbyRoom(socketId) {
-  const room = findPlayerRoom(socketId);
-
-  if (!room) {
-    return;
-  }
-
-  room.players = room.players.filter(
-    (id) => id !== socketId
-  );
-
-  if (room.ready) {
-    delete room.ready[socketId];
-  }
-
-  if (room.roles) {
-    delete room.roles[socketId];
-  }
-
-  if (room.hostId === socketId) {
-    room.hostId =
-      room.players[0] ?? null;
-  }
-
-  if (room.players.length === 0) {
-    delete devilRooms[room.id];
-
-    broadcastRoomList();
-    return;
-  }
-
-  broadcastRoomUpdate(room);
-}
-
-/* =========================================================
-   Socket Connection
-========================================================= */
-
-io.on("connection", (socket) => {
-  console.log(
-    "🟢 Socket connected:",
-    socket.id
-  );
-
-  /* =======================================================
-     Main Office Join
-  ======================================================= */
-
-  socket.on(
-    "office:join",
-    (payload = {}, callback) => {
-      const nickname =
-        String(
-          payload.nickname ?? ""
-        ).trim() ||
-        `감자-${socket.id.slice(0, 4)}`;
-
-      const characterStyle =
-        payload.characterStyle ?? {};
-
-      players[socket.id] = {
-        id: socket.id,
-        nickname,
-        characterStyle,
-        x: Number(payload.x ?? 600),
-        y: Number(payload.y ?? 400),
-        moving: false,
-        direction: "down",
-      };
-
-      socket.emit(
-        "office:players",
-        getPublicOfficePlayers()
-      );
-
-      socket.broadcast.emit(
-        "office:player-joined",
-        players[socket.id]
-      );
-
-      callback?.({
-        ok: true,
-        player: players[socket.id],
-      });
-
-      console.log(
-        "🥔 사무실 입장:",
-        nickname,
-        socket.id
-      );
-    }
-  );
-
-  /* =======================================================
-     Main Office Move
-  ======================================================= */
-
-  socket.on(
-    "office:move",
-    (payload = {}) => {
-      const player =
-        players[socket.id];
-
-      if (!player) {
-        return;
-      }
-
-      player.x =
-        Number(payload.x ?? player.x);
-
-      player.y =
-        Number(payload.y ?? player.y);
-
-      player.moving =
-        Boolean(payload.moving);
-
-      if (payload.direction) {
-        player.direction =
-          payload.direction;
-      }
-
-      socket.broadcast.emit(
-        "office:player-moved",
-        player
-      );
-    }
-  );
-
-  /* =======================================================
-     Main Office Chat
-  ======================================================= */
-
-  socket.on(
-    "office:chat",
-    (payload = {}, callback) => {
-      const player =
-        players[socket.id];
-
-      if (!player) {
-        callback?.({
-          ok: false,
-          message: "플레이어 정보를 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const text =
-        String(
-          payload.text ?? ""
-        ).trim();
-
-      if (!text) {
-        callback?.({
-          ok: false,
-          message: "메시지를 입력해주세요.",
-        });
-
-        return;
-      }
-
-      const message = {
-        id: `chat-${createId()}`,
-        playerId: player.id,
-        nickname: player.nickname,
-        text,
-        createdAt: Date.now(),
-      };
-
-      addChatMessage(message);
-
-      io.emit(
-        "office:chat",
-        message
-      );
-
-      callback?.({
-        ok: true,
-      });
-    }
-  );
-
-  /* =======================================================
-     Request Room List
-  ======================================================= */
-
-  socket.on(
-    "devilRooms:list",
-    (callback) => {
-      callback?.({
-        ok: true,
-        rooms: getPublicRooms(),
-      });
-    }
-  );
-
-  /* =======================================================
-     Create Devil Room
-  ======================================================= */
-
-  socket.on(
-    "devilRoom:create",
-    (payload = {}, callback) => {
-      const officePlayer =
-        players[socket.id];
-
-      if (!officePlayer) {
-        callback?.({
-          ok: false,
-          message:
-            "먼저 사무실에 입장해주세요.",
-        });
-
-        return;
-      }
-
-      /*
-       * 기존 로비방이 있으면 먼저 제거.
-       */
-      removePlayerFromLobbyRoom(
-        socket.id
-      );
-
-      const roomId =
-        createRoomCode();
-
-      const requestedMaxPlayers =
-        Number(
-          payload.maxPlayers ??
-            DEVIL_GAME_DEFAULT_MAX_PLAYERS
-        );
-
-      const maxPlayers =
-        Math.max(
-          DEVIL_GAME_MIN_PLAYERS,
-          Math.min(
-            DEVIL_GAME_MAX_PLAYERS,
-            Number.isFinite(
-              requestedMaxPlayers
-            )
-              ? requestedMaxPlayers
-              : DEVIL_GAME_DEFAULT_MAX_PLAYERS
-          )
-        );
-
-      const room = {
-        id: roomId,
-        hostId: socket.id,
-        status: "waiting",
-        maxPlayers,
-        countdownEndsAt: null,
-
-        players: [
-          socket.id,
-        ],
-
-        ready: {
-          [socket.id]: true,
-        },
-
-        roles: {},
-
-        gamePlayers: null,
-        corpses: [],
-        meeting: null,
-        gameResult: null,
-
-        /*
-         * 로비 단계에서도 기본 정전 상태를 생성.
-         */
-        blackout: {
-          active: false,
-          activatedBy: null,
-          changedAt: null,
-          cooldownEndsAt: 0,
-        },
-      };
-
-      devilRooms[roomId] =
-        room;
-
-      socket.join(
-        getSocketRoomName(
-          roomId
-        )
-      );
-
-      broadcastRoomUpdate(
+      getPublicMeeting(
         room
-      );
+      )
+    );
+  }
+}
 
-      callback?.({
-        ok: true,
-        room:
-          getPublicRoom(
-            room
-          ),
-      });
+/* =========================================================
+   Socket.IO Connection
+========================================================= */
 
-      console.log(
-        "🏠 감자전쟁 방 생성:",
-        roomId
-      );
-    }
-  );
+io.on(
+  "connection",
+  socket => {
+    console.log(
+      "🟢 Socket connected:",
+      socket.id
+    );
 
-  /* =======================================================
-     Join Devil Room
-  ======================================================= */
+    /* =====================================================
+       Office Join
+    ===================================================== */
 
-  socket.on(
-    "devilRoom:join",
-    (payload = {}, callback) => {
-      const roomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        devilRooms[roomId];
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      /*
-       * 진행 중인 게임 재접속 처리.
-       */
-      if (
-        room.status === "playing" ||
-        room.status === "finished"
-      ) {
+    socket.on(
+      "office:join",
+      (
+        payload = {},
+        callback
+      ) => {
         const nickname =
           String(
             payload.nickname ??
-              players[socket.id]
-                ?.nickname ??
               ""
-          ).trim();
+          )
+            .trim()
+            .slice(
+              0,
+              30
+            );
 
-        const reconnectPlayer =
-          findReconnectableGamePlayer(
-            room,
-            nickname
+        if (!nickname) {
+          callback?.({
+            ok: false,
+            message:
+              "닉네임을 입력해주세요.",
+          });
+
+          return;
+        }
+
+        const characterStyle =
+          payload.characterStyle ??
+          {};
+
+        players[
+          socket.id
+        ] = {
+          id:
+            socket.id,
+
+          nickname,
+
+          characterStyle,
+
+          x:
+            Number(
+              payload.x ??
+              0
+            ),
+
+          y:
+            Number(
+              payload.y ??
+              0
+            ),
+
+          moving:
+            false,
+
+          direction:
+            "down",
+
+          joinedAt:
+            Date.now(),
+        };
+
+        callback?.({
+          ok: true,
+
+          player:
+            players[
+              socket.id
+            ],
+
+          players:
+            getPublicOfficePlayers(),
+
+          chatHistory,
+        });
+
+        socket.broadcast.emit(
+          "office:player-joined",
+          players[
+            socket.id
+          ]
+        );
+
+        io.emit(
+          "office:players",
+          getPublicOfficePlayers()
+        );
+
+        console.log(
+          `🥔 Office join: ${nickname} / ${socket.id}`
+        );
+      }
+    );
+
+    /* =====================================================
+       Office Movement
+    ===================================================== */
+
+    socket.on(
+      "office:move",
+      payload => {
+        const player =
+          players[
+            socket.id
+          ];
+
+        if (!player) {
+          return;
+        }
+
+        const x =
+          Number(
+            payload.x
           );
 
-        if (reconnectPlayer) {
-          reconnectGamePlayer(
-            room,
-            reconnectPlayer,
-            socket
+        const y =
+          Number(
+            payload.y
+          );
+
+        if (
+          !Number.isFinite(
+            x
+          ) ||
+          !Number.isFinite(
+            y
+          )
+        ) {
+          return;
+        }
+
+        player.x =
+          x;
+
+        player.y =
+          y;
+
+        player.moving =
+          Boolean(
+            payload.moving
+          );
+
+        player.direction =
+          payload.direction ??
+          player.direction ??
+          "down";
+
+        socket.broadcast.emit(
+          "office:player-moved",
+          {
+            id:
+              socket.id,
+
+            x:
+              player.x,
+
+            y:
+              player.y,
+
+            moving:
+              player.moving,
+
+            direction:
+              player.direction,
+          }
+        );
+      }
+    );
+
+    /* =====================================================
+       Office Chat
+    ===================================================== */
+
+    socket.on(
+      "office:chat",
+      (
+        payload = {},
+        callback
+      ) => {
+        const player =
+          players[
+            socket.id
+          ];
+
+        if (!player) {
+          callback?.({
+            ok: false,
+            message:
+              "플레이어 정보를 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const message =
+          String(
+            payload.message ??
+              ""
+          )
+            .trim()
+            .slice(
+              0,
+              200
+            );
+
+        if (!message) {
+          callback?.({
+            ok: false,
+            message:
+              "메시지를 입력해주세요.",
+          });
+
+          return;
+        }
+
+        const chatMessage = {
+          id:
+            createId(),
+
+          playerId:
+            socket.id,
+
+          nickname:
+            player.nickname,
+
+          message,
+
+          createdAt:
+            Date.now(),
+        };
+
+        addChatMessage(
+          chatMessage
+        );
+
+        io.emit(
+          "office:chat",
+          chatMessage
+        );
+
+        callback?.({
+          ok: true,
+          message:
+            chatMessage,
+        });
+      }
+    );
+
+    /* =====================================================
+       Devil Room List
+    ===================================================== */
+
+    socket.on(
+      "devilRooms:list",
+      callback => {
+        callback?.({
+          ok: true,
+
+          rooms:
+            getPublicRooms(),
+        });
+      }
+    );
+
+    /* =====================================================
+       Create Devil Room
+    ===================================================== */
+
+    socket.on(
+      "devilRoom:create",
+      (
+        payload = {},
+        callback
+      ) => {
+        const player =
+          players[
+            socket.id
+          ];
+
+        if (!player) {
+          callback?.({
+            ok: false,
+            message:
+              "먼저 사무실에 입장해주세요.",
+          });
+
+          return;
+        }
+
+        const existingRoom =
+          findPlayerRoom(
+            socket.id
+          );
+
+        if (
+          existingRoom
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 다른 게임방에 참가 중입니다.",
+          });
+
+          return;
+        }
+
+        const roomId =
+          createRoomCode();
+
+        /*
+         * 클라이언트가 6명을 요청하더라도
+         * 서버에서 최대 5명으로 제한.
+         */
+        const requestedMaxPlayers =
+          Number(
+            payload.maxPlayers ??
+              DEVIL_GAME_DEFAULT_MAX_PLAYERS
+          );
+
+        const maxPlayers =
+          Math.min(
+            DEVIL_GAME_MAX_PLAYERS,
+            Math.max(
+              DEVIL_GAME_MIN_PLAYERS,
+              Number.isFinite(
+                requestedMaxPlayers
+              )
+                ? Math.floor(
+                    requestedMaxPlayers
+                  )
+                : DEVIL_GAME_DEFAULT_MAX_PLAYERS
+            )
+          );
+
+        devilRooms[
+          roomId
+        ] = {
+          id:
+            roomId,
+
+          hostId:
+            socket.id,
+
+          status:
+            "waiting",
+
+          maxPlayers,
+
+          players: [
+            socket.id,
+          ],
+
+          ready: {
+            /*
+             * 방장도 준비 버튼을 눌러야
+             * 게임 시작 가능.
+             */
+            [socket.id]:
+              false,
+          },
+
+          roles:
+            null,
+
+          countdownEndsAt:
+            null,
+
+          gamePlayers:
+            null,
+
+          corpses:
+            [],
+
+          meeting:
+            null,
+
+          blackout: {
+            active:
+              false,
+
+            activatedBy:
+              null,
+
+            changedAt:
+              null,
+
+            cooldownEndsAt:
+              0,
+          },
+
+          createdAt:
+            Date.now(),
+        };
+
+        socket.join(
+          getSocketRoomName(
+            roomId
+          )
+        );
+
+        const room =
+          devilRooms[
+            roomId
+          ];
+
+        callback?.({
+          ok: true,
+
+          room:
+            getPublicRoom(
+              room
+            ),
+        });
+
+        broadcastRoomUpdate(
+          room
+        );
+
+        console.log(
+          `😈 감자전쟁 방 생성: ${roomId} / ${player.nickname}`
+        );
+      }
+    );
+
+    /* =====================================================
+       Join Devil Room
+    ===================================================== */
+
+    socket.on(
+      "devilRoom:join",
+      (
+        payload = {},
+        callback
+      ) => {
+        const player =
+          players[
+            socket.id
+          ];
+
+        if (!player) {
+          callback?.({
+            ok: false,
+            message:
+              "먼저 사무실에 입장해주세요.",
+          });
+
+          return;
+        }
+
+        const roomId =
+          String(
+            payload.roomId ??
+              ""
+          )
+            .trim()
+            .toUpperCase();
+
+        const room =
+          devilRooms[
+            roomId
+          ];
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "존재하지 않는 게임방입니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "waiting"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 게임이 시작된 방입니다.",
+          });
+
+          return;
+        }
+
+        const existingRoom =
+          findPlayerRoom(
+            socket.id
+          );
+
+        if (
+          existingRoom &&
+          existingRoom.id !==
+            room.id
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 다른 게임방에 참가 중입니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.players.includes(
+            socket.id
+          )
+        ) {
+          socket.join(
+            getSocketRoomName(
+              room.id
+            )
           );
 
           callback?.({
             ok: true,
-            reconnected: true,
+
             room:
               getPublicRoom(
-                room
-              ),
-            gameState:
-              getPublicGameState(
-                room
-              ),
-            role:
-              reconnectPlayer.role,
-            playerId:
-              reconnectPlayer.id,
-
-            /*
-             * 재접속 응답에도 현재 정전 상태 포함.
-             */
-            blackout:
-              getPublicBlackoutState(
                 room
               ),
           });
@@ -2212,33 +2759,34 @@ io.on("connection", (socket) => {
           return;
         }
 
-        callback?.({
-          ok: false,
-          message:
-            "이미 게임이 시작된 방입니다.",
-        });
+        /*
+         * 최대 5명 제한.
+         */
+        if (
+          room.players.length >=
+          Math.min(
+            room.maxPlayers,
+            DEVIL_GAME_MAX_PLAYERS
+          )
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방이 가득 찼습니다.",
+          });
 
-        return;
-      }
+          return;
+        }
 
-      const officePlayer =
-        players[socket.id];
-
-      if (!officePlayer) {
-        callback?.({
-          ok: false,
-          message:
-            "먼저 사무실에 입장해주세요.",
-        });
-
-        return;
-      }
-
-      if (
-        room.players.includes(
+        room.players.push(
           socket.id
-        )
-      ) {
+        );
+
+        room.ready[
+          socket.id
+        ] =
+          false;
+
         socket.join(
           getSocketRoomName(
             room.id
@@ -2247,2293 +2795,2864 @@ io.on("connection", (socket) => {
 
         callback?.({
           ok: true,
+
           room:
             getPublicRoom(
               room
             ),
         });
 
-        return;
-      }
-
-      if (
-        room.players.length >=
-        room.maxPlayers
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "방의 정원이 가득 찼습니다.",
-        });
-
-        return;
-      }
-
-      removePlayerFromLobbyRoom(
-        socket.id
-      );
-
-      room.players.push(
-        socket.id
-      );
-
-      room.ready[
-        socket.id
-      ] = false;
-
-      socket.join(
-        getSocketRoomName(
-          room.id
-        )
-      );
-
-      broadcastRoomUpdate(
-        room
-      );
-
-      callback?.({
-        ok: true,
-        room:
-          getPublicRoom(
-            room
-          ),
-      });
-
-      console.log(
-        "🚪 감자전쟁 방 입장:",
-        room.id,
-        officePlayer.nickname
-      );
-    }
-  );
-
-  /* =======================================================
-     Leave Devil Room
-  ======================================================= */
-
-  socket.on(
-    "devilRoom:leave",
-    (payload = {}, callback) => {
-      const roomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        devilRooms[roomId];
-
-      if (!room) {
-        callback?.({
-          ok: true,
-        });
-
-        return;
-      }
-
-      if (
-        room.status === "playing"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "게임 진행 중에는 로비 나가기를 사용할 수 없습니다.",
-        });
-
-        return;
-      }
-
-      room.players =
-        room.players.filter(
-          (id) =>
-            id !== socket.id
-        );
-
-      delete room.ready[
-        socket.id
-      ];
-
-      delete room.roles[
-        socket.id
-      ];
-
-      socket.leave(
-        getSocketRoomName(
-          room.id
-        )
-      );
-
-      if (
-        room.hostId ===
-        socket.id
-      ) {
-        room.hostId =
-          room.players[0] ??
-          null;
-      }
-
-      if (
-        room.players.length ===
-        0
-      ) {
-        delete devilRooms[
-          room.id
-        ];
-
-        broadcastRoomList();
-
-        callback?.({
-          ok: true,
-        });
-
-        return;
-      }
-
-      broadcastRoomUpdate(
-        room
-      );
-
-      callback?.({
-        ok: true,
-      });
-    }
-  );
-
-  /* =======================================================
-     Ready
-  ======================================================= */
-
-  socket.on(
-    "devilRoom:ready",
-    (payload = {}, callback) => {
-      const roomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        devilRooms[roomId];
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        !room.players.includes(
-          socket.id
-        )
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "방 참가자가 아닙니다.",
-        });
-
-        return;
-      }
-
-      if (
-        socket.id ===
-        room.hostId
-      ) {
-        room.ready[
-          socket.id
-        ] = true;
-      } else {
-        room.ready[
-          socket.id
-        ] =
-          payload.ready ===
-          undefined
-            ? !room.ready[
-                socket.id
-              ]
-            : Boolean(
-                payload.ready
-              );
-      }
-
-      broadcastRoomUpdate(
-        room
-      );
-
-      callback?.({
-        ok: true,
-        room:
-          getPublicRoom(
-            room
-          ),
-      });
-    }
-  );
-
-  /* =======================================================
-     Start Game
-  ======================================================= */
-
-  socket.on(
-    "devilRoom:start",
-    (payload = {}, callback) => {
-      const roomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        devilRooms[roomId];
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.hostId !==
-        socket.id
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "방장만 게임을 시작할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.status !==
-        "waiting"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "이미 게임 시작 절차가 진행 중입니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.players.length <
-        DEVIL_GAME_MIN_PLAYERS
-      ) {
-        callback?.({
-          ok: false,
-          message: `최소 ${DEVIL_GAME_MIN_PLAYERS}명이 필요합니다.`,
-        });
-
-        return;
-      }
-
-      const allReady =
-        room.players.every(
-          (playerId) =>
-            playerId ===
-              room.hostId ||
-            Boolean(
-              room.ready[
-                playerId
-              ]
-            )
-        );
-
-      if (!allReady) {
-        callback?.({
-          ok: false,
-          message:
-            "아직 준비하지 않은 감자가 있습니다.",
-        });
-
-        return;
-      }
-
-      room.status =
-        "countdown";
-
-      room.countdownEndsAt =
-        Date.now() +
-        POTATO_WAR_START_COUNTDOWN_MS;
-
-      room.roles =
-        assignRoles(room);
-
-      /*
-       * 새 게임 시작 준비 시 이전 정전 상태 제거.
-       */
-      room.blackout = {
-        active: false,
-        activatedBy: null,
-        changedAt: null,
-        cooldownEndsAt: 0,
-      };
-
-      broadcastRoomUpdate(
-        room
-      );
-
-      callback?.({
-        ok: true,
-        countdownEndsAt:
-          room.countdownEndsAt,
-      });
-
-      setTimeout(() => {
-        const currentRoom =
-          devilRooms[roomId];
-
-        if (
-          !currentRoom ||
-          currentRoom.status !==
-            "countdown"
-        ) {
-          return;
-        }
-
-        currentRoom.status =
-          "playing";
-
-        currentRoom.countdownEndsAt =
-          null;
-
-        currentRoom.gameResult =
-          null;
-
-        createGameRuntime(
-          currentRoom
-        );
-
-        for (
-          const playerSocketId of
-          currentRoom.players
-        ) {
-          const gamePlayer =
-            currentRoom.gamePlayers?.[
-              playerSocketId
-            ];
-
-          if (!gamePlayer) {
-            continue;
-          }
-
-          io.to(
-            playerSocketId
-          ).emit(
-            "devilGame:started",
-            {
-              roomId:
-                currentRoom.id,
-
-              role:
-                gamePlayer.role,
-
-              playerId:
-                gamePlayer.id,
-
-              missionIds:
-                gamePlayer.missionIds,
-
-              gameState:
-                getPublicGameState(
-                  currentRoom
-                ),
-
-              blackout:
-                getPublicBlackoutState(
-                  currentRoom
-                ),
-            }
-          );
-        }
-
-        broadcastGameState(
-          currentRoom
-        );
-
-        broadcastRoomList();
-
-        console.log(
-          "🎮 감자전쟁 시작:",
-          currentRoom.id
-        );
-      }, POTATO_WAR_START_COUNTDOWN_MS);
-    }
-  );
-
-  /* =======================================================
-     Game State Request
-  ======================================================= */
-
-  socket.on(
-    "devilGame:get-state",
-    (payload = {}, callback) => {
-      const roomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        devilRooms[roomId];
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const gamePlayer =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (!gamePlayer) {
-        callback?.({
-          ok: false,
-          message:
-            "게임 참가자를 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      callback?.({
-        ok: true,
-
-        role:
-          gamePlayer.role,
-
-        playerId:
-          gamePlayer.id,
-
-        missionIds:
-          gamePlayer.missionIds,
-
-        gameState:
-          getPublicGameState(
-            room
-          ),
-
-        /*
-         * 새로 접속하거나 새로고침한 경우에도
-         * 현재 정전 상태를 받을 수 있다.
-         */
-        blackout:
-          getPublicBlackoutState(
-            room
-          ),
-      });
-    }
-  );
-
-  /* =======================================================
-     Game Movement
-  ======================================================= */
-
-  socket.on(
-    "devilGame:move",
-    (payload = {}) => {
-      const room =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      if (!room) {
-        return;
-      }
-
-      const gamePlayer =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (
-        !gamePlayer ||
-        gamePlayer.state !==
-          "alive" ||
-        room.meeting?.active
-      ) {
-        return;
-      }
-
-      const nextX =
-        Number(
-          payload.x ??
-            gamePlayer.x
-        );
-
-      const nextY =
-        Number(
-          payload.y ??
-            gamePlayer.y
-        );
-
-      gamePlayer.x =
-        Math.max(
-          0,
-          Math.min(
-            POTATO_WAR_MAP_WIDTH,
-            Number.isFinite(
-              nextX
-            )
-              ? nextX
-              : gamePlayer.x
-          )
-        );
-
-      gamePlayer.y =
-        Math.max(
-          0,
-          Math.min(
-            POTATO_WAR_MAP_HEIGHT,
-            Number.isFinite(
-              nextY
-            )
-              ? nextY
-              : gamePlayer.y
-          )
-        );
-
-      gamePlayer.moving =
-        Boolean(
-          payload.moving
-        );
-
-      if (
-        typeof payload.direction ===
-        "string"
-      ) {
-        gamePlayer.direction =
-          payload.direction;
-      }
-
-      socket
-        .to(
-          getSocketRoomName(
-            room.id
-          )
-        )
-        .emit(
-          "devilGame:player-moved",
-          getPublicGamePlayer(
-            gamePlayer
-          )
-        );
-    }
-  );
-
-  /* =======================================================
-     BLACKOUT
-     악마가 누르면 서버가 방 전체의 정전 상태를 관리한다.
-  ======================================================= */
-
-  socket.on(
-    "devilGame:blackout",
-    (payload = {}, callback) => {
-      const requestedRoomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        requestedRoomId
-          ? devilRooms[
-              requestedRoomId
-            ]
-          : findGameRoomBySocketId(
-              socket.id
-            );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const gamePlayer =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      const validation =
-        canUseBlackout(
-          room,
-          gamePlayer
-        );
-
-      if (!validation.ok) {
-        callback?.(
-          validation
-        );
-
-        return;
-      }
-
-      const blackout =
-        ensureBlackoutState(
+        broadcastRoomUpdate(
           room
         );
 
-      const now =
-        Date.now();
-
-      if (blackout.active) {
-        /*
-         * 현재 정전 중이면 다시 눌러 OFF.
-         */
-        blackout.active =
-          false;
-
-        blackout.activatedBy =
-          null;
-
-        blackout.changedAt =
-          now;
-
-        /*
-         * 정전을 해제한 시점부터 다음 사용 쿨타임 계산.
-         */
-        blackout.cooldownEndsAt =
-          now +
-          POTATO_WAR_BLACKOUT_COOLDOWN_MS;
-
         console.log(
-          `💡 정전 해제: ${room.id} / ${gamePlayer.nickname}`
-        );
-      } else {
-        /*
-         * 정전이 꺼져 있으면 ON.
-         */
-        blackout.active =
-          true;
-
-        blackout.activatedBy =
-          gamePlayer.id;
-
-        blackout.changedAt =
-          now;
-
-        console.log(
-          `🌑 정전 발생: ${room.id} / ${gamePlayer.nickname}`
+          `➕ 감자전쟁 방 입장: ${room.id} / ${player.nickname}`
         );
       }
+    );
 
-      /*
-       * 같은 방의 모든 클라이언트에게 상태를 보낸다.
-       *
-       * 클라이언트:
-       * role === "survivor" -> active 적용
-       * role === "devil"    -> 화면 정전시키지 않음
-       */
-      broadcastBlackout(
-        room
-      );
+    /* =====================================================
+       Leave Devil Room
+    ===================================================== */
 
-      callback?.({
-        ok: true,
-        blackout:
-          getPublicBlackoutState(
-            room
-          ),
-      });
-    }
-  );
-
-  /* =======================================================
-     Kill
-  ======================================================= */
-
-  socket.on(
-    "devilGame:kill",
-    (payload = {}, callback) => {
-      const room =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.meeting?.active
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "회의 중에는 처치할 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const killer =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (
-        !killer ||
-        killer.role !==
-          "devil" ||
-        killer.state !==
-          "alive"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재 처치할 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const targetId =
-        String(
-          payload.targetId ??
-            ""
-        ).trim();
-
-      const victim =
-        findGamePlayerById(
-          room,
-          targetId
-        );
-
-      if (
-        !victim ||
-        victim.state !==
-          "alive" ||
-        victim.role ===
-          "devil"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "처치할 수 없는 대상입니다.",
-        });
-
-        return;
-      }
-
-      const distance =
-        getDistance(
-          killer,
-          victim
-        );
-
-      if (
-        distance >
-        POTATO_WAR_KILL_RANGE
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "대상이 너무 멀리 있습니다.",
-        });
-
-        return;
-      }
-
-      const now =
-        Date.now();
-
-      const elapsed =
-        now -
-        Number(
-          killer.lastKillAt ??
-            0
-        );
-
-      if (
-        elapsed <
-        POTATO_WAR_KILL_COOLDOWN_MS
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "아직 처치 쿨타임입니다.",
-        });
-
-        return;
-      }
-
-      killer.lastKillAt =
-        now;
-
-      victim.state =
-        "dead";
-
-      victim.moving =
-        false;
-
-      const corpse =
-        createCorpse(
-          room,
-          victim
-        );
-
-      io.to(
-        getSocketRoomName(
-          room.id
-        )
-      ).emit(
-        "devilGame:killed",
-        {
-          killerId:
-            killer.id,
-
-          victimId:
-            victim.id,
-
-          corpse,
-        }
-      );
-
-      broadcastGameState(
-        room
-      );
-
-      callback?.({
-        ok: true,
-        corpse,
-      });
-
-      checkDevilGameResult(
-        room
-      );
-    }
-  );
-    /* =======================================================
-     Report Corpse
-  ======================================================= */
-
-  socket.on(
-    "devilGame:report",
-    (payload = {}, callback) => {
-      const room =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (room.meeting?.active) {
-        callback?.({
-          ok: false,
-          message:
-            "이미 회의가 진행 중입니다.",
-        });
-
-        return;
-      }
-
-      const reporter =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (
-        !reporter ||
-        reporter.state !== "alive"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "살아있는 감자만 시체를 신고할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      let corpse = null;
-
-      const requestedCorpseId =
-        String(
-          payload.corpseId ?? ""
-        ).trim();
-
-      if (requestedCorpseId) {
-        const candidate =
-          findCorpseById(
-            room,
-            requestedCorpseId
+    socket.on(
+      "devilRoom:leave",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findPlayerRoom(
+            socket.id
           );
 
-        if (
-          candidate &&
-          !candidate.reported &&
-          getDistance(
-            reporter,
-            candidate
-          ) <=
-            POTATO_WAR_REPORT_DISTANCE
-        ) {
-          corpse =
-            candidate;
-        }
-      }
-
-      /*
-       * corpseId가 없거나 유효하지 않은 경우
-       * 현재 플레이어 근처에서 가장 가까운
-       * 신고 가능한 시체를 찾는다.
-       */
-      if (!corpse) {
-        corpse =
-          getNearestReportableCorpse(
-            room,
-            reporter
-          );
-      }
-
-      if (!corpse) {
-        callback?.({
-          ok: false,
-          message:
-            "근처에 신고할 수 있는 시체가 없습니다.",
-        });
-
-        return;
-      }
-
-      const result =
-        startMeeting(
-          room,
-          reporter,
-          {
-            kind: "corpse",
-            corpse,
-          }
-        );
-
-      callback?.(
-        result
-      );
-
-      if (result.ok) {
-        console.log(
-          `📢 시체 신고: ${room.id} / ${reporter.nickname} -> ${corpse.victimNickname}`
-        );
-      }
-    }
-  );
-
-  /* =======================================================
-     Emergency Meeting
-
-     중앙 회의 테이블 근처에서만 가능.
-     한 플레이어당 게임 중 1회.
-  ======================================================= */
-
-  socket.on(
-    "devilGame:emergency-meeting",
-    (payload = {}, callback) => {
-      const requestedRoomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      const room =
-        requestedRoomId
-          ? devilRooms[
-              requestedRoomId
-            ]
-          : findGameRoomBySocketId(
-              socket.id
-            );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.status !==
-        "playing"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재 게임이 진행 중이 아닙니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.meeting?.active
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "이미 회의가 진행 중입니다.",
-        });
-
-        return;
-      }
-
-      const reporter =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (
-        !reporter ||
-        reporter.state !==
-          "alive"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "살아있는 감자만 긴급회의를 소집할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      const usedCount =
-        Number(
-          reporter.emergencyMeetingUses ??
-            0
-        );
-
-      if (
-        usedCount >=
-        POTATO_WAR_EMERGENCY_MEETING_LIMIT
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "긴급회의는 게임당 1회만 사용할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      const distance =
-        getDistance(
-          reporter,
-          POTATO_WAR_EMERGENCY_MEETING_POSITION
-        );
-
-      if (
-        distance >
-        POTATO_WAR_EMERGENCY_MEETING_DISTANCE
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "회의 테이블 근처에서만 긴급회의를 소집할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      reporter.emergencyMeetingUses =
-        usedCount + 1;
-
-      const result =
-        startMeeting(
-          room,
-          reporter,
-          {
-            kind:
-              "emergency",
-          }
-        );
-
-      /*
-       * 혹시 회의 시작에 실패하면
-       * 사용 횟수를 되돌린다.
-       */
-      if (!result.ok) {
-        reporter.emergencyMeetingUses =
-          usedCount;
-
-        callback?.(
-          result
-        );
-
-        return;
-      }
-
-      broadcastGameState(
-        room
-      );
-
-      callback?.({
-        ok: true,
-        meeting:
-          getPublicMeeting(
-            room
-          ),
-        emergencyMeetingUses:
-          reporter.emergencyMeetingUses,
-      });
-
-      console.log(
-        `🚨 긴급회의: ${room.id} / ${reporter.nickname}`
-      );
-    }
-  );
-
-  /* =======================================================
-     Meeting Chat
-  ======================================================= */
-
-  socket.on(
-    "devilGame:meeting-chat",
-    (payload = {}, callback) => {
-      const room =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const meeting =
-        room.meeting;
-
-      if (
-        !meeting ||
-        !meeting.active
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재 진행 중인 회의가 없습니다.",
-        });
-
-        return;
-      }
-
-      /*
-       * 결과 표시 단계에서는 채팅 불가.
-       */
-      if (
-        meeting.phase ===
-        "result"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "투표 결과가 표시 중입니다.",
-        });
-
-        return;
-      }
-
-      const player =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (!player) {
-        callback?.({
-          ok: false,
-          message:
-            "플레이어 정보를 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      /*
-       * 죽은 플레이어는 회의 채팅 불가.
-       */
-      if (
-        player.state !==
-        "alive"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "사망한 감자는 회의 채팅을 사용할 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const text =
-        String(
-          payload.text ?? ""
-        ).trim();
-
-      if (!text) {
-        callback?.({
-          ok: false,
-          message:
-            "메시지를 입력해주세요.",
-        });
-
-        return;
-      }
-
-      /*
-       * 지나치게 긴 메시지 방지.
-       */
-      const safeText =
-        text.slice(
-          0,
-          300
-        );
-
-      const message =
-        createMeetingMessage(
-          player,
-          safeText
-        );
-
-      meeting.messages.push(
-        message
-      );
-
-      /*
-       * 회의 채팅은 너무 많이 쌓이지 않도록
-       * 최근 100개까지만 유지.
-       */
-      if (
-        meeting.messages.length >
-        100
-      ) {
-        meeting.messages.shift();
-      }
-
-      io.to(
-        getSocketRoomName(
-          room.id
-        )
-      ).emit(
-        "devilGame:meeting-message",
-        message
-      );
-
-      callback?.({
-        ok: true,
-        message,
-      });
-    }
-  );
-
-  /* =======================================================
-     Meeting Vote
-  ======================================================= */
-
-  socket.on(
-    "devilGame:meeting-vote",
-    (payload = {}, callback) => {
-      const room =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const meeting =
-        room.meeting;
-
-      if (
-        !meeting ||
-        !meeting.active
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재 진행 중인 회의가 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        meeting.phase !==
-        "voting"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재는 투표 시간이 아닙니다.",
-        });
-
-        return;
-      }
-
-      const voter =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (
-        !voter ||
-        voter.state !==
-          "alive"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "살아있는 감자만 투표할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      /*
-       * 이미 투표했다면 중복 투표 불가.
-       */
-      if (
-        Object.prototype.hasOwnProperty.call(
-          meeting.votes,
-          voter.id
-        )
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "이미 투표했습니다.",
-        });
-
-        return;
-      }
-
-      /*
-       * 클라이언트 버전 호환:
-       *
-       * targetId
-       * playerId
-       *
-       * 두 형식을 모두 허용.
-       */
-      const rawTargetId =
-        payload.targetId ??
-        payload.playerId ??
-        "skip";
-
-      const targetId =
-        String(
-          rawTargetId
-        ).trim();
-
-      if (
-        targetId !==
-        "skip"
-      ) {
-        const target =
-          findGamePlayerById(
-            room,
-            targetId
-          );
-
-        if (
-          !target ||
-          target.state !==
-            "alive"
-        ) {
+        if (!room) {
           callback?.({
-            ok: false,
-            message:
-              "투표할 수 없는 대상입니다.",
+            ok: true,
           });
 
           return;
         }
-      }
 
-      meeting.votes[
-        voter.id
-      ] =
-        targetId ||
-        "skip";
+        /*
+         * 이미 실제 게임이 시작됐다면
+         * 로비 leave 이벤트로 제거하지 않는다.
+         */
+        if (
+          room.status ===
+            "playing"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "게임 진행 중에는 이 방식으로 방을 나갈 수 없습니다.",
+          });
 
-      /*
-       * 이전/현재 클라이언트 모두 사용할 수 있도록
-       * playerId와 voterId를 함께 보낸다.
-       */
-      io.to(
-        getSocketRoomName(
-          room.id
-        )
-      ).emit(
-        "devilGame:meeting-voted",
-        {
-          playerId:
-            voter.id,
-
-          voterId:
-            voter.id,
+          return;
         }
-      );
 
-      broadcastMeeting(
-        room
-      );
-
-      callback?.({
-        ok: true,
-      });
-
-      /*
-       * 살아있는 모든 플레이어가 투표했으면
-       * 타이머를 기다리지 않고 즉시 결과 계산.
-       */
-      if (
-        allEligiblePlayersVoted(
-          room
-        )
-      ) {
-        finishMeetingVoting(
-          room
-        );
-      }
-    }
-  );
-
-  /* =======================================================
-     Mission Complete
-  ======================================================= */
-
-  socket.on(
-    "devilGame:mission-complete",
-    (payload = {}, callback) => {
-      const room =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      if (!room) {
-        callback?.({
-          ok: false,
-          message:
-            "게임방을 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.status !==
-        "playing"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재 게임이 진행 중이 아닙니다.",
-        });
-
-        return;
-      }
-
-      if (
-        room.meeting?.active
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "회의 중에는 미션을 완료할 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const gamePlayer =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        );
-
-      if (!gamePlayer) {
-        callback?.({
-          ok: false,
-          message:
-            "게임 참가자를 찾을 수 없습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        gamePlayer.role !==
-        "survivor"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "생존자 감자만 미션을 완료할 수 있습니다.",
-        });
-
-        return;
-      }
-
-      if (
-        gamePlayer.state !==
-        "alive"
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "사망한 감자는 미션을 진행할 수 없습니다.",
-        });
-
-        return;
-      }
-
-      const missionId =
-        String(
-          payload.missionId ??
-            ""
-        ).trim();
-
-      if (!missionId) {
-        callback?.({
-          ok: false,
-          message:
-            "미션 정보가 없습니다.",
-        });
-
-        return;
-      }
-
-      const assignedMissions =
-        new Set(
-          gamePlayer.missionIds ??
-            []
-        );
-
-      if (
-        !assignedMissions.has(
-          missionId
-        )
-      ) {
-        callback?.({
-          ok: false,
-          message:
-            "현재 플레이어에게 배정되지 않은 미션입니다.",
-        });
-
-        return;
-      }
-
-      if (
-        gamePlayer.completedMissionIds.includes(
-          missionId
-        )
-      ) {
-        callback?.({
-          ok: true,
-          alreadyCompleted:
-            true,
-          missionProgress:
-            getSurvivorMissionProgress(
-              room
-            ),
-        });
-
-        return;
-      }
-
-      gamePlayer.completedMissionIds.push(
-        missionId
-      );
-
-      const progress =
-        getSurvivorMissionProgress(
-          room
-        );
-
-      io.to(
-        getSocketRoomName(
-          room.id
-        )
-      ).emit(
-        "devilGame:mission-progress",
-        progress
-      );
-
-      broadcastGameState(
-        room
-      );
-
-      callback?.({
-        ok: true,
-        missionId,
-        missionProgress:
-          progress,
-      });
-
-      console.log(
-        `✅ 미션 완료: ${room.id} / ${gamePlayer.nickname} / ${missionId} (${progress.completed}/${progress.total})`
-      );
-
-      checkDevilGameResult(
-        room
-      );
-    }
-  );
-
-  /* =======================================================
-     Explicit Return To Office
-
-     승리/패배 화면의
-     "사무실로 돌아가기" 버튼에서 사용.
-  ======================================================= */
-
-  socket.on(
-    "devilGame:return-office",
-    (payload = {}, callback) => {
-      const requestedRoomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      let room =
-        requestedRoomId
-          ? devilRooms[
-              requestedRoomId
-            ]
-          : null;
-
-      if (!room) {
-        room =
-          Object.values(
-            devilRooms
-          ).find(
-            candidate =>
-              candidate.gamePlayers &&
-              Object.values(
-                candidate.gamePlayers
-              ).some(
-                player =>
-                  player.connectedSocketId ===
-                    socket.id
-              )
-          ) ?? null;
-      }
-
-      if (!room) {
-        callback?.({
-          ok: true,
-        });
-
-        return;
-      }
-
-      const gamePlayer =
-        findGamePlayerBySocketId(
-          room,
-          socket.id
-        ) ??
-        Object.values(
-          room.gamePlayers ??
-            {}
-        ).find(
-          player =>
-            player.connectedSocketId ===
-              socket.id
-        );
-
-      if (gamePlayer) {
-        gamePlayer.returnedToOffice =
-          true;
-
-        gamePlayer.leftGame =
-          true;
-
-        gamePlayer.moving =
-          false;
-      }
-
-      socket.leave(
-        getSocketRoomName(
-          room.id
-        )
-      );
-
-      /*
-       * 사무실 플레이어 목록을 다시 갱신.
-       */
-      io.emit(
-        "office:players",
-        getPublicOfficePlayers()
-      );
-
-      callback?.({
-        ok: true,
-      });
-
-      console.log(
-        `🏢 사무실 복귀: ${room.id} / ${
-          gamePlayer?.nickname ??
-          socket.id
-        }`
-      );
-
-      /*
-       * 게임 참가자 전원이 사무실로 복귀했는지 확인.
-       */
-      const remainingPlayers =
-        Object.values(
-          room.gamePlayers ??
-            {}
-        ).filter(
-          player =>
-            player.leftGame !==
-            true
-        );
-
-      if (
-        remainingPlayers.length ===
-        0
-      ) {
-        clearMeetingTimers(
-          room
-        );
-
-        delete devilRooms[
-          room.id
-        ];
-
-        broadcastRoomList();
-
-        console.log(
-          `🧹 종료된 감자전쟁 방 제거: ${room.id}`
-        );
-
-        return;
-      }
-
-      broadcastGameState(
-        room
-      );
-    }
-  );
-
-  /* =======================================================
-     Legacy Return To Office Compatibility
-
-     혹시 이전 DevilGameWorld에서
-     returnOffice 형태를 사용하고 있다면 호환.
-  ======================================================= */
-
-  socket.on(
-    "devilGame:returnOffice",
-    (payload = {}, callback) => {
-      const requestedRoomId =
-        String(
-          payload.roomId ?? ""
-        ).trim();
-
-      let room =
-        requestedRoomId
-          ? devilRooms[
-              requestedRoomId
-            ]
-          : null;
-
-      if (!room) {
-        room =
-          Object.values(
-            devilRooms
-          ).find(
-            candidate =>
-              candidate.gamePlayers &&
-              Object.values(
-                candidate.gamePlayers
-              ).some(
-                player =>
-                  player.connectedSocketId ===
-                    socket.id
-              )
-          ) ?? null;
-      }
-
-      if (!room) {
-        callback?.({
-          ok: true,
-        });
-
-        return;
-      }
-
-      const gamePlayer =
-        Object.values(
-          room.gamePlayers ??
-            {}
-        ).find(
-          player =>
-            player.connectedSocketId ===
-              socket.id
-        );
-
-      if (gamePlayer) {
-        gamePlayer.returnedToOffice =
-          true;
-
-        gamePlayer.leftGame =
-          true;
-
-        gamePlayer.moving =
-          false;
-      }
-
-      socket.leave(
-        getSocketRoomName(
-          room.id
-        )
-      );
-
-      io.emit(
-        "office:players",
-        getPublicOfficePlayers()
-      );
-
-      callback?.({
-        ok: true,
-      });
-
-      const remainingPlayers =
-        Object.values(
-          room.gamePlayers ??
-            {}
-        ).filter(
-          player =>
-            player.leftGame !==
-            true
-        );
-
-      if (
-        remainingPlayers.length ===
-        0
-      ) {
-        clearMeetingTimers(
-          room
-        );
-
-        delete devilRooms[
-          room.id
-        ];
-
-        broadcastRoomList();
-
-        return;
-      }
-
-      broadcastGameState(
-        room
-      );
-    }
-  );
-
-  /* =======================================================
-     Disconnect
-  ======================================================= */
-
-  socket.on(
-    "disconnect",
-    () => {
-      console.log(
-        "🔴 Socket disconnected:",
-        socket.id
-      );
-
-      /*
-       * 진행 중 게임에 참가하고 있던 플레이어인지 확인.
-       */
-      const gameRoom =
-        findGameRoomBySocketId(
-          socket.id
-        );
-
-      const gamePlayer =
-        gameRoom
-          ? findGamePlayerBySocketId(
-              gameRoom,
-              socket.id
-            )
-          : null;
-
-      /*
-       * 메인 사무실 플레이어 정보.
-       */
-      const officePlayer =
-        players[
-          socket.id
-        ];
-
-      /*
-       * 로비방에서 제거.
-       * 단, 진행 중 게임은 아래에서 별도 처리한다.
-       */
-      const lobbyRoom =
-        findPlayerRoom(
-          socket.id
-        );
-
-      if (
-        lobbyRoom &&
-        lobbyRoom.status !==
-          "playing" &&
-        lobbyRoom.status !==
-          "finished"
-      ) {
-        lobbyRoom.players =
-          lobbyRoom.players.filter(
+        room.players =
+          room.players.filter(
             id =>
               id !==
               socket.id
           );
 
         if (
-          lobbyRoom.ready
+          room.ready
         ) {
-          delete lobbyRoom.ready[
+          delete room.ready[
             socket.id
           ];
         }
 
         if (
-          lobbyRoom.roles
+          room.roles
         ) {
-          delete lobbyRoom.roles[
+          delete room.roles[
             socket.id
           ];
         }
 
+        socket.leave(
+          getSocketRoomName(
+            room.id
+          )
+        );
+
+        /*
+         * 방장이 나가면 다음 플레이어를 방장으로 지정.
+         */
         if (
-          lobbyRoom.hostId ===
+          room.hostId ===
           socket.id
         ) {
-          lobbyRoom.hostId =
-            lobbyRoom.players[
+          room.hostId =
+            room.players[
               0
-            ] ?? null;
+            ] ??
+            null;
         }
 
         if (
-          lobbyRoom.players
-            .length === 0
+          room.players.length ===
+          0
         ) {
           delete devilRooms[
-            lobbyRoom.id
+            room.id
           ];
 
           broadcastRoomList();
         } else {
           broadcastRoomUpdate(
-            lobbyRoom
+            room
           );
         }
+
+        callback?.({
+          ok: true,
+        });
       }
+    );
 
-      /*
-       * 메인 사무실에서는 즉시 제거.
-       */
-      if (officePlayer) {
-        delete players[
-          socket.id
-        ];
+    /* =====================================================
+       Ready Toggle
+    ===================================================== */
 
-        socket.broadcast.emit(
-          "office:player-left",
+    socket.on(
+      "devilRoom:ready",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findPlayerRoom(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "waiting"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 준비 상태를 변경할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        room.ready[
           socket.id
+        ] =
+          !Boolean(
+            room.ready[
+              socket.id
+            ]
+          );
+
+        callback?.({
+          ok: true,
+
+          ready:
+            room.ready[
+              socket.id
+            ],
+        });
+
+        broadcastRoomUpdate(
+          room
         );
       }
+    );
 
-      /*
-       * 게임 중 연결이 끊겼다면 바로 게임에서 제거하지 않는다.
-       * 모바일 브라우저/PWA 전환이나 일시적인 네트워크 끊김을
-       * 고려해 일정 시간 재접속을 기다린다.
-       */
-      if (
-        gameRoom &&
-        gamePlayer
-      ) {
-        const disconnectedSocketId =
-          socket.id;
+    /* =====================================================
+       Start Devil Game
+    ===================================================== */
 
-        gamePlayer.connectedSocketId =
-          null;
+    socket.on(
+      "devilRoom:start",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findPlayerRoom(
+            socket.id
+          );
 
-        gamePlayer.moving =
-          false;
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
 
-        console.log(
-          `⏳ 감자전쟁 재접속 대기: ${gameRoom.id} / ${gamePlayer.nickname}`
+          return;
+        }
+
+        if (
+          room.hostId !==
+          socket.id
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "방장만 게임을 시작할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "waiting"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 게임이 시작 중입니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.players.length <
+          DEVIL_GAME_MIN_PLAYERS
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              `최소 ${DEVIL_GAME_MIN_PLAYERS}명이 필요합니다.`,
+          });
+
+          return;
+        }
+
+        /*
+         * 서버에서도 5명을 초과하는 방은 시작 불가.
+         */
+        if (
+          room.players.length >
+          DEVIL_GAME_MAX_PLAYERS
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              `게임은 최대 ${DEVIL_GAME_MAX_PLAYERS}명까지 가능합니다.`,
+          });
+
+          return;
+        }
+
+        const allReady =
+          room.players.every(
+            playerSocketId =>
+              room.ready?.[
+                playerSocketId
+              ] ===
+              true
+          );
+
+        if (
+          !allReady
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "모든 참가자가 준비해야 게임을 시작할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        room.status =
+          "countdown";
+
+        room.countdownEndsAt =
+          Date.now() +
+          POTATO_WAR_START_COUNTDOWN_MS;
+
+        room.roles =
+          assignRoles(
+            room
+          );
+
+        callback?.({
+          ok: true,
+
+          countdownEndsAt:
+            room.countdownEndsAt,
+        });
+
+        broadcastRoomUpdate(
+          room
         );
+
+        io
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilRoom:countdown",
+            {
+              roomId:
+                room.id,
+
+              countdownEndsAt:
+                room.countdownEndsAt,
+            }
+          );
 
         setTimeout(
           () => {
             const currentRoom =
               devilRooms[
-                gameRoom.id
+                room.id
               ];
 
             if (
               !currentRoom ||
-              !currentRoom.gamePlayers
+              currentRoom.status !==
+                "countdown"
             ) {
               return;
             }
 
-            const currentPlayer =
-              Object.values(
-                currentRoom.gamePlayers
-              ).find(
-                player =>
-                  player.id ===
-                    gamePlayer.id
+            /*
+             * 카운트다운 중 누군가 빠져
+             * 최소 인원보다 적어졌다면 시작 취소.
+             */
+            if (
+              currentRoom.players
+                .length <
+              DEVIL_GAME_MIN_PLAYERS
+            ) {
+              currentRoom.status =
+                "waiting";
+
+              currentRoom.countdownEndsAt =
+                null;
+
+              currentRoom.roles =
+                null;
+
+              broadcastRoomUpdate(
+                currentRoom
               );
 
-            if (!currentPlayer) {
               return;
             }
 
-            /*
-             * 이미 새 소켓으로 재접속했다면 아무것도 하지 않는다.
-             */
-            if (
-              currentPlayer.connectedSocketId
-            ) {
-              return;
-            }
+            currentRoom.status =
+              "playing";
 
-            /*
-             * 원래 끊긴 플레이어가 맞는지 확인.
-             */
-            if (
-              currentPlayer.id !==
-              gamePlayer.id
-            ) {
-              return;
-            }
+            currentRoom.countdownEndsAt =
+              null;
 
-            currentPlayer.leftGame =
-              true;
-
-            currentPlayer.moving =
-              false;
-
-            console.log(
-              `🚪 감자전쟁 이탈 확정: ${currentRoom.id} / ${currentPlayer.nickname} / ${disconnectedSocketId}`
+            createGameRuntime(
+              currentRoom
             );
 
-            /*
-             * 게임이 아직 진행 중이면
-             * 남은 인원 기준으로 승리 조건을 다시 확인.
-             */
-            if (
-              currentRoom.status ===
-              "playing"
-            ) {
-              broadcastGameState(
-                currentRoom
+            io
+              .to(
+                getSocketRoomName(
+                  currentRoom.id
+                )
+              )
+              .emit(
+                "devilGame:started",
+                {
+                  roomId:
+                    currentRoom.id,
+                }
               );
 
-              checkDevilGameResult(
-                currentRoom
-              );
-            }
+            broadcastGameState(
+              currentRoom
+            );
 
-            /*
-             * 종료된 게임이고 남아있는 참가자가 없다면 방 제거.
-             */
-            if (
-              currentRoom.status ===
+            broadcastRoomList();
+
+            console.log(
+              `🎮 감자전쟁 시작: ${currentRoom.id} / ${currentRoom.players.length}명`
+            );
+          },
+          POTATO_WAR_START_COUNTDOWN_MS
+        );
+      }
+    );
+
+    /* =====================================================
+       Devil Game Join / Reconnect
+    ===================================================== */
+
+    socket.on(
+      "devilGame:join",
+      (
+        payload = {},
+        callback
+      ) => {
+        const roomId =
+          String(
+            payload.roomId ??
+              ""
+          )
+            .trim()
+            .toUpperCase();
+
+        const room =
+          devilRooms[
+            roomId
+          ];
+
+        if (
+          !room ||
+          (
+            room.status !==
+              "playing" &&
+            room.status !==
               "finished"
+          )
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "진행 중인 게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const requestedPlayerId =
+          String(
+            payload.playerId ??
+              ""
+          ).trim();
+
+        const requestedNickname =
+          String(
+            payload.nickname ??
+              ""
+          ).trim();
+
+        let gamePlayer =
+          null;
+
+        /*
+         * 1순위:
+         * 안정적인 playerId로 찾기.
+         */
+        if (
+          requestedPlayerId
+        ) {
+          gamePlayer =
+            Object.values(
+              room.gamePlayers ??
+                {}
+            ).find(
+              player =>
+                player.id ===
+                requestedPlayerId
+            ) ??
+            null;
+        }
+
+        /*
+         * 2순위:
+         * 기존 소켓 ID.
+         */
+        if (
+          !gamePlayer
+        ) {
+          gamePlayer =
+            Object.values(
+              room.gamePlayers ??
+                {}
+            ).find(
+              player =>
+                player.connectedSocketId ===
+                  socket.id
+            ) ??
+            null;
+        }
+
+        /*
+         * 3순위:
+         * 닉네임 fallback.
+         */
+        if (
+          !gamePlayer &&
+          requestedNickname
+        ) {
+          gamePlayer =
+            Object.values(
+              room.gamePlayers ??
+                {}
+            ).find(
+              player =>
+                player.nickname ===
+                  requestedNickname &&
+                player.leftGame !==
+                  true
+            ) ??
+            null;
+        }
+
+        if (
+          !gamePlayer
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "게임 참가자 정보를 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        reconnectGamePlayer(
+          room,
+          gamePlayer,
+          socket
+        );
+
+        callback?.({
+          ok: true,
+
+          self: {
+            id:
+              gamePlayer.id,
+
+            nickname:
+              gamePlayer.nickname,
+
+            characterStyle:
+              gamePlayer.characterStyle,
+
+            role:
+              gamePlayer.role,
+
+            state:
+              gamePlayer.state,
+
+            x:
+              gamePlayer.x,
+
+            y:
+              gamePlayer.y,
+
+            direction:
+              gamePlayer.direction,
+
+            missionIds:
+              gamePlayer.missionIds,
+
+            completedMissionIds:
+              gamePlayer.completedMissionIds,
+
+            emergencyMeetingUses:
+              Number(
+                gamePlayer.emergencyMeetingUses ??
+                0
+              ),
+          },
+
+          state:
+            getPublicGameState(
+              room
+            ),
+
+          blackout:
+            getPublicBlackoutState(
+              room
+            ),
+        });
+
+        /*
+         * 같은 방의 다른 플레이어에게도
+         * 재접속 상태를 갱신.
+         */
+        broadcastGameState(
+          room
+        );
+
+        console.log(
+          `🔄 감자전쟁 접속: ${room.id} / ${gamePlayer.nickname} / ${gamePlayer.role}`
+        );
+      }
+    );
+
+    /* =====================================================
+       Game Movement
+    ===================================================== */
+
+    socket.on(
+      "devilGame:move",
+      payload => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (
+          !room ||
+          room.status !==
+            "playing"
+        ) {
+          return;
+        }
+
+        if (
+          room.meeting?.active
+        ) {
+          return;
+        }
+
+        const gamePlayer =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (!gamePlayer) {
+          return;
+        }
+
+        const x =
+          Number(
+            payload.x
+          );
+
+        const y =
+          Number(
+            payload.y
+          );
+
+        if (
+          !Number.isFinite(
+            x
+          ) ||
+          !Number.isFinite(
+            y
+          )
+        ) {
+          return;
+        }
+
+        /*
+         * 서버에서도 맵 바깥 좌표 방지.
+         */
+        gamePlayer.x =
+          Math.max(
+            0,
+            Math.min(
+              POTATO_WAR_MAP_WIDTH,
+              x
+            )
+          );
+
+        gamePlayer.y =
+          Math.max(
+            0,
+            Math.min(
+              POTATO_WAR_MAP_HEIGHT,
+              y
+            )
+          );
+
+        gamePlayer.moving =
+          Boolean(
+            payload.moving
+          );
+
+        gamePlayer.direction =
+          payload.direction ??
+          gamePlayer.direction ??
+          "down";
+
+        socket
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilGame:player-moved",
+            {
+              id:
+                gamePlayer.id,
+
+              x:
+                gamePlayer.x,
+
+              y:
+                gamePlayer.y,
+
+              moving:
+                gamePlayer.moving,
+
+              direction:
+                gamePlayer.direction,
+            }
+          );
+      }
+    );
+
+    /* =====================================================
+       Devil Blackout
+
+       클라이언트 요청:
+       emit("devilGame:blackout")
+
+       서버 전달:
+       emit("devilGame:blackout-changed")
+    ===================================================== */
+
+    socket.on(
+      "devilGame:blackout",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "진행 중인 게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const gamePlayer =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        const permission =
+          canUseBlackout(
+            room,
+            gamePlayer
+          );
+
+        if (
+          !permission.ok
+        ) {
+          callback?.(
+            permission
+          );
+
+          return;
+        }
+
+        const requestedRoomId =
+          String(
+            payload.roomId ??
+              ""
+          )
+            .trim()
+            .toUpperCase();
+
+        if (
+          requestedRoomId &&
+          requestedRoomId !==
+            String(
+              room.id
+            ).toUpperCase()
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방 정보가 일치하지 않습니다.",
+          });
+
+          return;
+        }
+
+        const blackout =
+          ensureBlackoutState(
+            room
+          );
+
+        const now =
+          Date.now();
+
+        /*
+         * 현재 OFF라면 ON.
+         */
+        if (
+          !blackout.active
+        ) {
+          blackout.active =
+            true;
+
+          blackout.activatedBy =
+            gamePlayer.id;
+
+          blackout.changedAt =
+            now;
+
+          /*
+           * 다음 정전 ON 가능 시각.
+           * 현재 정전을 끄는 것은 언제든 가능.
+           */
+          blackout.cooldownEndsAt =
+            now +
+            POTATO_WAR_BLACKOUT_COOLDOWN_MS;
+
+          console.log(
+            `🌑 정전 ON: ${room.id} / ${gamePlayer.nickname}`
+          );
+        } else {
+          /*
+           * 현재 ON이라면 OFF.
+           */
+          blackout.active =
+            false;
+
+          blackout.activatedBy =
+            null;
+
+          blackout.changedAt =
+            now;
+
+          console.log(
+            `💡 정전 OFF: ${room.id} / ${gamePlayer.nickname}`
+          );
+        }
+
+        /*
+         * 같은 게임방의 PC/모바일 참가자 모두에게
+         * 동일한 정전 상태를 전달한다.
+         *
+         * 실제 화면을 어둡게 하는 것은
+         * DevilGameWorld에서 survivor만 처리.
+         */
+        broadcastBlackout(
+          room
+        );
+
+        callback?.({
+          ok: true,
+
+          active:
+            Boolean(
+              blackout.active
+            ),
+
+          cooldownEndsAt:
+            Number(
+              blackout.cooldownEndsAt ??
+              0
+            ),
+        });
+      }
+    );
+
+    /* =====================================================
+       Mission Complete
+    ===================================================== */
+
+    socket.on(
+      "devilGame:mission-complete",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "playing"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 게임이 진행 중이 아닙니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.meeting?.active
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "회의 중에는 미션을 완료할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const gamePlayer =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (!gamePlayer) {
+          callback?.({
+            ok: false,
+            message:
+              "게임 참가자를 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          gamePlayer.role !==
+          "survivor"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "생존자 감자만 미션을 완료할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          gamePlayer.state !==
+          "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "사망한 감자는 미션을 진행할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const missionId =
+          String(
+            payload.missionId ??
+              ""
+          ).trim();
+
+        if (!missionId) {
+          callback?.({
+            ok: false,
+            message:
+              "미션 정보가 없습니다.",
+          });
+
+          return;
+        }
+
+        const assignedMissions =
+          new Set(
+            gamePlayer.missionIds ??
+              []
+          );
+
+        if (
+          !assignedMissions.has(
+            missionId
+          )
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 플레이어에게 배정되지 않은 미션입니다.",
+          });
+
+          return;
+        }
+
+        if (
+          gamePlayer.completedMissionIds.includes(
+            missionId
+          )
+        ) {
+          callback?.({
+            ok: true,
+
+            alreadyCompleted:
+              true,
+
+            missionProgress:
+              getSurvivorMissionProgress(
+                room
+              ),
+          });
+
+          return;
+        }
+
+        gamePlayer.completedMissionIds.push(
+          missionId
+        );
+
+        const progress =
+          getSurvivorMissionProgress(
+            room
+          );
+
+        io
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilGame:mission-progress",
+            progress
+          );
+
+        broadcastGameState(
+          room
+        );
+
+        callback?.({
+          ok: true,
+
+          missionId,
+
+          missionProgress:
+            progress,
+        });
+
+        console.log(
+          `✅ 미션 완료: ${room.id} / ${gamePlayer.nickname} / ${missionId} (${progress.completed}/${progress.total})`
+        );
+
+        checkDevilGameResult(
+          room
+        );
+      }
+    );
+        /* =====================================================
+       Kill
+    ===================================================== */
+
+    socket.on(
+      "devilGame:kill",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "playing"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 게임이 진행 중이 아닙니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.meeting?.active
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "회의 중에는 처치할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const killer =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (
+          !killer ||
+          killer.role !==
+            "devil" ||
+          killer.state !==
+            "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 처치할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const targetId =
+          String(
+            payload.targetId ??
+              ""
+          ).trim();
+
+        if (!targetId) {
+          callback?.({
+            ok: false,
+            message:
+              "처치 대상을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const victim =
+          findGamePlayerById(
+            room,
+            targetId
+          );
+
+        if (!victim) {
+          callback?.({
+            ok: false,
+            message:
+              "처치 대상을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          victim.id ===
+          killer.id
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "자기 자신은 처치할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          victim.role ===
+          "devil"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "다른 악마 감자는 처치할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          victim.state !==
+          "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 사망한 대상입니다.",
+          });
+
+          return;
+        }
+
+        const distance =
+          getDistance(
+            killer,
+            victim
+          );
+
+        if (
+          distance >
+          POTATO_WAR_KILL_RANGE
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "대상이 너무 멀리 있습니다.",
+          });
+
+          return;
+        }
+
+        const now =
+          Date.now();
+
+        const elapsed =
+          now -
+          Number(
+            killer.lastKillAt ??
+              0
+          );
+
+        if (
+          elapsed <
+          POTATO_WAR_KILL_COOLDOWN_MS
+        ) {
+          const remaining =
+            POTATO_WAR_KILL_COOLDOWN_MS -
+            elapsed;
+
+          callback?.({
+            ok: false,
+
+            message:
+              `처치 쿨타임이 ${Math.ceil(
+                remaining /
+                  1000
+              )}초 남았습니다.`,
+          });
+
+          return;
+        }
+
+        killer.lastKillAt =
+          now;
+
+        victim.state =
+          "ghost";
+
+        victim.moving =
+          false;
+
+        const corpse = {
+          id:
+            `corpse-${createId()}`,
+
+          victimId:
+            victim.id,
+
+          victimNickname:
+            victim.nickname,
+
+          characterStyle:
+            victim.characterStyle,
+
+          x:
+            victim.x,
+
+          y:
+            victim.y,
+
+          createdAt:
+            now,
+
+          reported:
+            false,
+        };
+
+        room.corpses.push(
+          corpse
+        );
+
+        io
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilGame:killed",
+            {
+              killerId:
+                killer.id,
+
+              victimId:
+                victim.id,
+
+              corpse,
+
+              killCooldownEndsAt:
+                now +
+                POTATO_WAR_KILL_COOLDOWN_MS,
+            }
+          );
+
+        broadcastGameState(
+          room
+        );
+
+        callback?.({
+          ok: true,
+
+          corpse,
+
+          killCooldownEndsAt:
+            now +
+            POTATO_WAR_KILL_COOLDOWN_MS,
+        });
+
+        console.log(
+          `🔪 처치: ${room.id} / ${killer.nickname} -> ${victim.nickname}`
+        );
+
+        checkDevilGameResult(
+          room
+        );
+      }
+    );
+
+    /* =====================================================
+       Report Corpse
+    ===================================================== */
+
+    socket.on(
+      "devilGame:report-corpse",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "playing"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 게임이 진행 중이 아닙니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.meeting?.active
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 회의가 진행 중입니다.",
+          });
+
+          return;
+        }
+
+        const reporter =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (
+          !reporter ||
+          reporter.state !==
+            "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "살아있는 감자만 신고할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        const requestedCorpseId =
+          String(
+            payload.corpseId ??
+              ""
+          ).trim();
+
+        let corpse =
+          null;
+
+        if (
+          requestedCorpseId
+        ) {
+          const candidate =
+            findCorpseById(
+              room,
+              requestedCorpseId
+            );
+
+          if (
+            candidate &&
+            !candidate.reported
+          ) {
+            const distance =
+              getDistance(
+                reporter,
+                candidate
+              );
+
+            if (
+              distance <=
+              POTATO_WAR_REPORT_DISTANCE
             ) {
-              const remaining =
+              corpse =
+                candidate;
+            }
+          }
+        }
+
+        if (!corpse) {
+          corpse =
+            getNearestReportableCorpse(
+              room,
+              reporter
+            );
+        }
+
+        if (!corpse) {
+          callback?.({
+            ok: false,
+            message:
+              "근처에 신고할 수 있는 시체가 없습니다.",
+          });
+
+          return;
+        }
+
+        const result =
+          startMeeting(
+            room,
+            reporter,
+            {
+              kind:
+                "corpse",
+
+              corpse,
+            }
+          );
+
+        callback?.(
+          result
+        );
+
+        if (
+          result.ok
+        ) {
+          console.log(
+            `📢 시체 신고: ${room.id} / ${reporter.nickname} -> ${corpse.victimNickname}`
+          );
+        }
+      }
+    );
+
+    /* =====================================================
+       Legacy Report Compatibility
+    ===================================================== */
+
+    socket.on(
+      "devilGame:report",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const reporter =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (
+          !reporter ||
+          reporter.state !==
+            "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "살아있는 감자만 신고할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        let corpse =
+          null;
+
+        const requestedCorpseId =
+          String(
+            payload.corpseId ??
+              ""
+          ).trim();
+
+        if (
+          requestedCorpseId
+        ) {
+          corpse =
+            findCorpseById(
+              room,
+              requestedCorpseId
+            );
+        }
+
+        if (
+          !corpse ||
+          corpse.reported
+        ) {
+          corpse =
+            getNearestReportableCorpse(
+              room,
+              reporter
+            );
+        }
+
+        if (!corpse) {
+          callback?.({
+            ok: false,
+            message:
+              "근처에 신고할 수 있는 시체가 없습니다.",
+          });
+
+          return;
+        }
+
+        const distance =
+          getDistance(
+            reporter,
+            corpse
+          );
+
+        if (
+          distance >
+          POTATO_WAR_REPORT_DISTANCE
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "시체에서 너무 멀리 떨어져 있습니다.",
+          });
+
+          return;
+        }
+
+        const result =
+          startMeeting(
+            room,
+            reporter,
+            {
+              kind:
+                "corpse",
+
+              corpse,
+            }
+          );
+
+        callback?.(
+          result
+        );
+      }
+    );
+
+    /* =====================================================
+       Emergency Meeting
+    ===================================================== */
+
+    socket.on(
+      "devilGame:emergency-meeting",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "playing"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 게임이 진행 중이 아닙니다.",
+          });
+
+          return;
+        }
+
+        if (
+          room.meeting?.active
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 회의가 진행 중입니다.",
+          });
+
+          return;
+        }
+
+        const reporter =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (
+          !reporter ||
+          reporter.state !==
+            "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "살아있는 감자만 긴급회의를 소집할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        const currentUses =
+          Number(
+            reporter.emergencyMeetingUses ??
+              0
+          );
+
+        if (
+          currentUses >=
+          POTATO_WAR_EMERGENCY_MEETING_LIMIT
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "긴급회의는 게임당 1회만 사용할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        const distance =
+          getDistance(
+            reporter,
+            POTATO_WAR_EMERGENCY_MEETING_POSITION
+          );
+
+        if (
+          distance >
+          POTATO_WAR_EMERGENCY_MEETING_DISTANCE
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "회의 테이블 근처에서만 긴급회의를 소집할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        reporter.emergencyMeetingUses =
+          currentUses +
+          1;
+
+        const result =
+          startMeeting(
+            room,
+            reporter,
+            {
+              kind:
+                "emergency",
+            }
+          );
+
+        if (
+          !result.ok
+        ) {
+          reporter.emergencyMeetingUses =
+            currentUses;
+
+          callback?.(
+            result
+          );
+
+          return;
+        }
+
+        broadcastGameState(
+          room
+        );
+
+        callback?.({
+          ok: true,
+
+          meeting:
+            getPublicMeeting(
+              room
+            ),
+
+          emergencyMeetingUses:
+            reporter.emergencyMeetingUses,
+        });
+
+        console.log(
+          `🚨 긴급회의: ${room.id} / ${reporter.nickname}`
+        );
+      }
+    );
+
+    /* =====================================================
+       Meeting Chat
+    ===================================================== */
+
+    socket.on(
+      "devilGame:meeting-chat",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const meeting =
+          room.meeting;
+
+        if (
+          !meeting ||
+          !meeting.active
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 진행 중인 회의가 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          meeting.phase ===
+          "result"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "투표 결과가 표시 중입니다.",
+          });
+
+          return;
+        }
+
+        const player =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (!player) {
+          callback?.({
+            ok: false,
+            message:
+              "플레이어 정보를 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          player.state !==
+          "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "사망한 감자는 회의 채팅을 사용할 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const text =
+          String(
+            payload.text ??
+            payload.message ??
+              ""
+          )
+            .trim()
+            .slice(
+              0,
+              300
+            );
+
+        if (!text) {
+          callback?.({
+            ok: false,
+            message:
+              "메시지를 입력해주세요.",
+          });
+
+          return;
+        }
+
+        const message =
+          createMeetingMessage(
+            player,
+            text
+          );
+
+        meeting.messages.push(
+          message
+        );
+
+        if (
+          meeting.messages.length >
+          100
+        ) {
+          meeting.messages.shift();
+        }
+
+        io
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilGame:meeting-message",
+            message
+          );
+
+        callback?.({
+          ok: true,
+
+          message,
+        });
+      }
+    );
+
+    /* =====================================================
+       Meeting Vote
+    ===================================================== */
+
+    socket.on(
+      "devilGame:meeting-vote",
+      (
+        payload = {},
+        callback
+      ) => {
+        const room =
+          findGameRoomBySocketId(
+            socket.id
+          );
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const meeting =
+          room.meeting;
+
+        if (
+          !meeting ||
+          !meeting.active
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재 진행 중인 회의가 없습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          meeting.phase !==
+          "voting"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "현재는 투표 시간이 아닙니다.",
+          });
+
+          return;
+        }
+
+        const voter =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          );
+
+        if (
+          !voter ||
+          voter.state !==
+            "alive"
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "살아있는 감자만 투표할 수 있습니다.",
+          });
+
+          return;
+        }
+
+        if (
+          Object.prototype.hasOwnProperty.call(
+            meeting.votes ??
+              {},
+            voter.id
+          )
+        ) {
+          callback?.({
+            ok: false,
+            message:
+              "이미 투표했습니다.",
+          });
+
+          return;
+        }
+
+        const rawTargetId =
+          payload.targetId ??
+          payload.playerId ??
+          "skip";
+
+        const targetId =
+          String(
+            rawTargetId
+          ).trim() ||
+          "skip";
+
+        if (
+          targetId !==
+          "skip"
+        ) {
+          const target =
+            findGamePlayerById(
+              room,
+              targetId
+            );
+
+          if (
+            !target ||
+            target.state !==
+              "alive"
+          ) {
+            callback?.({
+              ok: false,
+              message:
+                "투표할 수 없는 대상입니다.",
+            });
+
+            return;
+          }
+        }
+
+        meeting.votes[
+          voter.id
+        ] =
+          targetId;
+
+        io
+          .to(
+            getSocketRoomName(
+              room.id
+            )
+          )
+          .emit(
+            "devilGame:meeting-voted",
+            {
+              playerId:
+                voter.id,
+
+              voterId:
+                voter.id,
+            }
+          );
+
+        broadcastMeeting(
+          room
+        );
+
+        callback?.({
+          ok: true,
+        });
+
+        if (
+          allEligiblePlayersVoted(
+            room
+          )
+        ) {
+          finishMeetingVoting(
+            room
+          );
+        }
+      }
+    );
+
+    /* =====================================================
+       Get Game State
+    ===================================================== */
+
+    socket.on(
+      "devilGame:get-state",
+      (
+        payload = {},
+        callback
+      ) => {
+        const roomId =
+          String(
+            payload.roomId ??
+              ""
+          )
+            .trim()
+            .toUpperCase();
+
+        const room =
+          devilRooms[
+            roomId
+          ];
+
+        if (!room) {
+          callback?.({
+            ok: false,
+            message:
+              "게임방을 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        const gamePlayer =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          ) ??
+          findGamePlayerById(
+            room,
+            String(
+              payload.playerId ??
+                ""
+            ).trim()
+          );
+
+        if (!gamePlayer) {
+          callback?.({
+            ok: false,
+            message:
+              "게임 참가자를 찾을 수 없습니다.",
+          });
+
+          return;
+        }
+
+        callback?.({
+          ok: true,
+
+          role:
+            gamePlayer.role,
+
+          playerId:
+            gamePlayer.id,
+
+          missionIds:
+            gamePlayer.missionIds,
+
+          completedMissionIds:
+            gamePlayer.completedMissionIds,
+
+          gameState:
+            getPublicGameState(
+              room
+            ),
+
+          blackout:
+            getPublicBlackoutState(
+              room
+            ),
+        });
+      }
+    );
+
+    /* =====================================================
+       Return To Office
+    ===================================================== */
+
+    socket.on(
+      "devilGame:return-office",
+      (
+        payload = {},
+        callback
+      ) => {
+        const requestedRoomId =
+          String(
+            payload.roomId ??
+              ""
+          )
+            .trim()
+            .toUpperCase();
+
+        let room =
+          requestedRoomId
+            ? devilRooms[
+                requestedRoomId
+              ]
+            : null;
+
+        if (!room) {
+          room =
+            Object.values(
+              devilRooms
+            ).find(
+              candidate =>
+                candidate.gamePlayers &&
                 Object.values(
-                  currentRoom.gamePlayers
-                ).filter(
+                  candidate.gamePlayers
+                ).some(
                   player =>
-                    player.leftGame !==
+                    player.connectedSocketId ===
+                      socket.id
+                )
+            ) ??
+            null;
+        }
+
+        if (!room) {
+          callback?.({
+            ok: true,
+          });
+
+          return;
+        }
+
+        const gamePlayer =
+          findGamePlayerBySocketId(
+            room,
+            socket.id
+          ) ??
+          Object.values(
+            room.gamePlayers ??
+              {}
+          ).find(
+            player =>
+              player.connectedSocketId ===
+                socket.id
+          ) ??
+          null;
+
+        if (
+          gamePlayer
+        ) {
+          gamePlayer.returnedToOffice =
+            true;
+
+          gamePlayer.leftGame =
+            true;
+
+          gamePlayer.moving =
+            false;
+        }
+
+        socket.leave(
+          getSocketRoomName(
+            room.id
+          )
+        );
+
+        callback?.({
+          ok: true,
+        });
+
+        io.emit(
+          "office:players",
+          getPublicOfficePlayers()
+        );
+
+        const remaining =
+          Object.values(
+            room.gamePlayers ??
+              {}
+          ).filter(
+            player =>
+              player.leftGame !==
+              true
+          );
+
+        if (
+          remaining.length ===
+          0
+        ) {
+          clearMeetingTimers(
+            room
+          );
+
+          delete devilRooms[
+            room.id
+          ];
+
+          broadcastRoomList();
+
+          console.log(
+            `🧹 감자전쟁 방 제거: ${room.id}`
+          );
+
+          return;
+        }
+
+        broadcastGameState(
+          room
+        );
+
+        console.log(
+          `🏢 사무실 복귀: ${room.id} / ${
+            gamePlayer?.nickname ??
+            socket.id
+          }`
+        );
+      }
+    );
+
+    /* =====================================================
+       Legacy Return Compatibility
+    ===================================================== */
+
+    socket.on(
+      "devilGame:returnOffice",
+      (
+        payload = {},
+        callback
+      ) => {
+        const requestedRoomId =
+          String(
+            payload.roomId ??
+              ""
+          )
+            .trim()
+            .toUpperCase();
+
+        let room =
+          requestedRoomId
+            ? devilRooms[
+                requestedRoomId
+              ]
+            : null;
+
+        if (!room) {
+          room =
+            Object.values(
+              devilRooms
+            ).find(
+              candidate =>
+                Object.values(
+                  candidate.gamePlayers ??
+                    {}
+                ).some(
+                  player =>
+                    player.connectedSocketId ===
+                      socket.id
+                )
+            ) ??
+            null;
+        }
+
+        if (!room) {
+          callback?.({
+            ok: true,
+          });
+
+          return;
+        }
+
+        const gamePlayer =
+          Object.values(
+            room.gamePlayers ??
+              {}
+          ).find(
+            player =>
+              player.connectedSocketId ===
+              socket.id
+          );
+
+        if (
+          gamePlayer
+        ) {
+          gamePlayer.returnedToOffice =
+            true;
+
+          gamePlayer.leftGame =
+            true;
+
+          gamePlayer.moving =
+            false;
+        }
+
+        socket.leave(
+          getSocketRoomName(
+            room.id
+          )
+        );
+
+        callback?.({
+          ok: true,
+        });
+
+        io.emit(
+          "office:players",
+          getPublicOfficePlayers()
+        );
+
+        const remaining =
+          Object.values(
+            room.gamePlayers ??
+              {}
+          ).filter(
+            player =>
+              player.leftGame !==
+              true
+          );
+
+        if (
+          remaining.length ===
+          0
+        ) {
+          clearMeetingTimers(
+            room
+          );
+
+          delete devilRooms[
+            room.id
+          ];
+
+          broadcastRoomList();
+
+          return;
+        }
+
+        broadcastGameState(
+          room
+        );
+      }
+    );
+        /* =====================================================
+       Disconnect
+    ===================================================== */
+
+    socket.on(
+      "disconnect",
+      reason => {
+        console.log(
+          "🔴 Socket disconnected:",
+          socket.id,
+          reason
+        );
+
+        /*
+         * 현재 게임 중인 플레이어인지 먼저 확인한다.
+         *
+         * 게임 중이라면 페이지 이동 / 새로고침 등으로
+         * Socket ID가 잠시 바뀔 수 있으므로
+         * 바로 게임에서 제거하지 않는다.
+         */
+        const activeGameRoom =
+          Object.values(
+            devilRooms
+          ).find(
+            room =>
+              room.gamePlayers &&
+              Object.values(
+                room.gamePlayers
+              ).some(
+                gamePlayer =>
+                  gamePlayer.connectedSocketId ===
+                    socket.id &&
+                  gamePlayer.leftGame !==
                     true
+              )
+          ) ??
+          null;
+
+        let disconnectedGamePlayer =
+          null;
+
+        if (
+          activeGameRoom
+        ) {
+          disconnectedGamePlayer =
+            Object.values(
+              activeGameRoom.gamePlayers ??
+                {}
+            ).find(
+              gamePlayer =>
+                gamePlayer.connectedSocketId ===
+                socket.id &&
+              gamePlayer.leftGame !==
+                true
+            ) ??
+            null;
+        }
+
+        /*
+         * 게임 중 플레이어.
+         */
+        if (
+          activeGameRoom &&
+          disconnectedGamePlayer
+        ) {
+          const roomId =
+            activeGameRoom.id;
+
+          const playerId =
+            disconnectedGamePlayer.id;
+
+          /*
+           * 일단 연결만 끊긴 상태로 만든다.
+           *
+           * leftGame은 아직 true로 만들지 않는다.
+           * 15초 안에 재접속하면 기존 플레이어를 그대로 복구한다.
+           */
+          disconnectedGamePlayer.connectedSocketId =
+            null;
+
+          disconnectedGamePlayer.moving =
+            false;
+
+          console.log(
+            `⏳ 재접속 대기: ${roomId} / ${disconnectedGamePlayer.nickname}`
+          );
+
+          broadcastGameState(
+            activeGameRoom
+          );
+
+          setTimeout(
+            () => {
+              const room =
+                devilRooms[
+                  roomId
+                ];
+
+              if (
+                !room ||
+                !room.gamePlayers
+              ) {
+                return;
+              }
+
+              const gamePlayer =
+                findGamePlayerById(
+                  room,
+                  playerId
                 );
 
               if (
-                remaining.length ===
+                !gamePlayer
+              ) {
+                return;
+              }
+
+              /*
+               * 새로운 Socket ID로 이미 재접속했다면
+               * 아무것도 하지 않는다.
+               */
+              if (
+                gamePlayer.connectedSocketId
+              ) {
+                console.log(
+                  `🔄 재접속 성공: ${roomId} / ${gamePlayer.nickname}`
+                );
+
+                return;
+              }
+
+              /*
+               * 유예시간 동안 돌아오지 않았다면
+               * 실제 게임 이탈로 처리한다.
+               */
+              gamePlayer.leftGame =
+                true;
+
+              gamePlayer.moving =
+                false;
+
+              console.log(
+                `🚪 게임 이탈 처리: ${roomId} / ${gamePlayer.nickname}`
+              );
+
+              /*
+               * 회의 중이었다면
+               * 해당 플레이어가 아직 투표하지 않았어도
+               * 남은 플레이어만으로 전원 투표 여부를 다시 검사.
+               */
+              if (
+                room.meeting?.active &&
+                room.meeting.phase ===
+                  "voting" &&
+                allEligiblePlayersVoted(
+                  room
+                )
+              ) {
+                finishMeetingVoting(
+                  room
+                );
+              }
+
+              broadcastGameState(
+                room
+              );
+
+              /*
+               * 플레이어 이탈로
+               * 생존자/악마 숫자가 바뀌었으므로
+               * 승패를 다시 확인한다.
+               */
+              checkDevilGameResult(
+                room
+              );
+
+              /*
+               * 게임에 남은 플레이어가 없다면
+               * 방을 제거한다.
+               */
+              const remainingPlayers =
+                Object.values(
+                  room.gamePlayers ??
+                    {}
+                ).filter(
+                  player =>
+                    player.leftGame !==
+                      true
+                );
+
+              if (
+                remainingPlayers.length ===
                 0
               ) {
                 clearMeetingTimers(
-                  currentRoom
+                  room
                 );
 
                 delete devilRooms[
-                  currentRoom.id
+                  room.id
                 ];
 
                 broadcastRoomList();
-              }
-            }
-          },
-          POTATO_WAR_RECONNECT_GRACE_MS
-        );
-      }
 
-      /*
-       * 현재 사무실 인원 목록 갱신.
-       */
-      io.emit(
-        "office:players",
-        getPublicOfficePlayers()
-      );
-    }
-  );
-});
+                console.log(
+                  `🧹 빈 게임방 제거: ${room.id}`
+                );
+              }
+            },
+            POTATO_WAR_RECONNECT_GRACE_MS
+          );
+        } else {
+          /*
+           * 실제 게임 중이 아니라
+           * 로비에서 연결이 끊어진 경우.
+           */
+          const lobbyRoom =
+            findPlayerRoom(
+              socket.id
+            );
+
+          if (
+            lobbyRoom
+          ) {
+            lobbyRoom.players =
+              lobbyRoom.players.filter(
+                playerSocketId =>
+                  playerSocketId !==
+                  socket.id
+              );
+
+            if (
+              lobbyRoom.ready
+            ) {
+              delete lobbyRoom.ready[
+                socket.id
+              ];
+            }
+
+            if (
+              lobbyRoom.roles
+            ) {
+              delete lobbyRoom.roles[
+                socket.id
+              ];
+            }
+
+            /*
+             * 방장이 나갔다면
+             * 다음 참가자를 방장으로 지정.
+             */
+            if (
+              lobbyRoom.hostId ===
+              socket.id
+            ) {
+              lobbyRoom.hostId =
+                lobbyRoom.players[
+                  0
+                ] ??
+                null;
+            }
+
+            /*
+             * 카운트다운 중 플레이어가 나가
+             * 최소 인원 미만이 되면 시작 취소.
+             */
+            if (
+              lobbyRoom.status ===
+                "countdown" &&
+              lobbyRoom.players.length <
+                DEVIL_GAME_MIN_PLAYERS
+            ) {
+              lobbyRoom.status =
+                "waiting";
+
+              lobbyRoom.countdownEndsAt =
+                null;
+
+              lobbyRoom.roles =
+                null;
+            }
+
+            if (
+              lobbyRoom.players.length ===
+              0
+            ) {
+              delete devilRooms[
+                lobbyRoom.id
+              ];
+
+              broadcastRoomList();
+
+              console.log(
+                `🧹 빈 로비 제거: ${lobbyRoom.id}`
+              );
+            } else {
+              broadcastRoomUpdate(
+                lobbyRoom
+              );
+            }
+          }
+        }
+
+        /*
+         * 일반 사무실 플레이어 목록에서도 제거.
+         */
+        const officePlayer =
+          players[
+            socket.id
+          ];
+
+        if (
+          officePlayer
+        ) {
+          delete players[
+            socket.id
+          ];
+
+          /*
+           * 실제 게임 중 잠깐 연결이 끊어진 플레이어는
+           * gamePlayers 안에 정보가 따로 남아있으므로
+           * 게임 재접속에는 영향을 주지 않는다.
+           */
+          io.emit(
+            "office:player-left",
+            {
+              id:
+                socket.id,
+            }
+          );
+
+          io.emit(
+            "office:players",
+            getPublicOfficePlayers()
+          );
+        }
+      }
+    );
+  }
+);
+
 /* =========================================================
-   Health Check
+   HTTP Routes
 ========================================================= */
 
 app.get(
   "/",
-  (req, res) => {
-    res.status(200).json({
+  (
+    req,
+    res
+  ) => {
+    res.json({
       ok: true,
-      service:
-        "gamja-office-server",
+
+      name:
+        "Gamja Office Socket Server",
+
       message:
-        "Gamja Office Socket.IO server is running.",
+        "🥔 Gamja Office server is running.",
+
+      connectedPlayers:
+        Object.keys(
+          players
+        ).length,
+
+      devilRooms:
+        Object.keys(
+          devilRooms
+        ).length,
+
       timestamp:
-        new Date().toISOString(),
+        Date.now(),
     });
   }
 );
 
 app.get(
   "/health",
-  (req, res) => {
-    res.status(200).json({
+  (
+    req,
+    res
+  ) => {
+    res.status(
+      200
+    ).json({
       ok: true,
-      socketIo: true,
-      connectedSockets:
-        io.engine.clientsCount,
-      officePlayers:
-        Object.keys(players)
-          .length,
+
+      status:
+        "healthy",
+
+      connectedPlayers:
+        Object.keys(
+          players
+        ).length,
+
       devilRooms:
         Object.keys(
           devilRooms
         ).length,
+
       timestamp:
-        new Date().toISOString(),
+        Date.now(),
     });
   }
 );
 
 /* =========================================================
-   Debug Room Summary
-
-   실제 게임 데이터 전체를 외부에 노출하지 않고
-   현재 방 개수/상태 정도만 확인한다.
+   Debug Room Endpoint
 ========================================================= */
 
 app.get(
-  "/status",
-  (req, res) => {
-    const roomSummary =
-      Object.values(
-        devilRooms
-      ).map(
-        room => ({
-          id:
-            room.id,
-
-          status:
-            room.status,
-
-          playerCount:
-            room.status ===
-              "playing" ||
-            room.status ===
-              "finished"
-              ? Object.values(
-                  room.gamePlayers ??
-                    {}
-                ).filter(
-                  player =>
-                    player.leftGame !==
-                    true
-                ).length
-              : room.players
-                  ?.length ??
-                0,
-
-          blackout:
-            Boolean(
-              room.blackout
-                ?.active
-            ),
-
-          meeting:
-            Boolean(
-              room.meeting
-                ?.active
-            ),
-        })
-      );
-
-    res.status(200).json({
+  "/debug/rooms",
+  (
+    req,
+    res
+  ) => {
+    /*
+     * 역할 정보 같은 민감한 게임 정보는
+     * 공개하지 않고 로비 정보만 반환한다.
+     */
+    res.json({
       ok: true,
+
       rooms:
-        roomSummary,
+        getPublicRooms(),
+
+      count:
+        Object.keys(
+          devilRooms
+        ).length,
     });
   }
 );
@@ -4546,7 +5665,7 @@ process.on(
   "uncaughtException",
   error => {
     console.error(
-      "❌ Uncaught Exception:",
+      "❌ uncaughtException:",
       error
     );
   }
@@ -4554,10 +5673,10 @@ process.on(
 
 process.on(
   "unhandledRejection",
-  reason => {
+  error => {
     console.error(
-      "❌ Unhandled Rejection:",
-      reason
+      "❌ unhandledRejection:",
+      error
     );
   }
 );
@@ -4574,40 +5693,48 @@ function shutdown(
   );
 
   /*
-   * 진행 중인 회의 타이머 정리.
+   * 연결된 클라이언트에게
+   * 서버 종료 예정임을 알려준다.
    */
-  for (
-    const room of
-    Object.values(
-      devilRooms
-    )
-  ) {
-    clearMeetingTimers(
-      room
-    );
-  }
+  io.emit(
+    "server:shutdown",
+    {
+      message:
+        "서버가 재시작됩니다.",
 
-  io.close(() => {
-    server.close(() => {
+      timestamp:
+        Date.now(),
+    }
+  );
+
+  server.close(
+    () => {
       console.log(
-        "✅ Server closed."
+        "✅ HTTP server closed."
       );
 
-      process.exit(0);
-    });
-  });
+      process.exit(
+        0
+      );
+    }
+  );
 
   /*
-   * 혹시 Socket.IO 연결 때문에 정상 종료되지 않을 경우
-   * 일정 시간 후 강제 종료.
+   * 정상 종료가 지연될 경우
+   * 강제 종료.
    */
-  setTimeout(() => {
-    console.error(
-      "⚠️ Forced shutdown."
-    );
+  setTimeout(
+    () => {
+      console.error(
+        "⚠️ Forced server shutdown."
+      );
 
-    process.exit(1);
-  }, 10_000).unref();
+      process.exit(
+        1
+      );
+    },
+    10_000
+  ).unref();
 }
 
 process.on(
@@ -4637,11 +5764,11 @@ server.listen(
   "0.0.0.0",
   () => {
     console.log(
-      "============================================"
+      "=========================================="
     );
 
     console.log(
-      "🥔 Gamja Office Server"
+      "🥔 Gamja Office Socket Server"
     );
 
     console.log(
@@ -4649,15 +5776,15 @@ server.listen(
     );
 
     console.log(
-      "🎮 Potato War Socket.IO ready"
+      `😈 Potato War players: ${DEVIL_GAME_MIN_PLAYERS} ~ ${DEVIL_GAME_MAX_PLAYERS}`
     );
 
     console.log(
-      "🌑 Survivor blackout synchronization ready"
+      `🌑 Blackout event: devilGame:blackout -> devilGame:blackout-changed`
     );
 
     console.log(
-      "============================================"
+      "=========================================="
     );
   }
 );

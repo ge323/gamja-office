@@ -1784,20 +1784,18 @@ export default function DevilGameWorld({
        악마는 정전 이벤트를 받아도 화면이 어두워지지 않는다.
     ===================================== */
 
-    socket.on(
-      "devilGame:blackout-changed",
+   socket.on(
+      "dev``ilGame:blackout-changed",
       (data: {
         active?: boolean;
       }) => {
         setBlackout(
-          role === "survivor"
-            ? Boolean(
-                data?.active
-              )
-            : false
+          Boolean(
+            data?.active
+          )
         );
       }
-    );
+    );``
 
     /* =====================================
        Emergency Meeting
