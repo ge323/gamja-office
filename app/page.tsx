@@ -184,6 +184,25 @@ export default function Home() {
   ] =
     useState("");
 
+
+  const [
+    orientationReady,
+    setOrientationReady,
+  ] =
+    useState(false);
+
+  const [
+    isMobileLike,
+    setIsMobileLike,
+  ] =
+    useState(false);
+
+  const [
+    isPortrait,
+    setIsPortrait,
+  ] =
+    useState(false);
+
   /* ======================================================
      Load
   ====================================================== */
@@ -248,6 +267,88 @@ export default function Home() {
     setLoaded(
       true
     );
+  }, []);
+
+  /* ======================================================
+     Mobile Orientation
+
+     - 캐릭터 선택 화면: 세로/가로 모두 허용
+     - 사무실 입장 이후: 모바일 세로면 가로 전환 안내
+     - PC: 방향 제한 없음
+  ====================================================== */
+
+  useEffect(() => {
+    const updateOrientation =
+      () => {
+        const width =
+          window.visualViewport?.width ??
+          window.innerWidth;
+
+        const height =
+          window.visualViewport?.height ??
+          window.innerHeight;
+
+        const coarsePointer =
+          window.matchMedia(
+            "(pointer: coarse)"
+          ).matches;
+
+        const mobileBySize =
+          Math.min(
+            width,
+            height
+          ) <= 900;
+
+        const mobile =
+          coarsePointer ||
+          mobileBySize;
+
+        setIsMobileLike(
+          mobile
+        );
+
+        setIsPortrait(
+          height > width
+        );
+
+        setOrientationReady(
+          true
+        );
+      };
+
+    updateOrientation();
+
+    window.addEventListener(
+      "resize",
+      updateOrientation
+    );
+
+    window.addEventListener(
+      "orientationchange",
+      updateOrientation
+    );
+
+    window.visualViewport?.addEventListener(
+      "resize",
+      updateOrientation
+    );
+
+    return () => {
+      window.removeEventListener(
+        "resize",
+        updateOrientation
+      );
+
+      window.removeEventListener(
+        "orientationchange",
+        updateOrientation
+      );
+
+      window.visualViewport?.removeEventListener(
+        "resize",
+        updateOrientation
+      );
+    };
   }, []);
 
   /* ======================================================
@@ -629,6 +730,161 @@ export default function Home() {
   }
 
   /* ======================================================
+     Landscape Required After Enter
+
+     캐릭터 선택/수정 중에는 방향을 강제하지 않는다.
+     출근 완료 후 모바일이 세로라면 가로 전환 안내만 보여준다.
+  ====================================================== */
+
+  if (
+    entered &&
+    orientationReady &&
+    isMobileLike &&
+    isPortrait
+  ) {
+    return (
+      <main
+        className="
+          fixed
+          inset-0
+          z-[999999]
+          flex
+          h-[100dvh]
+          w-screen
+          items-center
+          justify-center
+          overflow-hidden
+          bg-[#171411]
+          px-8
+          text-white
+        "
+      >
+        <div
+          className="
+            flex
+            max-w-sm
+            flex-col
+            items-center
+            text-center
+          "
+        >
+          <div
+            className="
+              relative
+              mb-8
+              h-[58px]
+              w-[96px]
+              rounded-[18px]
+              border-[3px]
+              border-white/80
+            "
+            aria-hidden="true"
+          >
+            <div
+              className="
+                absolute
+                left-2
+                top-1/2
+                h-2
+                w-2
+                -translate-y-1/2
+                rounded-full
+                bg-white/45
+              "
+            />
+
+            <div
+              className="
+                absolute
+                right-2
+                top-1/2
+                h-1
+                w-5
+                -translate-y-1/2
+                rounded-full
+                bg-white/45
+              "
+            />
+          </div>
+
+          <div
+            className="
+              text-[22px]
+              font-black
+              tracking-[-0.02em]
+            "
+          >
+            화면을 가로로 돌려주세요
+          </div>
+
+          <div
+            className="
+              mt-3
+              text-[14px]
+              leading-6
+              text-white/55
+            "
+          >
+            캐릭터 설정이 완료됐어요.
+            <br />
+            사무실과 감자 전쟁은 가로 화면에 최적화되어 있어요.
+          </div>
+
+          <div
+            className="
+              mt-7
+              flex
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-white/10
+              bg-white/5
+              px-5
+              py-3
+              text-[12px]
+              font-semibold
+              text-white/65
+            "
+          >
+            <span aria-hidden="true">
+              📱
+            </span>
+
+            <span aria-hidden="true">
+              ↻
+            </span>
+
+            <span>
+              가로로 돌리면 자동으로 이어집니다
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              handleCustomize
+            }
+            className="
+              mt-5
+              rounded-lg
+              px-4
+              py-2
+              text-[11px]
+              text-white/40
+              transition
+              hover:bg-white/5
+              hover:text-white/70
+            "
+          >
+            캐릭터 다시 수정하기
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  /* ======================================================
      Role Reveal
   ====================================================== */
 
@@ -660,6 +916,9 @@ export default function Home() {
         className="
           min-h-screen
           bg-zinc-950
+          max-[900px]:h-[100dvh]
+          max-[900px]:min-h-0
+          max-[900px]:overflow-hidden
         "
       >
         {/* =====================================
@@ -792,6 +1051,9 @@ export default function Home() {
         min-h-screen
         bg-[#ece7dd]
         text-zinc-900
+        max-[900px]:h-[100dvh]
+        max-[900px]:min-h-0
+        max-[900px]:overflow-hidden
       "
     >
       {/* =========================================

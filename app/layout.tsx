@@ -11,7 +11,6 @@ import {
 import "./globals.css";
 
 import PwaRegistrar from "../components/PwaRegistrar";
-import MobileLandscapeGuard from "../components/MobileALandscapeGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -103,9 +102,7 @@ export default function RootLayout({
           overscroll-none
         "
       >
-        <MobileLandscapeGuard>
-          {children}
-        </MobileLandscapeGuard>
+        {children}
 
         <PwaRegistrar />
       </body>
