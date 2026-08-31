@@ -136,6 +136,10 @@ type MeetingState = {
 
   active: boolean;
 
+  kind:
+  | "corpse"
+  | "emergency";
+
   phase:
   MeetingPhase;
 
@@ -143,16 +147,16 @@ type MeetingState = {
   string;
 
   reporterNickname?:
-  string;
+  string | null;
 
-  corpseId:
-  string;
+  corpseId?:
+  string | null;
 
-  victimId:
-  string;
+  victimId?:
+  string | null;
 
-  victimNickname:
-  string;
+  victimNickname?:
+  string | null;
 
   startedAt:
   number;
@@ -360,12 +364,13 @@ const MOBILE_PLAYER_SPEED_MULTIPLIER =
  * 현재 맵의 중앙 회의 구역을 기준으로 한다.
  */
 const EMERGENCY_MEETING_POSITION: Position = {
-  x: 1100,
-  y: 700,
+  /* 회의실 테이블(900,1110,390x100)의 중심점 */
+  x: 1095,
+  y: 1160,
 };
 
 const EMERGENCY_MEETING_DISTANCE =
-  175;
+  190;
 
 /*
  * 긴급회의는 남발되지 않도록
@@ -510,15 +515,22 @@ function getDistance(
 }
 
 function getDisplayName(
-  nickname: string
+  nickname?: string | null
 ) {
   const cleaned =
-    nickname.replace(
-      /\s*감자\s*$/g,
+    String(
+      nickname ??
       ""
-    );
+    )
+      .replace(
+        /\s*감자\s*$/g,
+        ""
+      )
+      .trim();
 
-  return `${cleaned} 감자`;
+  return cleaned
+    ? `${cleaned} 감자`
+    : "감자";
 }
 
 /*
@@ -1333,9 +1345,12 @@ export default function DevilGameWorld({
       if (
         state.meeting?.active
       ) {
-        setMeeting(
-          state.meeting
-        );
+        setMeeting({
+          ...state.meeting,
+          kind:
+            state.meeting.kind ??
+            "corpse",
+        });
 
         setMeetingMessages(
           state.meeting.messages ??
@@ -1787,9 +1802,12 @@ export default function DevilGameWorld({
           false
         );
 
-        setMeeting(
-          data
-        );
+        setMeeting({
+          ...data,
+          kind:
+            data.kind ??
+            "corpse",
+        });
 
         setMeetingMessages(
           data.messages ??
@@ -1879,8 +1897,17 @@ export default function DevilGameWorld({
     socket.on(
       "devilGame:meeting-voted",
       (data: {
-        playerId: string;
+        playerId?: string;
+        voterId?: string;
       }) => {
+        const votedPlayerId =
+          data.playerId ??
+          data.voterId;
+
+        if (!votedPlayerId) {
+          return;
+        }
+
         setMeeting(
           (previous) => {
             if (!previous) {
@@ -1889,7 +1916,7 @@ export default function DevilGameWorld({
 
             if (
               previous.votedPlayerIds.includes(
-                data.playerId
+                votedPlayerId
               )
             ) {
               return previous;
@@ -1900,7 +1927,7 @@ export default function DevilGameWorld({
 
               votedPlayerIds: [
                 ...previous.votedPlayerIds,
-                data.playerId,
+                votedPlayerId,
               ],
             };
           }
@@ -6270,14 +6297,25 @@ export default function DevilGameWorld({
                 </div>
 
                 <div className="mt-3 text-[11px] font-semibold text-white/75">
-                  💀 {getDisplayName(
-                    meeting.victimNickname
-                  )}이(가) 발견되었습니다.
-                  {meeting.reporterNickname
-                    ? ` · 발견자 ${getDisplayName(
-                      meeting.reporterNickname
-                    )}`
-                    : ""}
+                  {meeting.kind ===
+                  "emergency" ? (
+                    <>
+                      📣 {getDisplayName(
+                        meeting.reporterNickname
+                      )}이(가) 긴급회의를 소집했습니다.
+                    </>
+                  ) : (
+                    <>
+                      💀 {getDisplayName(
+                        meeting.victimNickname
+                      )}이(가) 발견되었습니다.
+                      {meeting.reporterNickname
+                        ? ` · 발견자 ${getDisplayName(
+                          meeting.reporterNickname
+                        )}`
+                        : ""}
+                    </>
+                  )}
                 </div>
               </div>
 

@@ -146,8 +146,9 @@ const POTATO_WAR_EMERGENCY_MEETING_DISTANCE =
   190;
 
 const POTATO_WAR_EMERGENCY_MEETING_POSITION = {
-  x: 1100,
-  y: 700,
+  /* DevilOfficeMap 회의 테이블(900,1110,390x100)의 중심 */
+  x: 1095,
+  y: 1160,
 };
 
 /* =========================================================
@@ -637,6 +638,12 @@ function createGameRuntime(
         y:
           spawn.y,
 
+        moving:
+          false,
+
+        direction:
+          "down",
+
         spawnId:
           spawn.id,
 
@@ -702,6 +709,16 @@ function getPublicGamePlayer(
     moving:
       Boolean(
         gamePlayer.moving
+      ),
+
+    direction:
+      gamePlayer.direction ??
+      "down",
+
+    emergencyMeetingUses:
+      Number(
+        gamePlayer.emergencyMeetingUses ??
+        0
       ),
   };
 }
@@ -3496,6 +3513,20 @@ socket.on(
         position?.moving
       );
 
+    if (
+      [
+        "up",
+        "down",
+        "left",
+        "right",
+      ].includes(
+        position?.direction
+      )
+    ) {
+      player.direction =
+        position.direction;
+    }
+
     socket
       .to(
         getSocketRoomName(
@@ -3514,6 +3545,10 @@ socket.on(
 
           moving:
             player.moving,
+
+          direction:
+            player.direction ??
+            "down",
         }
       );
   }
@@ -4162,7 +4197,8 @@ socket.on(
     payload = {},
     callback
   ) => {
-    const room =
+    try {
+      const room =
       findGameRoomBySocket(
         socket.id
       );
@@ -4384,6 +4420,18 @@ setTimeout(
   },
   POTATO_WAR_DISCUSSION_MS
 );
+    } catch (error) {
+      console.error(
+        "❌ devilGame:emergency-meeting 오류:",
+        error
+      );
+
+      callback?.({
+        ok: false,
+        message:
+          "긴급회의 처리 중 서버 오류가 발생했습니다.",
+      });
+    }
 });
 
 /* =====================================================
@@ -4710,6 +4758,10 @@ socket.on(
       .emit(
         "devilGame:meeting-voted",
         {
+          /* 최신/구버전 클라이언트 모두 호환 */
+          playerId:
+            voter.id,
+
           voterId:
             voter.id,
         }
