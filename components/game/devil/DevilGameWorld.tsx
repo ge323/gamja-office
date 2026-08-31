@@ -1777,6 +1777,29 @@ export default function DevilGameWorld({
     );
 
     /* =====================================
+       Blackout
+
+       서버가 같은 게임방 참가자에게 전달한 정전 상태를 받는다.
+       실제 정전 화면은 생존자에게만 적용한다.
+       악마는 정전 이벤트를 받아도 화면이 어두워지지 않는다.
+    ===================================== */
+
+    socket.on(
+      "devilGame:blackout-changed",
+      (data: {
+        active?: boolean;
+      }) => {
+        setBlackout(
+          role === "survivor"
+            ? Boolean(
+                data?.active
+              )
+            : false
+        );
+      }
+    );
+
+    /* =====================================
        Emergency Meeting
     ===================================== */
 
@@ -3665,9 +3688,43 @@ export default function DevilGameWorld({
         return;
       }
 
-      setBlackout(
-        (previous) =>
-          !previous
+      const socket =
+        socketRef.current;
+
+      if (
+        !socket ||
+        !socket.connected
+      ) {
+        setCombatMessage(
+          "서버에 연결되어 있지 않습니다."
+        );
+
+        return;
+      }
+
+      setCombatMessage(
+        ""
+      );
+
+      socket.emit(
+        "devilGame:blackout",
+        {
+          roomId,
+        },
+        (response: {
+          ok: boolean;
+          message?: string;
+          active?: boolean;
+        }) => {
+          if (
+            !response?.ok
+          ) {
+            setCombatMessage(
+              response?.message ??
+              "정전을 발생시키지 못했습니다."
+            );
+          }
+        }
       );
     };
 
@@ -5022,8 +5079,8 @@ export default function DevilGameWorld({
         ================================================= */}
 
         {blackout &&
-          playerState !==
-          "ghost" && (
+          role === "survivor" &&
+          playerState !== "ghost" && (
             <div
               className="
                 pointer-events-none
