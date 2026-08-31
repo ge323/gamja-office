@@ -1,22 +1,9 @@
 const CACHE_NAME =
-  "gamja-office-v1";
-
-const APP_SHELL = [
-  "/",
-  "/manifest.webmanifest",
-];
+  "gamja-office-v3";
 
 self.addEventListener(
   "install",
-  (event) => {
-    event.waitUntil(
-      caches
-        .open(CACHE_NAME)
-        .then((cache) =>
-          cache.addAll(APP_SHELL)
-        )
-    );
-
+  () => {
     self.skipWaiting();
   }
 );
@@ -29,14 +16,9 @@ self.addEventListener(
         .keys()
         .then((keys) =>
           Promise.all(
-            keys
-              .filter(
-                (key) =>
-                  key !== CACHE_NAME
-              )
-              .map((key) =>
-                caches.delete(key)
-              )
+            keys.map((key) =>
+              caches.delete(key)
+            )
           )
         )
     );
@@ -47,20 +29,8 @@ self.addEventListener(
 
 self.addEventListener(
   "fetch",
-  (event) => {
-    const request =
-      event.request;
-
-    if (
-      request.method !== "GET"
-    ) {
-      return;
-    }
-
-    event.respondWith(
-      fetch(request).catch(() =>
-        caches.match(request)
-      )
-    );
+  () => {
+    // 현재는 네트워크 요청을
+    // Service Worker가 가로채지 않는다.
   }
 );

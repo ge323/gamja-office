@@ -10,16 +10,54 @@ import CharacterCustomizer, {
   type CharacterStyle,
 } from "@/components/character/CharacterCustomizer";
 
-import GameWorld, {
-  type OnlinePlayer,
+import dynamic from "next/dynamic";
+
+import type {
+  OnlinePlayer,
 } from "@/components/game/GameWorld";
 
-import DevilGameWorld from "@/components/game/devil/DevilGameWorld";
-
-import RoleReveal, {
-  type DevilRole,
+import type {
+  DevilRole,
 } from "@/components/game/devil/RoleReveal";
 
+const GameWorld = dynamic(
+  () =>
+    import(
+      "@/components/game/GameWorld"
+    ).then(
+      (module) =>
+        module.default
+    ),
+  {
+    ssr: false,
+  }
+);
+
+const DevilGameWorld = dynamic(
+  () =>
+    import(
+      "@/components/game/devil/DevilGameWorld"
+    ).then(
+      (module) =>
+        module.default
+    ),
+  {
+    ssr: false,
+  }
+);
+
+const RoleReveal = dynamic(
+  () =>
+    import(
+      "@/components/game/devil/RoleReveal"
+    ).then(
+      (module) =>
+        module.default
+    ),
+  {
+    ssr: false,
+  }
+);
 /* =========================================================
    Types
 ========================================================= */
