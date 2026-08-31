@@ -93,35 +93,42 @@ type DevilLobbyProps = {
 const MIN_PLAYERS =
   3;
 
+const MAX_PLAYERS =
+  5;
+
+/*
+ * 최대 5명 전용 배치.
+ *
+ * 오른쪽 아래 채팅 영역과 겹치지 않도록
+ * 전체 플레이어 영역을 중앙보다 살짝 왼쪽으로 당겼다.
+ *
+ * 위 3명 / 아래 2명 구조로 배치해서
+ * 캐릭터와 빈 슬롯의 위치가 안정적으로 보이게 한다.
+ */
 const PLAYER_POSITIONS = [
   {
-    left: "25%",
-    top: "42%",
+    left: "24%",
+    top: "40%",
   },
 
   {
-    left: "48%",
-    top: "38%",
-  },
-
-  {
-    left: "72%",
-    top: "43%",
-  },
-
-  {
-    left: "36%",
-    top: "67%",
+    left: "44%",
+    top: "37%",
   },
 
   {
     left: "64%",
-    top: "68%",
+    top: "41%",
   },
 
   {
-    left: "50%",
-    top: "56%",
+    left: "34%",
+    top: "65%",
+  },
+
+  {
+    left: "56%",
+    top: "64%",
   },
 ];
 
@@ -189,6 +196,19 @@ export default function DevilLobby({
 
   const playerCount =
     room.players.length;
+
+  /*
+   * 서버가 이전 설정으로 6명을 보내더라도
+   * 로비 UI에서는 최대 5명까지만 표시한다.
+   *
+   * 실제 입장 제한은 server.js에서도
+   * DEVIL_GAME_MAX_PLAYERS = 5로 맞춰야 한다.
+   */
+  const displayedMaxPlayers =
+    Math.min(
+      MAX_PLAYERS,
+      room.maxPlayers
+    );
 
   const me =
     room.players.find(
@@ -494,7 +514,7 @@ export default function DevilLobby({
             >
               {playerCount}
               {" / "}
-              {room.maxPlayers}
+              {displayedMaxPlayers}
             </div>
 
             {/* 준비 현황 */}
@@ -835,10 +855,10 @@ export default function DevilLobby({
 
                 absolute
 
-                left-[21%]
-                right-[21%]
-                top-[29%]
-                bottom-[13%]
+                left-[19%]
+                right-[25%]
+                top-[28%]
+                bottom-[12%]
 
                 rounded-[28px]
 
@@ -887,9 +907,6 @@ export default function DevilLobby({
 
                       flex
 
-                      -translate-x-1/2
-                      -translate-y-1/2
-
                       flex-col
                       items-center
 
@@ -901,6 +918,15 @@ export default function DevilLobby({
 
                       top:
                         playerPosition.top,
+
+                      /*
+                       * 닉네임/방장 배지/준비 배지까지 포함한
+                       * 전체 박스의 정중앙이 아니라
+                       * 실제 감자 몸통이 슬롯 중심에 오도록
+                       * Y 이동량을 줄인다.
+                       */
+                      transform:
+                        "translate(-50%, -35%)",
                     }}
                   >
                     {/* Role badges */}
@@ -1132,7 +1158,7 @@ export default function DevilLobby({
                   0,
 
                   Math.min(
-                    room.maxPlayers,
+                    displayedMaxPlayers,
                     PLAYER_POSITIONS.length
                   ) -
                     playerCount
@@ -1163,9 +1189,6 @@ export default function DevilLobby({
 
                       flex
 
-                      -translate-x-1/2
-                      -translate-y-1/2
-
                       flex-col
                       items-center
 
@@ -1177,6 +1200,9 @@ export default function DevilLobby({
 
                       top:
                         playerPosition.top,
+
+                      transform:
+                        "translate(-50%, -35%)",
                     }}
                   >
                     <div
