@@ -1060,15 +1060,17 @@ export default function Home() {
           Header
       ========================================= */}
 
-      <header
-        className="
-          relative
-          z-[10000]
-          border-b
-          border-zinc-300
-          bg-[#f7f4ee]
-        "
-      >
+        <header
+          className="
+            relative
+            z-[10000]
+            border-b
+            border-zinc-300
+            bg-[#f7f4ee]
+
+            max-[900px]:hidden
+          "
+        >
         <div
           className="
             mx-auto
