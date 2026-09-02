@@ -241,7 +241,7 @@ export default function Potato({
 
       <div
         className={`
-          -mb-1
+          mb-1
 
           whitespace-nowrap
 
